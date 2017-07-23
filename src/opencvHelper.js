@@ -88,9 +88,7 @@ function findContours(img, cannyLow, cannyHigh) {
     };
 }
 
-let resizeFactor = null;
-
-function prepareImage(filename) {
+function prepareImage(filename, resizeFactor) {
     return new Promise((fulfill, reject) => {
         cv.readImage(filename, (err, img) => {
             let contour = null;
@@ -117,7 +115,10 @@ function prepareImage(filename) {
                 )
                 .scale(250 / resizeFactor)
                 .write(filename.replace('.jpg', '_preprocessed.jpg'), () => {
-                    fulfill(filename.replace('.jpg', '_preprocessed.jpg'));
+                    fulfill({
+                        newFilename: filename.replace('.jpg', '_preprocessed.jpg'),
+                        resizeFactor: resizeFactor
+                    });
                 });
             });
         });

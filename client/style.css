@@ -1,5 +1,7 @@
 html, body {
     height: 100%;
+    background-size: cover;
+    background: url(img/puzzle-1261138.jpg) center;
 }
 .fullscreen {
     position: fixed;
@@ -7,6 +9,9 @@ html, body {
     top: 0;
     width: 100%;
     height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 .buttonRow {
     position: absolute;

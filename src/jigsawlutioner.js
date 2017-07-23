@@ -270,7 +270,7 @@ function analyzeFile(filename) {
                     side.sideIndex = sides.length;
                     sides.push(side);
 
-                    OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), 'Side ' + (sides.length - 1));
+                    OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (sides.length - 1));
                     OpencvHelper.drawOutlinedCross(img, side.startPoint.x, side.startPoint.y);
                 }
             }
@@ -281,7 +281,7 @@ function analyzeFile(filename) {
             Debug.endTime('debug');
             Cache.clear();
 
-            fulfill({pieceIndex: pieceIndex, sides: sides, filename: filename});
+            fulfill({pieceIndex: pieceIndex, sides: sides, filename: filename.replace('.jpg', '_finished.jpg')});
         });
     });
 }
