@@ -79,6 +79,7 @@ function findContours(img, cannyLow, cannyHigh) {
     }
 
     return {
+        allContours: contours,
         image: img,
         boundingRect: boundingRect,
         minAreaRect: minAreaRect,
@@ -113,10 +114,11 @@ function prepareImage(filename, resizeFactor) {
                     contour.boundingRect.width * 1.2,
                     contour.boundingRect.height * 1.2
                 )
+                .greyscale()
                 .scale(250 / resizeFactor)
-                .write(filename.replace('.jpg', '_preprocessed.jpg'), () => {
+                .write(filename + '.preprocessed.jpg', () => {
                     fulfill({
-                        newFilename: filename.replace('.jpg', '_preprocessed.jpg'),
+                        newFilename: filename + '.preprocessed.jpg',
                         resizeFactor: resizeFactor
                     });
                 });

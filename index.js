@@ -28,6 +28,7 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
         console.log('Server started on port ' + port);
     });
 
+    let pendingPiece = null;
     let pieces = [];
     let groups = [];
 
@@ -44,7 +45,7 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             Debug.startTime('1_uploading');
 
             console.log("upload started");
-            socket.emit('state', 'UPLOADING');
+            io.sockets.emit('state', 'UPLOADING');
         });
 
         uploader.on('saved', (event) => {
@@ -52,7 +53,7 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             Debug.startTime('2_preprocessing');
 
             console.log("uploading finished, starting preprocessing", event.file.pathName);
-            socket.emit('state', 'PREPROCESSING');
+            io.sockets.emit('state', 'PREPROCESSING');
 
             OpencvHelper.prepareImage(event.file.pathName, resizeFactor).then((preparationData) => {
                 Debug.endTime('2_preprocessing');
@@ -61,63 +62,77 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
                 resizeFactor = preparationData.resizeFactor;
 
                 console.log("preprocessing finished, starting parsing");
-                socket.emit('state', 'PARSING', path.basename(preparationData.newFilename));
+                io.sockets.emit('state', 'PARSING', path.basename(preparationData.newFilename));
 
                 Jigsawlutioner.analyzeFile(preparationData.newFilename).then((piece) => {
                     Debug.endTime('3_parsing');
-                    Debug.startTime('4_matching');
 
-                    pieces.push(piece);
+                    pendingPiece = piece;
 
-                    console.log("parsing finished, starting matching");
-                    socket.emit('state', 'MATCHING', path.basename(piece.filename));
+                    console.log("parsing finished, asking if correct");
+                    let frontendPiece = {
+                        pieceIndex: piece.pieceIndex,
+                        sides: piece.sides,
+                        filename: path.basename(piece.filename),
+                        maskFilename: path.basename(piece.maskFilename)
+                    };
+                    io.sockets.emit('state', 'CHECKPARSE', frontendPiece);
 
-                    let matchingPieces = Jigsawlutioner.findMatchingPieces(piece, pieces);
-
-                    let possibleGroups = [];
-                    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-                        for (let matchingPiece of matchingPieces) {
-                            if (groups[groupIndex].indexOf(matchingPiece.pieceIndex) > -1) {
-                                possibleGroups.push(groupIndex);
-                                break;
-                            }
-                        }
-                    }
-
-                    console.log("matching finished, starting grouping", possibleGroups, groups.length);
-                    socket.emit('state', 'GROUPING', {possibleGroups: possibleGroups, nextGroupIndex: groups.length});
-
-                    Debug.endTime('4_matching');
                     Debug.output();
                 }).catch((err) => {
                     console.log(err);
-                    socket.emit('state', 'ERROR', {atStep: 'Parsing', message: err});
+                    io.sockets.emit('state', 'ERROR', {atStep: 'Parsing', message: err});
                 });
             }).catch((err) => {
                 console.log('Error at preprocessing', err);
-                socket.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
+                io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
             });
         });
 
         uploader.on('error', (event) => {
             console.log('Error at uploading', event.message);
-            socket.emit('state', 'ERROR', {atStep: 'Uploading', message: event.message});
+            io.sockets.emit('state', 'ERROR', {atStep: 'Uploading', message: event.message});
         });
 
         socket.on('group', (targetGroup) => {
-            if (targetGroup === 'wrong') {
-                pieces.pop();
-                socket.emit('state', 'UPLOAD');
-                return;
-            }
-
             if (typeof groups[targetGroup] === 'undefined') {
                 groups[targetGroup] = [];
             }
 
             groups[targetGroup].push(pieces[pieces.length - 1].pieceIndex);
 
-            socket.emit('state', 'UPLOAD');
+            io.sockets.emit('state', 'UPLOAD');
+        });
+
+        socket.on('parseCorrect', () => {
+            Debug.startTime('4_matching');
+
+            pieces.push(pendingPiece);
+
+            console.log("parse correct, starting matching");
+
+            let matchingPieces = Jigsawlutioner.findMatchingPieces(pendingPiece, pieces);
+
+            let possibleGroups = [];
+            for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+                for (let matchingPiece of matchingPieces) {
+                    if (groups[groupIndex].indexOf(matchingPiece.pieceIndex) > -1) {
+                        possibleGroups.push(groupIndex);
+                        break;
+                    }
+                }
+            }
+
+            console.log("matching finished, starting grouping", possibleGroups, groups.length);
+            io.sockets.emit('state', 'GROUPING', {possibleGroups: possibleGroups, nextGroupIndex: groups.length});
+
+            Debug.endTime('4_matching');
+        });
+
+        socket.on('parseWrong', () => {
+            pendingPiece = null;
+
+            io.sockets.emit('state', 'UPLOAD');
         });
     });
 }).catch((err) => {

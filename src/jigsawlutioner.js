@@ -1,5 +1,6 @@
 const cv = require('opencv');
 const paper = require('paper-jsdom');
+const path = require('path');
 
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
@@ -235,53 +236,62 @@ function analyzeFile(filename) {
             Debug.endTime('findContours');
 
             Debug.startTime('debug');
-            contour.drawOnImage(img, [0, 255, 0], 2, 8, 0);
-            Debug.saveMask(contour, filename);
-            Debug.endTime('debug');
+            contour.drawOnImage(img, [0, 255, 0], 1, 8, 0);
+            Debug.saveMask(contour, filename).then((maskFilename) => {
+                Debug.endTime('debug');
 
-            //Detect corners
-            Debug.startTime('getPieceDiffs');
-            let diffs = getPieceDiffs(contour.path);
-            Debug.endTime('getPieceDiffs');
+                //Detect corners
+                Debug.startTime('getPieceDiffs');
+                let diffs = getPieceDiffs(contour.path);
+                Debug.endTime('getPieceDiffs');
 
-            Debug.startTime('getPieceCornerOffsets');
-            let cornerOffsets = getPieceCornerOffsets(diffs);
-            Debug.endTime('getPieceCornerOffsets');
+                Debug.startTime('getPieceCornerOffsets');
+                let cornerOffsets = getPieceCornerOffsets(diffs);
+                Debug.endTime('getPieceCornerOffsets');
 
-            if (cornerOffsets === null) {
-                reject('No borders found.');
-                return;
-            }
-
-            Debug.startTime('debug');
-            Debug.saveSingleGraph(diffs, cornerOffsets, filename);
-            Debug.endTime('debug');
-
-            //Generate side arrays
-            Debug.startTime('generateSideArrays');
-            let sides = [];
-            for (let i = 0; i < 4; i++) {
-                let fromOffset = cornerOffsets[i];
-                let toOffset = cornerOffsets[(i + 1) % 4];
-
-                let side = getSide(contour.path, fromOffset, toOffset);
-                if (side) {
-                    side.pieceIndex = pieceIndex;
-                    side.sideIndex = sides.length;
-                    sides.push(side);
-
-                    OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (sides.length - 1));
-                    OpencvHelper.drawOutlinedCross(img, side.startPoint.x, side.startPoint.y);
+                if (cornerOffsets === null) {
+                    reject('No borders found.');
+                    return;
                 }
-            }
-            Debug.endTime('generateSideArrays');
 
-            Debug.startTime('debug');
-            img.save(filename.replace('.jpg', '_finished.jpg'));
-            Debug.endTime('debug');
-            Cache.clear();
+                Debug.startTime('debug');
+                Debug.saveSingleGraph(diffs, cornerOffsets, filename);
+                Debug.endTime('debug');
 
-            fulfill({pieceIndex: pieceIndex, sides: sides, filename: filename.replace('.jpg', '_finished.jpg')});
+                //Generate side arrays
+                Debug.startTime('generateSideArrays');
+                let sides = [];
+                for (let i = 0; i < 4; i++) {
+                    let fromOffset = cornerOffsets[i];
+                    let toOffset = cornerOffsets[(i + 1) % 4];
+
+                    let side = getSide(contour.path, fromOffset, toOffset);
+                    if (side) {
+                        side.pieceIndex = pieceIndex;
+                        side.sideIndex = sides.length;
+                        sides.push(side);
+
+                        OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (sides.length - 1));
+                        OpencvHelper.drawOutlinedCross(img, side.startPoint.x, side.startPoint.y);
+                        OpencvHelper.drawOutlinedCross(img, side.endPoint.x, side.endPoint.y);
+                    }
+                }
+                Debug.endTime('generateSideArrays');
+
+                Debug.startTime('debug');
+                img.save(filename + '.finished.jpg');
+                Debug.endTime('debug');
+                Cache.clear();
+
+                fulfill({
+                    pieceIndex: pieceIndex,
+                    sides: sides,
+                    filename: filename + '.finished.jpg',
+                    maskFilename: maskFilename,
+                    fileWidth: contour.image.width(),
+                    fileHeight: contour.image.height()
+                });
+            });
         });
     });
 }

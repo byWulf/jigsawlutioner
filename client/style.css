@@ -1,7 +1,8 @@
 html, body {
     height: 100%;
     background-size: cover;
-    background: url(img/puzzle-1261138.jpg) center;
+    background-image: url(img/puzzle-1261138.jpg);
+    background-position: center;
 }
 .fullscreen {
     position: fixed;
@@ -9,9 +10,23 @@ html, body {
     top: 0;
     width: 100%;
     height: 100%;
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+}
+.actionContainer {
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+.actionContainer h2 {
+    padding: 10px;
+}
+.actionContainer .btn-group {
+    width: 100%;
+}
+.actionContainer .btn-group>.btn {
+    width: 100%;
 }
 .buttonRow {
     position: absolute;
