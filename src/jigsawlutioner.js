@@ -90,8 +90,6 @@ function findMatchingPieces(piece, pieces) {
 
     matchingPieces.sort((a,b) => a.avgDistance - b.avgDistance);
 
-    Debug.saveCompareSides(piece, pieces, piece.filename);
-
     Cache.clear();
 
     return matchingPieces.filter((item, pos) => matchingPieces.indexOf(item) === pos);
@@ -102,9 +100,9 @@ function getPieceDiffs(path) {
     let diffsOrdered = [];
     let lastDegree = 0;
     for (let i = 0; i < path.length; i++) {
-        let diff = PathHelper.getRotationGain(path, i);
+        let diff = PathHelper.getRotationGain(path, i, 10);
 
-        let deg = PathHelper.getRotation(path, i);
+        let deg = PathHelper.getRotation(path, i, 10);
         while (lastDegree - deg > 180) deg += 360;
         while (lastDegree - deg < -180) deg -= 360;
         lastDegree = deg;
@@ -117,6 +115,11 @@ function getPieceDiffs(path) {
 
 function getPieceCornerOffsets(diffs) {
     let peaks = PathHelper.getNegativePeaks(diffs);
+
+    let points = [];
+    for (let i = 0; i < diffs.length; i++) {
+        points.push(diffs[i].point);
+    }
 
     let distinctOffsets = [];
     for (let a = 3; a < Math.min(15, peaks.length); a++) {
@@ -163,6 +166,16 @@ function getPieceCornerOffsets(diffs) {
                     }
                     if (minLength / maxLength < 0.5) {
                         continue;
+                    }
+
+                    //Check for straight sides for 10% before and after each corner
+                    for (let i = 0; i < 4; i++) {
+                        let offsetX = (offsets[(i+1) % 4].point.x - offsets[i].point.x) * 0.1;
+                        let offsetY = (offsets[(i+1) % 4].point.y - offsets[i].point.y) * 0.1;
+                        let comparePoint = {x: offsets[i].point.x + offsetX, y: offsets[i].point.y + offsetY};
+                        if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.2) {
+                            continue nextOffset;
+                        }
                     }
 
                     distinctOffsets.push([offsets[0], offsets[1], offsets[2], offsets[3]]);
@@ -228,8 +241,6 @@ function analyzeFile(filename) {
     return new Promise((fulfill, reject) => {
         //Load image
         cv.readImage(filename, (err, img) => {
-            let pieceIndex = nextPieceIndex++;
-
             //Detect piece contour
             Debug.startTime('findContours');
             let contour = OpencvHelper.findContours(img, 200, 300);
@@ -240,58 +251,74 @@ function analyzeFile(filename) {
             Debug.saveMask(contour, filename).then((maskFilename) => {
                 Debug.endTime('debug');
 
-                //Detect corners
-                Debug.startTime('getPieceDiffs');
-                let diffs = getPieceDiffs(contour.path);
-                Debug.endTime('getPieceDiffs');
-
-                Debug.startTime('getPieceCornerOffsets');
-                let cornerOffsets = getPieceCornerOffsets(diffs);
-                Debug.endTime('getPieceCornerOffsets');
-
-                if (cornerOffsets === null) {
-                    reject('No borders found.');
-                    return;
-                }
-
-                Debug.startTime('debug');
-                Debug.saveSingleGraph(diffs, cornerOffsets, filename);
-                Debug.endTime('debug');
-
-                //Generate side arrays
-                Debug.startTime('generateSideArrays');
-                let sides = [];
-                for (let i = 0; i < 4; i++) {
-                    let fromOffset = cornerOffsets[i];
-                    let toOffset = cornerOffsets[(i + 1) % 4];
-
-                    let side = getSide(contour.path, fromOffset, toOffset);
-                    if (side) {
-                        side.pieceIndex = pieceIndex;
-                        side.sideIndex = sides.length;
-                        sides.push(side);
-
-                        OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (sides.length - 1));
+                analyzeBorders(contour.path).then((result) => {
+                    for (let i = 0; i < result.sides.length; i++) {
+                        let side = result.sides[i];
+                        OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (result.sides.length - 1));
                         OpencvHelper.drawOutlinedCross(img, side.startPoint.x, side.startPoint.y);
                         OpencvHelper.drawOutlinedCross(img, side.endPoint.x, side.endPoint.y);
                     }
-                }
-                Debug.endTime('generateSideArrays');
 
-                Debug.startTime('debug');
-                img.save(filename + '.finished.jpg');
-                Debug.endTime('debug');
-                Cache.clear();
+                    Debug.startTime('debug');
+                    img.save(filename + '.finished.jpg');
+                    Debug.endTime('debug');
 
-                fulfill({
-                    pieceIndex: pieceIndex,
-                    sides: sides,
-                    filename: filename + '.finished.jpg',
-                    maskFilename: maskFilename,
-                    fileWidth: contour.image.width(),
-                    fileHeight: contour.image.height()
+                    result.filename = filename + '.finished.jpg';
+                    result.maskFilename = maskFilename;
+                    result.fileWidth = contour.image.width();
+                    result.fileHeight = contour.image.height();
+
+                    fulfill(result);
+                }).catch((err) => {
+                    reject(err);
                 });
             });
+        });
+    });
+}
+
+function analyzeBorders(paperPath) {
+    return new Promise((fulfill, reject) => {
+        let pieceIndex = nextPieceIndex++;
+
+        //Detect corners
+        Debug.startTime('getPieceDiffs');
+        let diffs = getPieceDiffs(paperPath);
+        Debug.endTime('getPieceDiffs');
+
+        Debug.startTime('getPieceCornerOffsets');
+        let cornerOffsets = getPieceCornerOffsets(diffs);
+        Debug.endTime('getPieceCornerOffsets');
+
+        if (cornerOffsets === null) {
+            reject('No borders found.');
+            return;
+        }
+
+        //Generate side arrays
+        Debug.startTime('generateSideArrays');
+        let sides = [];
+        for (let i = 0; i < 4; i++) {
+            let fromOffset = cornerOffsets[i];
+            let toOffset = cornerOffsets[(i + 1) % 4];
+
+            let side = getSide(paperPath, fromOffset, toOffset);
+            if (side) {
+                side.pieceIndex = pieceIndex;
+                side.sideIndex = sides.length;
+                side.fromOffset = fromOffset;
+                side.toOffset = toOffset;
+                sides.push(side);
+            }
+        }
+        Debug.endTime('generateSideArrays');
+
+        Cache.clear();
+
+        fulfill({
+            pieceIndex: pieceIndex,
+            sides: sides,
+            diffs: diffs
         });
     });
 }
@@ -299,5 +326,6 @@ function analyzeFile(filename) {
 module.exports = {
     findMatchingPieces: findMatchingPieces,
     getSideMatchingFactor: getSideMatchingFactor,
-    analyzeFile: analyzeFile
+    analyzeFile: analyzeFile,
+    analyzeBorders: analyzeBorders
 };

@@ -5,6 +5,7 @@ var $camera = $('#camera');
 var $cameraButton = $('#cameraButton');
 var $fullscreenContainer = $('.fullscreen');
 var $actionContainer = $('.actionContainer');
+var $canvas = $('#myCanvas');
 
 var reader = new FileReader();
 reader.onload = function (e) {
@@ -41,6 +42,92 @@ socket.on('state', function(state, data, error) {
     }
 
     if (state === 'CHECKPARSE') {
+        paper.setup($canvas[0]);
+
+        var points = [];
+        var degreePoints = [];
+        var diffPoints = [];
+        for (var i = 0; i < data.diffs.length; i++) {
+            points.push({x: data.diffs[i].point[1], y: data.diffs[i].point[2]});
+            degreePoints.push({x: i/3, y: data.diffs[i].deg + 700});
+            diffPoints.push({x: i/3, y: data.diffs[i].diff * 2 + 700});
+        }
+
+        var path = new paper.Path({
+            strokeColor: 'black',
+            closed: true,
+            segments: points
+        });
+        var path2 = new paper.Path({
+            strokeColor: 'blue',
+            closed: false,
+            segments: degreePoints
+        });
+        var path2 = new paper.Path({
+            strokeColor: 'red',
+            closed: false,
+            segments: diffPoints
+        });
+
+        new paper.Path({
+            strokeColor: '#dddddd',
+            closed: false,
+            segments: [{x: 0, y: 810}, {x: data.diffs.length / 3, y: 810}]
+        });
+        for (let i = 0; i < data.diffs.length; i += 100) {
+            new paper.Path({
+                strokeColor: '#aaaaaa',
+                closed: false,
+                segments: [{x: i / 3, y: 800}, {x: i / 3, y: 820}]
+            });
+            if (i % 1000 == 0) {
+                new paper.Path({
+                    strokeColor: '#666666',
+                    closed: false,
+                    segments: [{x: i / 3, y: 780}, {x: i / 3, y: 840}]
+                });
+            }
+        }
+
+        for (let i = 0; i < data.sides.length; i++) {
+            var point = data.sides[i].startPoint;
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: point[1] - 20, y: point[2] - 20}, {x: point[1] + 20, y: point[2] + 20}]
+            });
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: point[1] - 20, y: point[2] + 20}, {x: point[1] + 20, y: point[2] - 20}]
+            });
+
+            var point = data.sides[i].endPoint;
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: point[1] - 20, y: point[2] - 20}, {x: point[1] + 20, y: point[2] + 20}]
+            });
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: point[1] - 20, y: point[2] + 20}, {x: point[1] + 20, y: point[2] - 20}]
+            });
+
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: data.sides[i].fromOffset / 3, y: 500}, {x: data.sides[i].fromOffset/3, y: 800}]
+            });
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: data.sides[i].toOffset / 3, y: 500}, {x: data.sides[i].toOffset/3, y: 800}]
+            });
+        }
+
+        paper.view.draw();
+
         pendingPiece = data;
         pendingPiece.maskImage = $('<img>');
         pendingPiece.maskImage.attr('src', '/images/' + data.maskFilename);

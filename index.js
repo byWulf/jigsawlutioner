@@ -11,6 +11,7 @@ const path = require('path');
 const Jigsawlutioner = require('./src/jigsawlutioner');
 const OpencvHelper = require('./src/opencvHelper');
 const Debug = require('./src/debug');
+const BorderFinder = require('./src/borderFinder');
 
 app.use(express.static('client'));
 app.use('/images', express.static('images'));
@@ -20,6 +21,7 @@ app.use('/jquery', express.static('node_modules/jquery/dist'));
 app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
 app.use('/fontawesome', express.static('node_modules/font-awesome'));
 app.use('/tether', express.static('node_modules/tether/dist'));
+app.use('/paper', express.static('node_modules/paper/dist'));
 
 MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
     let collection = db.collection('sets');
@@ -55,7 +57,39 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             console.log("uploading finished, starting preprocessing", event.file.pathName);
             io.sockets.emit('state', 'PREPROCESSING');
 
-            OpencvHelper.prepareImage(event.file.pathName, resizeFactor).then((preparationData) => {
+            BorderFinder.findPieceBorder(event.file.pathName).then((borders) => {
+                Debug.endTime('2_preprocessing');
+                Debug.startTime('3_parsing');
+
+                console.log("preprocessing finished, starting parsing");
+                io.sockets.emit('state', 'PARSING', path.basename(event.file.pathName));
+
+                Jigsawlutioner.analyzeBorders(borders).then((piece) => {
+                    Debug.endTime('3_parsing');
+
+                    pendingPiece = piece;
+
+                    console.log("parsing finished, asking if correct");
+                    let frontendPiece = {
+                        diffs: piece.diffs,
+                        pieceIndex: piece.pieceIndex,
+                        sides: piece.sides,
+                        filename: path.basename(event.file.pathName),
+                        maskFilename: path.basename(event.file.pathName)
+                    };
+                    io.sockets.emit('state', 'CHECKPARSE', frontendPiece);
+
+                    Debug.output();
+                }).catch((err) => {
+                    console.log(err);
+                    io.sockets.emit('state', 'ERROR', {atStep: 'Parsing', message: err});
+                });
+            }).catch((err) => {
+                console.log('Error at preprocessing', err);
+                io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
+            });
+
+            /*OpencvHelper.prepareImage(event.file.pathName, resizeFactor).then((preparationData) => {
                 Debug.endTime('2_preprocessing');
                 Debug.startTime('3_parsing');
 
@@ -86,7 +120,7 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             }).catch((err) => {
                 console.log('Error at preprocessing', err);
                 io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
-            });
+            });*/
         });
 
         uploader.on('error', (event) => {

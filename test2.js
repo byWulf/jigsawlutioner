@@ -1,14 +1,30 @@
 const fs = require('fs');
-const OpencvHelper = require('./src/opencvHelper');
+
+const BorderFinder = require('./src/borderFinder');
 const Jigsawlutioner = require('./src/jigsawlutioner');
 
-let path = 'C:\\Users\\michael_wolf\\Pictures\\puzzle\\test_free';
-fs.readdir(path, (err, files) => {
-  files.forEach(file => {
-    OpencvHelper.prepareImage(path + '\\' + file).then((newFilename) => {
-        Jigsawlutioner.analyzeFile(newFilename).then((piece) => {
-
-        });
+/*
+let pieceFolder = 'C:\\Users\\michael_wolf\\Pictures\\puzzle\\test_neu';
+fs.readdir(pieceFolder, (err, files) => {
+    files.forEach(file => {
+        BorderFinder.findPieceBorder(pieceFolder + '\\' + file).then((border) => {
+            Jigsawlutioner.analyzeBorders(border).then((result) => {
+                fs.writeFile('./images/' + file + '.parsed.txt', JSON.stringify(result));
+            });
+        }).catch((err) => {
+            console.log(err);
+        })
     });
-  });
+});*/
+
+let filename = 'IMG_4284.JPG';
+
+BorderFinder.findPieceBorder('C:\\Users\\michael_wolf\\Pictures\\puzzle\\test_neu\\' + filename).then((border) => {
+    Jigsawlutioner.analyzeBorders(border).then((result) => {
+        fs.writeFile('./images/' + filename + '.parsed.txt', JSON.stringify(result));
+    }).catch((err) => {
+        console.log(err);
+    });
+}).catch((err) => {
+    console.log(err);
 });
