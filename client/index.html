@@ -12,6 +12,65 @@
     <link rel="stylesheet" href="/fontawesome/css/font-awesome.css">
 </head>
 <body>
+
+<input id="camera" type="file" accept="image/*">
+
+<div class="fullscreen">
+    <div class="d-flex flex-column" style="height: 100%;">
+        <div class="d-flex flex-row" style="flex-grow: 1;">
+            <div class="p-10" style="width: 400px;">
+                <div class="card card-transparent" style="max-height: 100%;">
+                    <div class="card-body">
+                        <label for="camera" id="cameraButton" class="pull-right btn btn-primary"><i class="fa fa-plus"></i> Add</label>
+                        <h4 class="card-title">Pieces</h4>
+                    </div>
+                    <div id="pieceList" class="list-group list-group-flush" style="overflow-y: auto;"></div>
+                </div>
+            </div>
+            <div id="mainContent" class="p-10" style="flex-grow: 1;">
+                <div class="loading text-center text-primary" style="display: none;"><i class="fa fa-spinner fa-spin fa-4x"></i></div>
+                <div class="card card-transparent" style="max-height: 100%; display: none;">
+                    <div class="card-body">
+                        <h4 class="card-title">Piece # <span class="pieceIndex"></span></h4>
+                    </div>
+                    <div class="d-flex flex-row">
+                        <div style="width: 400px; overflow-y: hidden;">
+                            <ul class="nav nav-pills nav-justified imagesNav" style="width: 100%;"></ul>
+                            <div style="position: relative;">
+                                <img class="imagePreview" src="" alt="" style="width: 100%;">
+                                <canvas class="imageCanvas" width="400" style="width: 400px; height: 100%;position: absolute; left: 0; top: 0;" resize></canvas>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column" style="flex-grow: 1; margin-left: 20px;">
+                            <ul class="nav nav-pills nav-justified dataNav" role="tablist" style="width: 100%; height: 40px; min-height: 40px;">
+                                <li class="nav-item"><a class="nav-link active" href="#cornerGraphs" data-toggle="tab" role="tab">Corner detection</a></li>
+                                <li class="nav-item"><a class="nav-link" href="#sideComparisons" data-toggle="tab" role="tab">Side comparisons</a></li>
+                            </ul>
+                            <div class="tab-content d-flex flex-column" style="flex-grow: 1;">
+                                <div class="tab-pane active" id="cornerGraphs" role="tabpanel">
+                                    <canvas class="cornerGraphsCanvas" style="width: 100%; height: 600px;" resize></canvas>
+                                </div>
+                                <div class="tab-pane d-flex d-flex-row" id="sideComparisons" role="tabpanel">
+                                    <div style="overflow-y: auto;">
+                                        <div class="card card-transparent" style="width: 100px; overflow-y: auto;">
+                                            <div id="compareList" class="list-group list-group-flush" style="overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="compareContainer" style="flex-grow: 1;">
+                                        <div class="loading text-center text-primary" style="display: none;"><i class="fa fa-spinner fa-spin fa-4x"></i></div>
+                                        <canvas class="sideComparisonCanvas" style="width: 100%; height: 100%" resize></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!--
+
 <div class="fullscreen">
     <canvas id="myCanvas"></canvas>
     <div class="pieceContainer"></div>
@@ -21,10 +80,11 @@
         <label for="camera" id="cameraButton" class="btn btn-primary btn-lg">Choose image...</label>
     </div>
     <input id="camera" type="file" accept="image/*">
-</div>
+</div>-->
 
 <script src="/jquery/jquery.js"></script>
 <script src="/tether/js/tether.js"></script>
+<script src="/popper/popper.js"></script>
 <script src="/bootstrap/js/bootstrap.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/siofu/client.js"></script>

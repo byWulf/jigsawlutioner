@@ -1,3 +1,5 @@
+const Paper = require('paper-jsdom');
+
 /**
  * Gets the tangents rotation (in degree) from a specific offset in a (closed) paperjs path.
  * Specify a high threshold to get a better result on shaky paths.
@@ -163,6 +165,66 @@ function getNegativePeaks(diffs) {
     return peaks;
 }
 
+function getArea(points) {
+    Paper.setup(new Paper.Size(1,1));
+    let paperPath = new Paper.Path({
+        closed: true,
+        segments: points
+    });
+
+    return paperPath.area;
+}
+
+function getNopData(points) {
+    let extremePointIndex = 0;
+    for (let i = 0; i < points.length; i++) {
+        if (Math.abs(points[i].y) > Math.abs(points[extremePointIndex].y)) {
+            extremePointIndex = i;
+        }
+    }
+
+    let leftExtremeIndex = extremePointIndex;
+    for (let i = leftExtremeIndex - 1; i >= 0; i--) {
+        if (points[i].x <= points[i + 1].x) {
+            leftExtremeIndex = i;
+        } else {
+            break;
+        }
+    }
+    let rightExtremeIndex = extremePointIndex;
+    for (let i = rightExtremeIndex + 1; i < points.length; i++) {
+        if (points[i].x >= points[i - 1].x) {
+            rightExtremeIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    let leftMinimumIndex = leftExtremeIndex;
+    for (let i = leftMinimumIndex - 1; i >= 0; i--) {
+        if (points[i].x >= points[leftMinimumIndex].x) {
+            leftMinimumIndex = i;
+        }
+    }
+    let rightMinimumIndex = rightExtremeIndex;
+    for (let i = rightMinimumIndex + 1; i < points.length; i++) {
+        if (points[i].x <= points[rightMinimumIndex].x) {
+            rightMinimumIndex = i;
+        }
+    }
+
+    return {
+        max: {
+            left: points[leftExtremeIndex].x,
+            right: points[rightExtremeIndex].x
+        }, min: {
+            left: points[leftMinimumIndex].x,
+            right: points[rightMinimumIndex].x,
+        },
+        height: points[extremePointIndex].y
+    };
+}
+
 module.exports = {
     getRotation: getRotation,
     getRotationGain: getRotationGain,
@@ -170,6 +232,8 @@ module.exports = {
     simplifyPoints: simplifyPoints,
     isStraightSide: isStraightSide,
     hasOutsideNop: hasOutsideNop,
+    getArea: getArea,
     rotatePoints: rotatePoints,
-    getNegativePeaks: getNegativePeaks
+    getNegativePeaks: getNegativePeaks,
+    getNopData: getNopData
 };

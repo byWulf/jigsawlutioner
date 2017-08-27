@@ -20,40 +20,61 @@ let nextPieceIndex = 0;
  *
  * @param sourceSide
  * @param targetSide
+ * @param thresholdX
+ * @param thresholdY
  * @returns {*}
  */
-function getSideMatchingFactor(sourceSide, targetSide) {
-    //Caching to reduce calculation time
-    if (Cache.has(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex])) {
-        return Cache.get(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex]);
+function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
+    if (typeof thresholdX === 'undefined') {
+        thresholdX = 3;
+    }
+    if (typeof thresholdY === 'undefined') {
+        thresholdY = 3;
     }
 
-    Debug.countIteration('getSideMatchFactor');
+    //Caching to reduce calculation time
+    if (Cache.has(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY])) {
+        return Cache.get(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY]);
+    }
 
-    //Check form of the sides
-    let bestResult = null;
-    for (let offsetY = -3; offsetY <= 3; offsetY++) {
-        for (let offsetX = -3; offsetX <= 3; offsetX++) {
-            Debug.countIteration('getSideMatchingFactor_distances');
+    let result = {
+        avgDistance: null,
+        worstSingleDistance: null,
+        offsetX: null,
+        offsetY: null,
+        sameSide: sourceSide.direction === targetSide.direction,
+        directLengthDiff: Math.abs(targetSide.directLength - sourceSide.directLength),
+        areaDiff: Math.abs(targetSide.area + sourceSide.area),
+        smallNopDiff: Math.abs(Math.abs(targetSide.nop.min.right - targetSide.nop.min.left) - Math.abs(sourceSide.nop.min.right - sourceSide.nop.min.left)),
+        bigNopDiff: Math.abs(Math.abs(targetSide.nop.max.right - targetSide.nop.max.left) - Math.abs(sourceSide.nop.max.right - sourceSide.nop.max.left)),
+        nopHeightDiff: Math.abs(targetSide.nop.height + sourceSide.nop.height),
+        nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2)),
+    };
 
-            Debug.startTime('getSideMatchingFactor_distancesOfPolylines');
-            let distances = MathHelper.distancesOfPolylines(PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
-            Debug.endTime('getSideMatchingFactor_distancesOfPolylines');
+    if (!result.sameSide/* && result.directLengthDiff <= 4*/) {
+        Debug.countIteration('getSideMatchFactor');
 
-            if (bestResult === null || distances.avgDistance < bestResult.avgDistance) {
-                bestResult = {
-                    avgDistance: distances.avgDistance,
-                    worstSingleDistance: distances.maxDistance,
-                    offsetX: offsetX,
-                    offsetY: offsetY
-                };
+        //Check form of the sides
+        for (let offsetY = -thresholdY; offsetY <= thresholdY; offsetY += Math.max(1, thresholdY / 3)) {
+            for (let offsetX = -thresholdX; offsetX <= thresholdX; offsetX += Math.max(1, thresholdX / 3)) {
+                Debug.countIteration('getSideMatchingFactor_distances');
+
+                Debug.startTime('getSideMatchingFactor_distancesOfPolylines');
+                let distances = MathHelper.distancesOfPolylines(PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
+                Debug.endTime('getSideMatchingFactor_distancesOfPolylines');
+
+                if (result.avgDistance === null || distances.avgDistance < result.avgDistance) {
+                    result.avgDistance = distances.avgDistance;
+                    result.worstSingleDistance = distances.maxDistance;
+                    result.offsetX = offsetX;
+                    result.offsetY = offsetY;
+                }
             }
         }
     }
 
-    Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex], bestResult);
-
-    return bestResult;
+    Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY], result);
+    return result;
 }
 
 /**
@@ -70,12 +91,6 @@ function findMatchingPieces(piece, pieces) {
 
         for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
             for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
-                if (
-                    piece.sides[sideIndex].direction === comparePiece.sides[compareSideIndex].direction ||
-                    Math.abs(comparePiece.sides[compareSideIndex].directLength - piece.sides[sideIndex].directLength) > 4
-                ) {
-                    continue;
-                }
 
                 let match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
 
@@ -220,17 +235,19 @@ function getSide(path, fromOffset, toOffset) {
         points.push(point);
     }
 
-    points = PathHelper.simplifyPoints(points);
+    points = PathHelper.simplifyPoints(points);/*
     points.unshift({x: -500, y: 0});
-    points.push({x: 500, y: 0});
+    points.push({x: 500, y: 0});*/
 
     if (!PathHelper.isStraightSide(points, directLength)) {
         return {
             points: points,
             direction: PathHelper.hasOutsideNop(points) ? 'out' : 'in',
+            area: PathHelper.getArea(points),
             directLength: directLength,
             startPoint: startPoint,
-            endPoint: endPoint
+            endPoint: endPoint,
+            nop: PathHelper.getNopData(points)
         };
     }
 

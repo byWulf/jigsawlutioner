@@ -1,171 +1,419 @@
-var socket = io();
-var uploader = new SocketIOFileUpload(socket);
+const socket = io();
+const uploader = new SocketIOFileUpload(socket);
 
-var $camera = $('#camera');
-var $cameraButton = $('#cameraButton');
-var $fullscreenContainer = $('.fullscreen');
-var $actionContainer = $('.actionContainer');
-var $canvas = $('#myCanvas');
+const $camera = $('#camera');
+const $cameraButton = $('#cameraButton');
+const $fullscreenContainer = $('.fullscreen');
+const $actionContainer = $('.actionContainer');
+const $canvas = $('#myCanvas');
+const $pieceList = $('#pieceList');
+const $compareList = $('#compareList');
+const $mainContent = $('#mainContent');
+const $imageCanvas = $('.imageCanvas');
+const $cornerGraphsCanvas = $('.cornerGraphsCanvas');
+const $sideComparisonCanvas = $('.sideComparisonCanvas');
+const $compareContainer = $('#compareContainer');
 
-var reader = new FileReader();
+const reader = new FileReader();
 reader.onload = function (e) {
   $fullscreenContainer.css('backgroundImage', 'url(' + e.target.result + ')');
 };
 
-var pendingPiece = null;
-var pieces = [];
+let pendingPiece = null;
+let pieces = [];
 
 $camera.on('change', function() {
     reader.readAsDataURL(this.files[0]);
 });
 uploader.listenOnInput($camera[0]);
 
-socket.on('state', function(state, data, error) {
-    if (state === 'UPLOAD') {
-        $camera.prop("disabled", false);
-        $cameraButton.removeClass('disabled').text('Choose image...');
-        $fullscreenContainer.css('backgroundImage', '');
+function addPieceToList(pieceIndex) {
+    $pieceList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceIndex).attr('data-pieceindex', pieceIndex));
+    $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceIndex).attr('data-pieceindex', pieceIndex));
+}
+
+let loadingPiece = null;
+let lastSelectedImage = null;
+let currentPiece = null;
+let loadingComparePiece = null;
+
+function openPiece(pieceIndex) {
+    $pieceList.find('.list-group-item.active').removeClass('active');
+    $pieceList.find('.list-group-item[data-pieceindex="' + pieceIndex + '"]').addClass('active');
+
+    $mainContent.find('> .loading').show();
+    $mainContent.find('> .card').hide();
+
+    loadingComparePiece = null;
+    $compareList.find('.list-group-item.active').removeClass('active');
+    $compareContainer.find('> canvas').hide();
+    $compareContainer.find('> .loading').hide();
+
+
+    loadingPiece = pieceIndex;
+    socket.emit('getPiece', pieceIndex);
+}
+
+function comparePiece(pieceIndex) {
+    $compareList.find('.list-group-item.active').removeClass('active');
+    $compareList.find('.list-group-item[data-pieceindex="' + pieceIndex + '"]').addClass('active');
+
+    $compareContainer.find('> .loading').show();
+    $compareContainer.find('> canvas').hide();
+
+    loadingComparePiece = pieceIndex;
+    socket.emit('comparePieces', currentPiece.pieceIndex, pieceIndex);
+}
+
+socket.on('pieces', (pieceIndices) => {
+    for (let i = 0; i < pieceIndices.length; i++) {
+        addPieceToList(pieceIndices[i]);
+    }
+});
+
+socket.on('newPiece', (pieceIndex) => {
+    addPieceToList(pieceIndex);
+    openPiece(pieceIndex);
+});
+
+//Open piece
+socket.on('piece', (piece) => {
+    if (piece.pieceIndex !== parseInt(loadingPiece, 10)) {
+        return;
+    }
+    loadingPiece = null;
+    currentPiece = piece;
+
+    $mainContent.find('.card').find('.pieceIndex').text(piece.pieceIndex);
+    $mainContent.find('.imagesNav').empty();
+    for (let fileType in piece.files) {
+        if (!piece.files.hasOwnProperty(fileType)) continue;
+
+        $('<li class="nav-item"><a class="nav-link" href="#"></a></li>').find('a').text(fileType).attr('data-filetype', fileType).attr('data-filename', piece.files[fileType]).end().appendTo($mainContent.find('.imagesNav'));
+    }
+    if (lastSelectedImage !== null && $mainContent.find('.imagesNav a[data-filetype="' + lastSelectedImage + '"]').length) {
+        $mainContent.find('.imagesNav a[data-filetype="' + lastSelectedImage + '"]').click();
+    } else {
+        $mainContent.find('.imagesNav a:last').click();
     }
 
-    if (state === 'UPLOADING') {
-        $camera.prop('disabled', true);
-        $cameraButton.addClass('disabled').text('Uploading...');
-    }
 
-    if (state === 'PREPROCESSING') {
-        $cameraButton.text('Preprocessing...');
-    }
+    $mainContent.find('> .card').show();
+    $mainContent.find('> .loading').hide();
 
-    if (state === 'PARSING') {
-        $cameraButton.text('Parsing...');
-        $fullscreenContainer.css('backgroundImage', 'url(/images/' + data + ')');
-    }
-
-    if (state === 'CHECKPARSE') {
-        paper.setup($canvas[0]);
-
-        var points = [];
-        var degreePoints = [];
-        var diffPoints = [];
-        for (var i = 0; i < data.diffs.length; i++) {
-            points.push({x: data.diffs[i].point[1], y: data.diffs[i].point[2]});
-            degreePoints.push({x: i/3, y: data.diffs[i].deg + 700});
-            diffPoints.push({x: i/3, y: data.diffs[i].diff * 2 + 700});
+    setTimeout(function() {
+        //Image borders
+        paper.setup($imageCanvas[0]);
+        let points = [];
+        for (let i = 0; i < piece.diffs.length; i++) {
+            points.push({
+                x: piece.diffs[i].point[1] + piece.boundingBox.left,
+                y: piece.diffs[i].point[2] + piece.boundingBox.top
+            });
         }
 
-        var path = new paper.Path({
-            strokeColor: 'black',
+        new paper.Path({
+            strokeColor: 'red',
+            strokeWidth: 4,
             closed: true,
             segments: points
         });
-        var path2 = new paper.Path({
+
+        for (let i = 0; i < piece.sides.length; i++) {
+            [piece.sides[i].startPoint, piece.sides[i].endPoint].forEach(function (point) {
+                new paper.Path({
+                    strokeColor: '#00ff00',
+                    strokeWidth: 4,
+                    closed: false,
+                    segments: [{
+                        x: point[1] - 20 + piece.boundingBox.left,
+                        y: point[2] - 20 + piece.boundingBox.top
+                    }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] + 20 + piece.boundingBox.top}]
+                });
+                new paper.Path({
+                    strokeColor: '#00ff00',
+                    strokeWidth: 4,
+                    closed: false,
+                    segments: [{
+                        x: point[1] - 20 + piece.boundingBox.left,
+                        y: point[2] + 20 + piece.boundingBox.top
+                    }, {x: point[1] + 20 + piece.boundingBox.left, y: point[2] - 20 + piece.boundingBox.top}]
+                });
+            });
+
+            new paper.PointText({
+                point: {
+                    x: (piece.sides[i].endPoint[1] - piece.sides[i].startPoint[1]) / 2 + piece.sides[i].startPoint[1] + piece.boundingBox.left - 15,
+                    y: (piece.sides[i].endPoint[2] - piece.sides[i].startPoint[2]) / 2 + piece.sides[i].startPoint[2] + piece.boundingBox.top + 40
+                },
+                content: i,
+                fillColor: 'white',
+                strokeColor: 'black',
+                strokeWidth: 5,
+                fontWeight: 'bold',
+                fontSize: 80
+            });
+        }
+
+        paper.view.scale(400 / piece.dimensions.width, {x: 0, y: 0});
+        paper.view.draw();
+
+        //Corner detection
+        paper.setup($cornerGraphsCanvas[0]);
+
+        let degreePoints = [];
+        let diffPoints = [];
+        for (let i = 0; i < piece.diffs.length; i++) {
+            degreePoints.push({x: i, y: piece.diffs[i].deg + 300});
+            diffPoints.push({x: i, y: piece.diffs[i].diff * 2 + 300});
+        }
+
+        for (let i = 0; i < piece.sides.length; i++) {
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: piece.sides[i].fromOffset, y: 0}, {x: piece.sides[i].fromOffset, y: 600}]
+            });
+            new paper.Path({
+                strokeColor: '#00ff00',
+                closed: false,
+                segments: [{x: piece.sides[i].toOffset, y: 0}, {x: piece.sides[i].toOffset, y: 600}]
+            });
+        }
+
+        new paper.Path({
+            strokeColor: '#dddddd',
+            closed: false,
+            segments: [{x: 0, y: 300}, {x: piece.diffs.length, y: 300}]
+        });
+        for (let i = 0; i < piece.diffs.length; i += 100) {
+            new paper.Path({
+                strokeColor: '#bbbbbb',
+                closed: false,
+                segments: [{x: i, y: 150}, {x: i, y: 450}]
+            });
+            if (i % 1000 === 0) {
+                new paper.Path({
+                    strokeColor: '#999999',
+                    closed: false,
+                    segments: [{x: i, y: 100}, {x: i, y: 500}]
+                });
+            }
+        }
+
+
+        new paper.Path({
             strokeColor: 'blue',
             closed: false,
             segments: degreePoints
         });
-        var path2 = new paper.Path({
+        new paper.Path({
             strokeColor: 'red',
             closed: false,
             segments: diffPoints
         });
 
-        new paper.Path({
-            strokeColor: '#dddddd',
-            closed: false,
-            segments: [{x: 0, y: 810}, {x: data.diffs.length / 3, y: 810}]
-        });
-        for (let i = 0; i < data.diffs.length; i += 100) {
-            new paper.Path({
-                strokeColor: '#aaaaaa',
-                closed: false,
-                segments: [{x: i / 3, y: 800}, {x: i / 3, y: 820}]
-            });
-            if (i % 1000 == 0) {
+        paper.view.onResize = function() {
+            paper.view.scale(1 / paper.view.scaling.x, 1, {x: 0, y: 0});
+            paper.view.scale($cornerGraphsCanvas.width() / piece.diffs.length, 1, {x: 0, y: 0});
+        };
+
+        paper.view.onResize();
+        paper.view.draw();
+    }, 10);
+
+    console.log(piece);
+});
+
+//Compare pieces
+socket.on('comparison', (sourcePiece, comparePiece, results) => {
+    if (sourcePiece.pieceIndex !== currentPiece.pieceIndex && comparePiece.pieceIndex !== parseInt(loadingComparePiece, 10)) {
+        return;
+    }
+    loadingComparePiece = null;
+
+    $compareContainer.find('> canvas').show();
+    $compareContainer.find('> .loading').hide();
+
+    setTimeout(function() {
+        paper.setup($sideComparisonCanvas[0]);
+
+        for (let sourceSideIndex = 0; sourceSideIndex < currentPiece.sides.length; sourceSideIndex++) {
+            for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
+                let result = results[sourceSideIndex + '_' + compareSideIndex];
+                let points = [];
+                for (let j = 0; j < currentPiece.sides[sourceSideIndex].points.length; j++) {
+                    points.push({
+                        x: currentPiece.sides[sourceSideIndex].points[j].x + 500 * sourceSideIndex + 250,
+                        y: currentPiece.sides[sourceSideIndex].points[j].y + 300 * compareSideIndex + 150
+                    });
+                }
                 new paper.Path({
-                    strokeColor: '#666666',
+                    strokeColor: result.sameSide ? '#888888' : 'red',
                     closed: false,
-                    segments: [{x: i / 3, y: 780}, {x: i / 3, y: 840}]
+                    segments: points
                 });
+
+                let comparePoints = [];
+                for (let j = 0; j < comparePiece.sides[compareSideIndex].points.length; j++) {
+                    comparePoints.push({
+                        x: -comparePiece.sides[compareSideIndex].points[j].x + 500 * sourceSideIndex + 250 + result.offsetX,
+                        y: -comparePiece.sides[compareSideIndex].points[j].y + 300 * compareSideIndex + 150 + result.offsetY
+                    });
+                }
+                new paper.Path({
+                    strokeColor: result.sameSide ? '#cccccc' : '#ffaa00',
+                    closed: false,
+                    segments: comparePoints
+                });
+
+
+                new paper.PointText({
+                    point: {
+                        x: 500 * sourceSideIndex + 250 - 250,
+                        y: 300 * compareSideIndex + 150 - 80
+                    },
+                    content: '' + sourceSideIndex + '/' + compareSideIndex,
+                    fillColor: 'black',
+                    fontSize: 40
+                });
+
+                if (result.sameSide) {
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250 - 150,
+                            y: 300 * compareSideIndex + 150
+                        },
+                        content: 'Same sides',
+                        fillColor: '#aaaaaa',
+                        fontSize: 60
+                    });
+                } else {
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250 - 250,
+                            y: 300 * compareSideIndex + 150 - 40 * (currentPiece.sides[sourceSideIndex].direction === 'in' ? 1 : -1)
+                        },
+                        content: [
+                            Math.round(result.avgDistance),
+                            Math.round(Math.sqrt(result.areaDiff)),
+                            Math.round(result.directLengthDiff),
+                            Math.round(result.worstSingleDistance),
+                            Math.round(result.nopCenterDiff),
+                            Math.round(result.nopHeightDiff),
+                            Math.round(result.smallNopDiff),
+                            Math.round(result.bigNopDiff)
+                        ].join(', '),
+                        fillColor: 'black',
+                        fontSize: 40
+                    });
+
+                    let sum = Math.round(
+                       result.avgDistance +
+                       Math.sqrt(result.areaDiff) +
+                       result.directLengthDiff +
+                       result.worstSingleDistance +
+                       result.nopCenterDiff +
+                       result.nopHeightDiff +
+                       result.smallNopDiff +
+                       result.bigNopDiff
+                    );
+
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250 - 100,
+                            y: 300 * compareSideIndex + 150 - 80 * (currentPiece.sides[sourceSideIndex].direction === 'in' ? 1 : -1)
+                        },
+                        content: '= ' + sum,
+                        fillColor: sum <= 75 ? 'red' : 'black',
+                        fontWeight: sum <= 75 ? 'bold' : 'normal',
+                        fontSize: 40
+                    });
+
+
+                    /*
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250,
+                            y: 300 * compareSideIndex + 150 - 40
+                        },
+                        content: 'AreaDiff: ' + Math.round(result.areaDiff),
+                        fillColor: 'black',
+                        fontSize: 40
+                    });
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250,
+                            y: 300 * compareSideIndex + 150
+                        },
+                        content: 'LenDiff: ' + Math.round(result.directLengthDiff),
+                        fillColor: 'black',
+                        fontSize: 40
+                    });
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250,
+                            y: 300 * compareSideIndex + 150 + 40
+                        },
+                        content: 'MaxDist: ' + Math.round(result.worstSingleDistance),
+                        fillColor: 'black',
+                        fontSize: 40
+                    });*/
+                }
             }
         }
 
-        for (let i = 0; i < data.sides.length; i++) {
-            var point = data.sides[i].startPoint;
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: point[1] - 20, y: point[2] - 20}, {x: point[1] + 20, y: point[2] + 20}]
-            });
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: point[1] - 20, y: point[2] + 20}, {x: point[1] + 20, y: point[2] - 20}]
-            });
+        console.log(results);
 
-            var point = data.sides[i].endPoint;
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: point[1] - 20, y: point[2] - 20}, {x: point[1] + 20, y: point[2] + 20}]
-            });
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: point[1] - 20, y: point[2] + 20}, {x: point[1] + 20, y: point[2] - 20}]
-            });
 
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: data.sides[i].fromOffset / 3, y: 500}, {x: data.sides[i].fromOffset/3, y: 800}]
-            });
-            new paper.Path({
-                strokeColor: '#00ff00',
-                closed: false,
-                segments: [{x: data.sides[i].toOffset / 3, y: 500}, {x: data.sides[i].toOffset/3, y: 800}]
-            });
-        }
 
+        paper.view.onResize = function() {
+            paper.view.scale(1 / paper.view.scaling.x, 1 / paper.view.scaling.y, {x: 0, y: 0});
+            paper.view.scale($sideComparisonCanvas.width() / 2000, $sideComparisonCanvas.height() / 1200, {x: 0, y: 0});
+        };
+
+        paper.view.onResize();
         paper.view.draw();
+    }, 10);
+});
 
-        pendingPiece = data;
-        pendingPiece.maskImage = $('<img>');
-        pendingPiece.maskImage.attr('src', '/images/' + data.maskFilename);
-        pendingPiece.maskImage.hide().appendTo('.pieceContainer');
-        pendingPiece.maskImage
+$pieceList.on('click', '.list-group-item', function() {
+    openPiece($(this).attr('data-pieceindex'));
 
-        $fullscreenContainer.css('backgroundImage', 'url(/images/' + data.filename + ')');
+    return false;
+});
+$mainContent.on('click', '.imagesNav a', function() {
+    lastSelectedImage = $(this).attr('data-filetype');
 
-        $actionContainer.empty();
-        $('<h2>Wurden die Ecken des Teils korrekt erkannt?</h2>').appendTo($actionContainer);
-        $('<div class="btn-group">' +
-            '<div class="btn btn-lg btn-success action" data-action="parseCorrect">Korrekt</div>' +
-            '<div class="btn btn-lg btn-danger action" data-action="parseWrong">Falsch</div>' +
-        '</div>').appendTo($actionContainer);
-        $actionContainer.show();
+    $(this).closest('.nav').find('a.active').removeClass('active');
+    $(this).addClass('active');
+
+    $mainContent.find('.imagePreview').attr('src', '/images/' + $(this).attr('data-filename'));
+
+    return false;
+});
+$compareList.on('click', '.list-group-item', function() {
+    comparePiece($(this).attr('data-pieceindex'));
+
+    return false;
+});
+
+socket.on('state', function(state, data, error) {
+    if (state === 'UPLOADING') {
+        $camera.prop('disabled', true);
+        $cameraButton.addClass('disabled');
     }
 
-    if (state === 'MATCHING') {
-        $cameraButton.text('Matching...');
-        pieces.push(pendingPiece);
-
-
-    }
-
-    if (state === 'GROUPING') {
-        $cameraButton.text('Grouping...');
-
-        $('.groupContainer').empty();
-        for (let groupIndex of data.possibleGroups) {
-            $('<div class="btn btn-lg group"></div>').text(groupIndex).attr('data-index', groupIndex).appendTo('.groupContainer');
-        }
-        $('<div class="btn btn-lg btn-success group"></div>').text(data.nextGroupIndex).attr('data-index', data.nextGroupIndex).appendTo('.groupContainer');
+    if (state === 'CHECKPARSE') {
+        $camera.prop("disabled", false);
+        $cameraButton.removeClass('disabled');
     }
 
     if (state === 'ERROR') {
         $camera.prop("disabled", false);
-        $cameraButton.removeClass('disabled').text('Got error at ' + error.atStep + ': ' + error.message);
-        $fullscreenContainer.css('backgroundImage', '');
+        $cameraButton.removeClass('disabled');
+
+        alert('Got error at ' + error.atStep + ': ' + error.message);
     }
 });
 

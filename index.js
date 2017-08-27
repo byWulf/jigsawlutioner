@@ -22,6 +22,7 @@ app.use('/bootstrap', express.static('node_modules/bootstrap/dist'));
 app.use('/fontawesome', express.static('node_modules/font-awesome'));
 app.use('/tether', express.static('node_modules/tether/dist'));
 app.use('/paper', express.static('node_modules/paper/dist'));
+app.use('/popper', express.static('node_modules/popper.js/dist/umd'));
 
 MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
     let collection = db.collection('sets');
@@ -38,6 +39,12 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
 
     io.on('connection', (socket) => {
         console.log('user connected');
+
+        let pieceIndices = [];
+        for (let i = 0; i < pieces.length; i++) {
+            pieceIndices.push(pieces[i].pieceIndex);
+        }
+        socket.emit('pieces', pieceIndices);
 
         const uploader = new Siofu();
         uploader.dir = __dirname + '/images';
@@ -57,27 +64,32 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             console.log("uploading finished, starting preprocessing", event.file.pathName);
             io.sockets.emit('state', 'PREPROCESSING');
 
-            BorderFinder.findPieceBorder(event.file.pathName).then((borders) => {
+            BorderFinder.findPieceBorder(event.file.pathName).then((borderData) => {
                 Debug.endTime('2_preprocessing');
                 Debug.startTime('3_parsing');
 
                 console.log("preprocessing finished, starting parsing");
-                io.sockets.emit('state', 'PARSING', path.basename(event.file.pathName));
+                io.sockets.emit('state', 'PARSING', borderData);
 
-                Jigsawlutioner.analyzeBorders(borders).then((piece) => {
+                Jigsawlutioner.analyzeBorders(borderData.path).then((piece) => {
                     Debug.endTime('3_parsing');
+
+                    let data = {
+                        pieceIndex: piece.pieceIndex,
+                        sides: piece.sides,
+                        diffs: piece.diffs,
+                        boundingBox: borderData.boundingBox,
+                        dimensions: borderData.dimensions,
+                        files: borderData.files
+                    };
+                    pieces.push(data);
+
+                    io.sockets.emit('newPiece', data.pieceIndex);
 
                     pendingPiece = piece;
 
                     console.log("parsing finished, asking if correct");
-                    let frontendPiece = {
-                        diffs: piece.diffs,
-                        pieceIndex: piece.pieceIndex,
-                        sides: piece.sides,
-                        filename: path.basename(event.file.pathName),
-                        maskFilename: path.basename(event.file.pathName)
-                    };
-                    io.sockets.emit('state', 'CHECKPARSE', frontendPiece);
+                    io.sockets.emit('state', 'CHECKPARSE', data);
 
                     Debug.output();
                 }).catch((err) => {
@@ -168,6 +180,43 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
 
             io.sockets.emit('state', 'UPLOAD');
         });
+
+        socket.on('getPiece', (pieceIndex) => {
+            console.log("piece " + pieceIndex + " requested");
+            for (let i = 0; i < pieces.length; i++) {
+                if (pieces[i].pieceIndex === parseInt(pieceIndex, 10)) {
+                    socket.emit('piece', pieces[i]);
+                }
+            }
+        });
+
+        socket.on('comparePieces', (sourcePieceIndex, comparePieceIndex) => {
+            let sourcePiece = null;
+            for (let i = 0; i < pieces.length; i++) {
+                if (pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
+                    sourcePiece = pieces[i];
+                    break;
+                }
+            }
+            let comparePiece = null;
+            for (let i = 0; i < pieces.length; i++) {
+                if (pieces[i].pieceIndex === parseInt(comparePieceIndex, 10)) {
+                    comparePiece = pieces[i];
+                    break;
+                }
+            }
+
+            let results = {};
+            if (sourcePiece && comparePiece) {
+                for (let sourceSideIndex = 0; sourceSideIndex < sourcePiece.sides.length; sourceSideIndex++) {
+                    for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
+                        results[sourceSideIndex + '_' + compareSideIndex] = Jigsawlutioner.getSideMatchingFactor(sourcePiece.sides[sourceSideIndex], comparePiece.sides[compareSideIndex], 0, 0);
+                    }
+                }
+            }
+
+            socket.emit('comparison', sourcePiece, comparePiece, results);
+        })
     });
 }).catch((err) => {
     console.log("Could not connect to mongoDB: ", err);

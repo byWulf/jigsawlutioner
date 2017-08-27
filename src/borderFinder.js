@@ -174,7 +174,10 @@ function getOrderedBorderPoints(data, areaColor) {
                     points[i].y -= boundingBox.top;
                 }
 
-                return points;
+                return {
+                    points: points,
+                    boundingBox: boundingBox
+                };
             }
         }
     }
@@ -215,7 +218,7 @@ function extendArea(data, areaColor, extendSize) {
         for (let x = -extendSize; x <= extendSize; x++) {
             for (let y = -extendSize; y <= extendSize; y++) {
                 if (Math.round(Math.sqrt(x * x + y * y)) <= 2) {
-                    setPixel(data, borders[i].x + x, borders[i].y + y, 0xff);
+                    setPixel(data, borders[i].x + x, borders[i].y + y, areaColor);
                 }
             }
         }
@@ -224,12 +227,9 @@ function extendArea(data, areaColor, extendSize) {
 
 function findPieceBorder(filename) {
     return new Promise((resolve, reject) => {
-        sharp(filename)
-            .threshold(150)
-            .toColourspace('b-w')
-            .raw()
-            .toBuffer({resolveWithObject: true})
-        .then((data) => {
+        sharp(filename).threshold(150).toColourspace('b-w').png().toFile(filename + '.step1.png').then(() => {
+            return sharp(filename + '.step1.png').toColourspace('b-w').raw().toBuffer({resolveWithObject: true});
+        }).then((data) => {
             //Identify the surrounding area and make it light gray
             scanFill(data, 0, 0, 0xbb);
 
@@ -242,20 +242,32 @@ function findPieceBorder(filename) {
             //remove aprox. 2 pixels of the piece border to remove some single pixels
             extendArea(data, 0xbb, 1);
 
+            sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2.png');
+
             //now get the final border pixels of the piece
-            let border = getOrderedBorderPoints(data, 0x33);
-            for (let i = border.length - 4; i < border.length - 1; i += 2) {
-                border.splice(0, 0, border[i]);
+            let borderData = getOrderedBorderPoints(data, 0x33);
+            for (let i = borderData.points.length - 4; i < borderData.points.length - 1; i += 2) {
+                borderData.points.splice(0, 0, borderData.points[i]);
             }
 
-            sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.bar.png');
-
             Paper.setup(new Paper.Size(data.info.width, data.info.height));
-            let paperPath = new Paper.Path(border);
+            let paperPath = new Paper.Path(borderData.points);
 
             paperPath.simplify(5);
 
-            resolve(paperPath);
+            resolve({
+                path: paperPath,
+                boundingBox: borderData.boundingBox,
+                files: {
+                    original: path.basename(filename),
+                    step1: path.basename(filename) + '.step1.png',
+                    step2: path.basename(filename) + '.step2.png'
+                },
+                dimensions: {
+                    width: data.info.width,
+                    height: data.info.height
+                }
+            });
 
         }).catch((err) => {
             reject(err);
