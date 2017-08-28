@@ -26,10 +26,10 @@ let nextPieceIndex = 0;
  */
 function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
     if (typeof thresholdX === 'undefined') {
-        thresholdX = 3;
+        thresholdX = 0;
     }
     if (typeof thresholdY === 'undefined') {
-        thresholdY = 3;
+        thresholdY = 0;
     }
 
     //Caching to reduce calculation time
@@ -38,6 +38,10 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
     }
 
     let result = {
+        pieceIndex: targetSide.pieceIndex,
+        sideIndex: targetSide.sideIndex,
+        matches: false,
+        deviation: 100,
         avgDistance: null,
         worstSingleDistance: null,
         offsetX: null,
@@ -51,7 +55,9 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
         nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2)),
     };
 
-    if (!result.sameSide/* && result.directLengthDiff <= 4*/) {
+    let detailedCheck = !result.sameSide && result.smallNopDiff < 10 && result.bigNopDiff < 10 && result.nopCenterDiff < 10;
+
+    if (detailedCheck) {
         Debug.countIteration('getSideMatchFactor');
 
         //Check form of the sides
@@ -73,6 +79,21 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
         }
     }
 
+    let sum = Math.round(
+       result.avgDistance +
+       result.directLengthDiff +
+       result.worstSingleDistance +
+       result.nopCenterDiff +
+       result.nopHeightDiff +
+       result.smallNopDiff +
+       result.bigNopDiff
+    );
+    result.deviation = sum / 100;
+
+    if (detailedCheck && sum <= 100) {
+        result.matches = true;
+    }
+
     Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY], result);
     return result;
 }
@@ -82,32 +103,38 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
  *
  * @param piece
  * @param pieces
- * @returns {Array.<*>}
  */
 function findMatchingPieces(piece, pieces) {
-    let matchingPieces = [];
-    for (let comparePiece of pieces) {
-        if (comparePiece.pieceIndex === piece.pieceIndex) continue;
+    let matches = {};
+    for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
+        let bestDeviation = null;
+        let results = [];
 
-        for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
+        for (let comparePiece of pieces) {
+            if (comparePiece.pieceIndex === piece.pieceIndex) continue;
+
             for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
 
                 let match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
 
-                if (match.avgDistance <= 4 &&
-                    match.worstSingleDistance <= 7
-                ) {
-                    matchingPieces.push(comparePiece);
+                if (match.matches) {
+                    results.push(match);
+                    if (bestDeviation === null || match.deviation < bestDeviation) {
+                        bestDeviation = match.deviation;
+                    }
                 }
+            }
+        }
+
+        matches[sideIndex] = [];
+        for (let i = 0; i < results.length; i++) {
+            if (results[i].deviation <= bestDeviation + 0.05) {
+                matches[sideIndex].push(results[i]);
             }
         }
     }
 
-    matchingPieces.sort((a,b) => a.avgDistance - b.avgDistance);
-
-    Cache.clear();
-
-    return matchingPieces.filter((item, pos) => matchingPieces.indexOf(item) === pos);
+    return matches;
 }
 
 function getPieceDiffs(path) {
@@ -160,7 +187,7 @@ function getPieceCornerOffsets(diffs) {
                         while (degreeDiff < -180) {
                             degreeDiff += 180;
                         }
-                        if (Math.abs(degreeDiff) < 80 || Math.abs(degreeDiff) > 100) {
+                        if (Math.abs(degreeDiff) < 75 || Math.abs(degreeDiff) > 105) {
                             continue nextOffset;
                         }
                     }

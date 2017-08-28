@@ -3,9 +3,7 @@ const uploader = new SocketIOFileUpload(socket);
 
 const $camera = $('#camera');
 const $cameraButton = $('#cameraButton');
-const $fullscreenContainer = $('.fullscreen');
 const $actionContainer = $('.actionContainer');
-const $canvas = $('#myCanvas');
 const $pieceList = $('#pieceList');
 const $compareList = $('#compareList');
 const $mainContent = $('#mainContent');
@@ -14,22 +12,15 @@ const $cornerGraphsCanvas = $('.cornerGraphsCanvas');
 const $sideComparisonCanvas = $('.sideComparisonCanvas');
 const $compareContainer = $('#compareContainer');
 
-const reader = new FileReader();
-reader.onload = function (e) {
-  $fullscreenContainer.css('backgroundImage', 'url(' + e.target.result + ')');
-};
-
-let pendingPiece = null;
 let pieces = [];
 
-$camera.on('change', function() {
-    reader.readAsDataURL(this.files[0]);
-});
 uploader.listenOnInput($camera[0]);
 
-function addPieceToList(pieceIndex) {
-    $pieceList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceIndex).attr('data-pieceindex', pieceIndex));
-    $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceIndex).attr('data-pieceindex', pieceIndex));
+function addPieceToList(pieceData) {
+    $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex);
+    $listItem.append('<div class="pull-right matches"></div>');
+    $pieceList.append( $listItem);
+    $compareList.append($('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex).attr('data-pieceindex', pieceData.pieceIndex));
 }
 
 let loadingPiece = null;
@@ -65,15 +56,15 @@ function comparePiece(pieceIndex) {
     socket.emit('comparePieces', currentPiece.pieceIndex, pieceIndex);
 }
 
-socket.on('pieces', (pieceIndices) => {
-    for (let i = 0; i < pieceIndices.length; i++) {
-        addPieceToList(pieceIndices[i]);
+socket.on('pieces', (pieceDate) => {
+    for (let i = 0; i < pieceDate.length; i++) {
+        addPieceToList(pieceDate[i]);
     }
 });
 
-socket.on('newPiece', (pieceIndex) => {
-    addPieceToList(pieceIndex);
-    openPiece(pieceIndex);
+socket.on('newPiece', (pieceData) => {
+    addPieceToList(pieceData);
+    openPiece(pieceData.pieceIndex);
 });
 
 //Open piece
@@ -84,7 +75,7 @@ socket.on('piece', (piece) => {
     loadingPiece = null;
     currentPiece = piece;
 
-    $mainContent.find('.card').find('.pieceIndex').text(piece.pieceIndex);
+    $mainContent.find('.card').find('.card-title').text('Piece #' + piece.pieceIndex + ' - ' + piece.files.original);
     $mainContent.find('.imagesNav').empty();
     for (let fileType in piece.files) {
         if (!piece.files.hasOwnProperty(fileType)) continue;
@@ -241,6 +232,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
         for (let sourceSideIndex = 0; sourceSideIndex < currentPiece.sides.length; sourceSideIndex++) {
             for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
                 let result = results[sourceSideIndex + '_' + compareSideIndex];
+
                 let points = [];
                 for (let j = 0; j < currentPiece.sides[sourceSideIndex].points.length; j++) {
                     points.push({
@@ -249,7 +241,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     });
                 }
                 new paper.Path({
-                    strokeColor: result.sameSide ? '#888888' : 'red',
+                    strokeColor: result.sameSide ? '#888888' : (result.matches ? '#00bb00' : '#ff0000'),
                     closed: false,
                     segments: points
                 });
@@ -262,7 +254,7 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     });
                 }
                 new paper.Path({
-                    strokeColor: result.sameSide ? '#cccccc' : '#ffaa00',
+                    strokeColor: result.sameSide ? '#cccccc' : (result.matches ? '#66bbaa' : '#ffaa00'),
                     closed: false,
                     segments: comparePoints
                 });
@@ -296,7 +288,6 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                         },
                         content: [
                             Math.round(result.avgDistance),
-                            Math.round(Math.sqrt(result.areaDiff)),
                             Math.round(result.directLengthDiff),
                             Math.round(result.worstSingleDistance),
                             Math.round(result.nopCenterDiff),
@@ -308,57 +299,16 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                         fontSize: 40
                     });
 
-                    let sum = Math.round(
-                       result.avgDistance +
-                       Math.sqrt(result.areaDiff) +
-                       result.directLengthDiff +
-                       result.worstSingleDistance +
-                       result.nopCenterDiff +
-                       result.nopHeightDiff +
-                       result.smallNopDiff +
-                       result.bigNopDiff
-                    );
-
                     new paper.PointText({
                         point: {
                             x: 500 * sourceSideIndex + 250 - 100,
                             y: 300 * compareSideIndex + 150 - 80 * (currentPiece.sides[sourceSideIndex].direction === 'in' ? 1 : -1)
                         },
-                        content: '= ' + sum,
-                        fillColor: sum <= 75 ? 'red' : 'black',
-                        fontWeight: sum <= 75 ? 'bold' : 'normal',
+                        content: '= ' + (Math.round(result.deviation * 1000) / 1000),
+                        fillColor: result.matches ? '#00bb00' : 'black',
+                        fontWeight: result.matches ? 'bold' : 'normal',
                         fontSize: 40
                     });
-
-
-                    /*
-                    new paper.PointText({
-                        point: {
-                            x: 500 * sourceSideIndex + 250,
-                            y: 300 * compareSideIndex + 150 - 40
-                        },
-                        content: 'AreaDiff: ' + Math.round(result.areaDiff),
-                        fillColor: 'black',
-                        fontSize: 40
-                    });
-                    new paper.PointText({
-                        point: {
-                            x: 500 * sourceSideIndex + 250,
-                            y: 300 * compareSideIndex + 150
-                        },
-                        content: 'LenDiff: ' + Math.round(result.directLengthDiff),
-                        fillColor: 'black',
-                        fontSize: 40
-                    });
-                    new paper.PointText({
-                        point: {
-                            x: 500 * sourceSideIndex + 250,
-                            y: 300 * compareSideIndex + 150 + 40
-                        },
-                        content: 'MaxDist: ' + Math.round(result.worstSingleDistance),
-                        fillColor: 'black',
-                        fontSize: 40
-                    });*/
                 }
             }
         }
@@ -375,6 +325,21 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
         paper.view.onResize();
         paper.view.draw();
     }, 10);
+});
+
+socket.on('matchingPieces', (sourcePieceIndex, matches) => {
+    $elem = $pieceList.find('a[data-pieceindex="' + sourcePieceIndex + '"] .matches').empty();
+
+    for (let sideIndex in matches) {
+        if (!matches.hasOwnProperty(sideIndex)) continue;
+
+        $sideContainer = $('<span class="badge badge-pill badge-secondary"></span>');
+        let pieces = [];
+        for (let i = 0; i < matches[sideIndex].length; i++) {
+            pieces.push(matches[sideIndex][i].pieceIndex);
+        }
+        $sideContainer.text(pieces.join(' | ')).appendTo($elem);
+    }
 });
 
 $pieceList.on('click', '.list-group-item', function() {
@@ -396,6 +361,11 @@ $compareList.on('click', '.list-group-item', function() {
     comparePiece($(this).attr('data-pieceindex'));
 
     return false;
+});
+$('.findMatchingPiecesButton').on('click', function() {
+    $pieceList.find('a[data-pieceindex="' + currentPiece.pieceIndex + '"] .matches').empty().append('<i class="fa fa-spin fa-spinner text-primary"></i>');
+
+    socket.emit('findMatchingPieces', currentPiece.pieceIndex);
 });
 
 socket.on('state', function(state, data, error) {

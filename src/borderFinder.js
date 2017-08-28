@@ -60,7 +60,7 @@ function scanFill(data, startX, startY, fillWithColor) {
             while( x <= xRight ) {
                 // seed the scan line above
                 pFlag = false;
-                for( px = getPixel(data,  x, y ); px !== null && px === sourceColor && x < xRight; x++, px = getPixel(data,  x, y ) ) {
+                for( px = getPixel(data,  x, y ); px !== null && px === sourceColor && x <= xRight; x++, px = getPixel(data,  x, y ) ) {
                     pFlag = true;
                 }
                 if( pFlag ) {
@@ -73,7 +73,7 @@ function scanFill(data, startX, startY, fillWithColor) {
                 // continue checking in case the span is interrupted
                 let xEnter = x;
                 // noinspection StatementWithEmptyBodyJS
-                for( px = getPixel(data,  x, y ); px !== null && px !== sourceColor && x < xRight; x++, px = getPixel(data,  x, y ) );
+                for( px = getPixel(data,  x, y ); px !== null && px !== sourceColor && x <= xRight; x++, px = getPixel(data,  x, y ) );
                 // make sure that the px coordinate is incremented
                 if( x === xEnter ) {
                     x++;
@@ -225,25 +225,52 @@ function extendArea(data, areaColor, extendSize) {
     }
 }
 
-function findPieceBorder(filename) {
+function replaceThinPixels(data, checkColor, minSurroundingPixels, surroundingColor) {
+    for (let x = 0; x < data.info.width; x++) {
+        for (let y = 0; y < data.info.height; y++) {
+            if (getPixel(data, x, y) === checkColor) {
+                let positiveSurroundingPixels = 0;
+                [[-1,-1], [0,-1], [1,-1], [1,0], [1,1], [0,1], [-1,1], [-1,0]].forEach(function(offset) {
+                    if (getPixel(data, x + offset[0], y + offset[1]) === surroundingColor) {
+                        positiveSurroundingPixels++;
+                    }
+                });
+
+                if (positiveSurroundingPixels >= minSurroundingPixels) {
+                    setPixel(data, x, y, surroundingColor);
+                }
+            }
+        }
+    }
+}
+
+function findPieceBorder(filename, debug) {
     return new Promise((resolve, reject) => {
-        sharp(filename).threshold(150).toColourspace('b-w').png().toFile(filename + '.step1.png').then(() => {
-            return sharp(filename + '.step1.png').toColourspace('b-w').raw().toBuffer({resolveWithObject: true});
-        }).then((data) => {
+        let data = null;
+        let image = sharp(filename);
+        image.threshold(200).toColourspace('b-w').raw().toBuffer({resolveWithObject: true}).then((resultData) => {
+            data = resultData;
+
             //Identify the surrounding area and make it light gray
             scanFill(data, 0, 0, 0xbb);
-
+            if (debug) return sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2a.png');
+        }).then(() => {
             //Fill everything with black except the surrounding area around the piece
             replaceColor(data, 0xff, 0x00);
-
-            //Remove every black area, which is not the biggest
-            removeSmallAreas(data, 0x00, 0x33, 0xbb);
-
+            if (debug) return sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2b.png');
+        }).then(() => {
             //remove aprox. 2 pixels of the piece border to remove some single pixels
             extendArea(data, 0xbb, 1);
-
-            sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2.png');
-
+            if (debug) return sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2c.png');
+        }).then(() => {
+            //cut every thin lines (black pixels with at least 6 white pixels around it)
+            replaceThinPixels(data, 0x00, 6, 0xbb);
+            if (debug) return sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2d.png');
+        }).then(() => {
+            //Remove every black area, which is not the biggest
+            removeSmallAreas(data, 0x00, 0x33, 0xbb);
+            if (debug) return sharp(data.data, {raw: data.info}).toFile('images\\' + path.basename(filename) + '.step2e.png');
+        }).then(() => {
             //now get the final border pixels of the piece
             let borderData = getOrderedBorderPoints(data, 0x33);
             for (let i = borderData.points.length - 4; i < borderData.points.length - 1; i += 2) {
@@ -255,14 +282,21 @@ function findPieceBorder(filename) {
 
             paperPath.simplify(5);
 
+            let files = {
+                original: path.basename(filename)
+            };
+            if (debug) {
+                files['step2a'] = path.basename(filename) + '.step2a.png';
+                files['step2b'] = path.basename(filename) + '.step2b.png';
+                files['step2c'] = path.basename(filename) + '.step2c.png';
+                files['step2d'] = path.basename(filename) + '.step2d.png';
+                files['step2e'] = path.basename(filename) + '.step2e.png';
+            }
+
             resolve({
                 path: paperPath,
                 boundingBox: borderData.boundingBox,
-                files: {
-                    original: path.basename(filename),
-                    step1: path.basename(filename) + '.step1.png',
-                    step2: path.basename(filename) + '.step2.png'
-                },
+                files: files,
                 dimensions: {
                     width: data.info.width,
                     height: data.info.height

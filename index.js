@@ -6,10 +6,9 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const Siofu = require('socketio-file-upload');
 const MongoClient = require('mongodb').MongoClient;
-const path = require('path');
+const sharp = require('sharp');
 
 const Jigsawlutioner = require('./src/jigsawlutioner');
-const OpencvHelper = require('./src/opencvHelper');
 const Debug = require('./src/debug');
 const BorderFinder = require('./src/borderFinder');
 
@@ -35,14 +34,15 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
     let pieces = [];
     let groups = [];
 
-    let resizeFactor = null;
-
     io.on('connection', (socket) => {
         console.log('user connected');
 
         let pieceIndices = [];
         for (let i = 0; i < pieces.length; i++) {
-            pieceIndices.push(pieces[i].pieceIndex);
+            pieceIndices.push({
+                pieceIndex: pieces[i].pieceIndex,
+                filename: pieces[i].files.original
+            });
         }
         socket.emit('pieces', pieceIndices);
 
@@ -64,7 +64,17 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             console.log("uploading finished, starting preprocessing", event.file.pathName);
             io.sockets.emit('state', 'PREPROCESSING');
 
-            BorderFinder.findPieceBorder(event.file.pathName).then((borderData) => {
+            let image = sharp(event.file.pathName);
+            image.metadata().then((data) => {
+                return image.extract({
+                    left: Math.round(data.width * 0.25),
+                    top: Math.round(data.height * 0.25),
+                    width: Math.round(data.width * 0.5),
+                    height: Math.round(data.height * 0.5)
+                }).png().toFile(event.file.pathName + '.resized.png');
+            }).then(() => {
+                return BorderFinder.findPieceBorder(event.file.pathName + '.resized.png');
+            }).then((borderData) => {
                 Debug.endTime('2_preprocessing');
                 Debug.startTime('3_parsing');
 
@@ -84,7 +94,7 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
                     };
                     pieces.push(data);
 
-                    io.sockets.emit('newPiece', data.pieceIndex);
+                    io.sockets.emit('newPiece', {pieceIndex: data.pieceIndex, filename: data.files.original});
 
                     pendingPiece = piece;
 
@@ -100,39 +110,6 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
                 console.log('Error at preprocessing', err);
                 io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
             });
-
-            /*OpencvHelper.prepareImage(event.file.pathName, resizeFactor).then((preparationData) => {
-                Debug.endTime('2_preprocessing');
-                Debug.startTime('3_parsing');
-
-                resizeFactor = preparationData.resizeFactor;
-
-                console.log("preprocessing finished, starting parsing");
-                io.sockets.emit('state', 'PARSING', path.basename(preparationData.newFilename));
-
-                Jigsawlutioner.analyzeFile(preparationData.newFilename).then((piece) => {
-                    Debug.endTime('3_parsing');
-
-                    pendingPiece = piece;
-
-                    console.log("parsing finished, asking if correct");
-                    let frontendPiece = {
-                        pieceIndex: piece.pieceIndex,
-                        sides: piece.sides,
-                        filename: path.basename(piece.filename),
-                        maskFilename: path.basename(piece.maskFilename)
-                    };
-                    io.sockets.emit('state', 'CHECKPARSE', frontendPiece);
-
-                    Debug.output();
-                }).catch((err) => {
-                    console.log(err);
-                    io.sockets.emit('state', 'ERROR', {atStep: 'Parsing', message: err});
-                });
-            }).catch((err) => {
-                console.log('Error at preprocessing', err);
-                io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
-            });*/
         });
 
         uploader.on('error', (event) => {
@@ -146,37 +123,6 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             }
 
             groups[targetGroup].push(pieces[pieces.length - 1].pieceIndex);
-
-            io.sockets.emit('state', 'UPLOAD');
-        });
-
-        socket.on('parseCorrect', () => {
-            Debug.startTime('4_matching');
-
-            pieces.push(pendingPiece);
-
-            console.log("parse correct, starting matching");
-
-            let matchingPieces = Jigsawlutioner.findMatchingPieces(pendingPiece, pieces);
-
-            let possibleGroups = [];
-            for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-                for (let matchingPiece of matchingPieces) {
-                    if (groups[groupIndex].indexOf(matchingPiece.pieceIndex) > -1) {
-                        possibleGroups.push(groupIndex);
-                        break;
-                    }
-                }
-            }
-
-            console.log("matching finished, starting grouping", possibleGroups, groups.length);
-            io.sockets.emit('state', 'GROUPING', {possibleGroups: possibleGroups, nextGroupIndex: groups.length});
-
-            Debug.endTime('4_matching');
-        });
-
-        socket.on('parseWrong', () => {
-            pendingPiece = null;
 
             io.sockets.emit('state', 'UPLOAD');
         });
@@ -216,7 +162,21 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
             }
 
             socket.emit('comparison', sourcePiece, comparePiece, results);
-        })
+        });
+
+        socket.on('findMatchingPieces', (sourcePieceIndex) => {
+            let sourcePiece = null;
+            for (let i = 0; i < pieces.length; i++) {
+                if (pieces[i].pieceIndex === parseInt(sourcePieceIndex, 10)) {
+                    sourcePiece = pieces[i];
+                    break;
+                }
+            }
+
+            let matches = Jigsawlutioner.findMatchingPieces(sourcePiece, pieces);
+
+            socket.emit('matchingPieces', sourcePieceIndex, matches);
+        });
     });
 }).catch((err) => {
     console.log("Could not connect to mongoDB: ", err);

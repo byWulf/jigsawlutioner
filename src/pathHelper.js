@@ -185,18 +185,16 @@ function getNopData(points) {
 
     let leftExtremeIndex = extremePointIndex;
     for (let i = leftExtremeIndex - 1; i >= 0; i--) {
-        if (points[i].x <= points[i + 1].x) {
-            leftExtremeIndex = i;
-        } else {
-            break;
+        if (Math.abs(points[i].y) >= Math.abs(points[extremePointIndex].y) / 2 && points[i].x <= points[leftExtremeIndex].x) {
+            if (points[i].x <= points[leftExtremeIndex].x) {
+                leftExtremeIndex = i;
+            }
         }
     }
     let rightExtremeIndex = extremePointIndex;
     for (let i = rightExtremeIndex + 1; i < points.length; i++) {
-        if (points[i].x >= points[i - 1].x) {
+        if (Math.abs(points[i].y) >= Math.abs(points[extremePointIndex].y) / 2 && points[i].x >= points[rightExtremeIndex].x) {
             rightExtremeIndex = i;
-        } else {
-            break;
         }
     }
 

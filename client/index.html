@@ -31,7 +31,10 @@
                 <div class="loading text-center text-primary" style="display: none;"><i class="fa fa-spinner fa-spin fa-4x"></i></div>
                 <div class="card card-transparent" style="max-height: 100%; display: none;">
                     <div class="card-body">
-                        <h4 class="card-title">Piece # <span class="pieceIndex"></span></h4>
+                        <button type="button" class="btn btn-default pull-right findMatchingPiecesButton">
+                            <i class="fa fa-magnify"></i> Search matching pieces
+                        </button>
+                        <h4 class="card-title"></h4>
                     </div>
                     <div class="d-flex flex-row">
                         <div style="width: 400px; overflow-y: hidden;">
@@ -69,19 +72,6 @@
         </div>
     </div>
 </div>
-<!--
-
-<div class="fullscreen">
-    <canvas id="myCanvas"></canvas>
-    <div class="pieceContainer"></div>
-    <div class="actionContainer text-center"></div>
-    <div class="groupContainer"></div>
-    <div class="buttonRow text-center">
-        <label for="camera" id="cameraButton" class="btn btn-primary btn-lg">Choose image...</label>
-    </div>
-    <input id="camera" type="file" accept="image/*">
-</div>-->
-
 <script src="/jquery/jquery.js"></script>
 <script src="/tether/js/tether.js"></script>
 <script src="/popper/popper.js"></script>
