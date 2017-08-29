@@ -1,6 +1,4 @@
-const cv = require('opencv');
 const fs = require('fs');
-const Jimp = require('jimp');
 
 const Cache = require('./cache');
 
@@ -112,34 +110,6 @@ function saveSingleGraph(diffsOrdered, distinctOffsets, filename) {
     fs.writeFile(filename.replace('.jpg', '_singlegraph.txt'), str);
 }
 
-/**
- * Saves an image with only the contour on it.
- *
- * @param contour
- * @param filename
- */
-function saveMask(contour, filename) {
-    return new Promise((fulfill, reject) => {
-        let newFilename = filename + '.maskOnly.png';
-
-        let imMask = new cv.Matrix(contour.image.height(), contour.image.width(), cv.Constants.CV_8UC3, [255,255,255]);
-        contour.drawOnImage(imMask, [255, 0, 0], 1, 8, 0);
-        imMask.save(newFilename);
-
-        Jimp.read(newFilename).then((image) => {
-            image
-            .scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
-                if (this.bitmap.data[ idx + 0 ] === 255 && this.bitmap.data[ idx + 1 ] === 255 && this.bitmap.data[ idx + 2 ] === 255) {
-                    this.bitmap.data[ idx + 3 ] = 0;
-                }
-            })
-            .write(newFilename, () => {
-                fulfill(newFilename);
-            });
-        });
-    });
-}
-
 
 let times = {};
 let runningTimes = {};
@@ -193,7 +163,6 @@ function output() {
 module.exports = {
     saveCompareSides: saveCompareSides,
     saveSingleGraph: saveSingleGraph,
-    saveMask: saveMask,
     startTime: startTime,
     endTime: endTime,
     countIteration: countIteration,

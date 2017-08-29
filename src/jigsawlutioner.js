@@ -1,10 +1,5 @@
-const cv = require('opencv');
-const paper = require('paper-jsdom');
-const path = require('path');
-
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
-const OpencvHelper = require('./opencvHelper');
 const Debug = require('./debug');
 const Cache = require('./cache');
 
@@ -281,46 +276,6 @@ function getSide(path, fromOffset, toOffset) {
     return null;
 }
 
-function analyzeFile(filename) {
-    return new Promise((fulfill, reject) => {
-        //Load image
-        cv.readImage(filename, (err, img) => {
-            //Detect piece contour
-            Debug.startTime('findContours');
-            let contour = OpencvHelper.findContours(img, 200, 300);
-            Debug.endTime('findContours');
-
-            Debug.startTime('debug');
-            contour.drawOnImage(img, [0, 255, 0], 1, 8, 0);
-            Debug.saveMask(contour, filename).then((maskFilename) => {
-                Debug.endTime('debug');
-
-                analyzeBorders(contour.path).then((result) => {
-                    for (let i = 0; i < result.sides.length; i++) {
-                        let side = result.sides[i];
-                        OpencvHelper.drawOutlinedText(img, side.startPoint.x + ((side.endPoint.x - side.startPoint.x) / 2), side.startPoint.y + ((side.endPoint.y - side.startPoint.y) / 2), (result.sides.length - 1));
-                        OpencvHelper.drawOutlinedCross(img, side.startPoint.x, side.startPoint.y);
-                        OpencvHelper.drawOutlinedCross(img, side.endPoint.x, side.endPoint.y);
-                    }
-
-                    Debug.startTime('debug');
-                    img.save(filename + '.finished.jpg');
-                    Debug.endTime('debug');
-
-                    result.filename = filename + '.finished.jpg';
-                    result.maskFilename = maskFilename;
-                    result.fileWidth = contour.image.width();
-                    result.fileHeight = contour.image.height();
-
-                    fulfill(result);
-                }).catch((err) => {
-                    reject(err);
-                });
-            });
-        });
-    });
-}
-
 function analyzeBorders(paperPath) {
     return new Promise((fulfill, reject) => {
         let pieceIndex = nextPieceIndex++;
@@ -370,6 +325,5 @@ function analyzeBorders(paperPath) {
 module.exports = {
     findMatchingPieces: findMatchingPieces,
     getSideMatchingFactor: getSideMatchingFactor,
-    analyzeFile: analyzeFile,
     analyzeBorders: analyzeBorders
 };
