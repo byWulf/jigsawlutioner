@@ -1,7 +1,5 @@
 const socket = io();
-const uploader = new SocketIOFileUpload(socket);
 
-const $camera = $('#camera');
 const $cameraButton = $('#cameraButton');
 const $actionContainer = $('.actionContainer');
 const $pieceList = $('#pieceList');
@@ -13,8 +11,6 @@ const $sideComparisonCanvas = $('.sideComparisonCanvas');
 const $compareContainer = $('#compareContainer');
 
 let pieces = [];
-
-uploader.listenOnInput($camera[0]);
 
 function addPieceToList(pieceData) {
     $listItem = $('<a href="#" class="list-group-item list-group-item-action"></a>').text('# ' + pieceData.pieceIndex + ' - ' + pieceData.filename).attr('data-pieceindex', pieceData.pieceIndex);
@@ -55,6 +51,11 @@ function comparePiece(pieceIndex) {
     loadingComparePiece = pieceIndex;
     socket.emit('comparePieces', currentPiece.pieceIndex, pieceIndex);
 }
+
+$cameraButton.on('click', () => {
+    $cameraButton.addClass('disabled');
+    socket.emit('takePicture');
+});
 
 socket.on('pieces', (pieceDate) => {
     for (let i = 0; i < pieceDate.length; i++) {
@@ -369,21 +370,37 @@ $('.findMatchingPiecesButton').on('click', function() {
 });
 
 socket.on('state', function(state, data, error) {
+    console.log(state, data, error);
     if (state === 'UPLOADING') {
-        $camera.prop('disabled', true);
         $cameraButton.addClass('disabled');
     }
 
     if (state === 'READY') {
-        $camera.prop("disabled", false);
         $cameraButton.removeClass('disabled');
+
+        $.notify({
+            message: 'Successfully processed.'
+        }, {
+            type: 'success',
+            placement: {
+                from: 'top',
+                align: 'center'
+            }
+        });
     }
 
     if (state === 'ERROR') {
-        $camera.prop("disabled", false);
         $cameraButton.removeClass('disabled');
 
-        alert('Got error at ' + error.atStep + ': ' + error.message);
+        $.notify({
+            message: 'Got error at ' + error.atStep + ': ' + error.message
+        }, {
+            type: 'danger',
+            placement: {
+                from: 'top',
+                align: 'center'
+            }
+        });
     }
 });
 

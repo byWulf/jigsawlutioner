@@ -7,12 +7,14 @@ const io = require('socket.io')(http);
 const Siofu = require('socketio-file-upload');
 const MongoClient = require('mongodb').MongoClient;
 const sharp = require('sharp');
+const { exec } = require('child_process');
 
 const Jigsawlutioner = require('./src/jigsawlutioner');
 const Debug = require('./src/debug');
 const BorderFinder = require('./src/borderFinder');
+const FileHelper = require('./src/fileHelper');
 
-app.use(express.static('client'));
+app.use(express.static('machineClient'));
 app.use('/images', express.static('images'));
 
 app.use(Siofu.router);
@@ -22,6 +24,8 @@ app.use('/fontawesome', express.static('node_modules/font-awesome'));
 app.use('/tether', express.static('node_modules/tether/dist'));
 app.use('/paper', express.static('node_modules/paper/dist'));
 app.use('/popper', express.static('node_modules/popper.js/dist/umd'));
+app.use('/animate.css', express.static('node_modules/animate.css'));
+app.use('/bootstrap-notify', express.static('node_modules/bootstrap-notify'));
 
 MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
     let collection = db.collection('sets');
@@ -44,73 +48,79 @@ MongoClient.connect('mongodb://localhost:27017/jigsawlutioner').then((db) => {
         }
         socket.emit('pieces', pieceIndices);
 
-        const uploader = new Siofu();
-        uploader.dir = __dirname + '/images';
-        uploader.listen(socket);
+        socket.on('takePicture', () => {
 
-        uploader.on('start', (event) => {
-            Debug.startTime('1_uploading');
+            FileHelper.getFreeFilename('/var/www/images/incoming.jpg').then((filename) => {
+                let settings = [
+                    '-ex off',
+                    '-sh -100',
+                    '-co 0',
+                    '-br 50',
+                    '-sa 50',
+                    '-ISO 0',
+                    '-awb fluorescent',
+                    '-mm backlit',
+                    '-roi 0.25,0.25,0.5,0.5',
+                    '-drc high',
+                    '-st',
+                    '-q 50',
+                    '-n',
+                    '-t 1',
+                    '-e jpg',
+                    '-o ' + filename,
+                    '-w 1000',
+                    '-h 1000'
+                ];
 
-            console.log("upload started");
-            io.sockets.emit('state', 'UPLOADING');
-        });
+                console.log("Taking picture");
+                Debug.startTime('1_takingpicture');
+                exec('raspistill ' + settings.join(' '), (err, stdout, stderr) => {
+                    if (err || stderr) {
+                        console.log('Error at taking picture', err + stderr);
+                        io.sockets.emit('state', 'ERROR', null, {atStep: 'TakingPicture', message: err.toString() + stderr});
 
-        uploader.on('saved', (event) => {
-            Debug.endTime('1_uploading');
-            Debug.startTime('2_preprocessing');
+                        return;
+                    }
 
-            console.log("uploading finished, starting preprocessing", event.file.pathName);
-            io.sockets.emit('state', 'PREPROCESSING');
+                    console.log("Took picture. Starting border recognition");
+                    Debug.endTime('1_takingpicture');
+                    Debug.startTime('2_preprocessing');
+                    BorderFinder.findPieceBorder(filename, {debug: true, threshold: 225}).then((borderData) => {
+                        Debug.endTime('2_preprocessing');
+                        Debug.startTime('3_parsing');
 
-            let image = sharp(event.file.pathName);
-            image.metadata().then((data) => {
-                return image.extract({
-                    left: Math.round(data.width * 0.25),
-                    top: Math.round(data.height * 0.25),
-                    width: Math.round(data.width * 0.5),
-                    height: Math.round(data.height * 0.5)
-                }).png().toFile(event.file.pathName + '.resized.png');
-            }).then(() => {
-                return BorderFinder.findPieceBorder(event.file.pathName + '.resized.png');
-            }).then((borderData) => {
-                Debug.endTime('2_preprocessing');
-                Debug.startTime('3_parsing');
+                        console.log("Border found, starting parsing");
+                        io.sockets.emit('state', 'PARSING', borderData);
 
-                console.log("preprocessing finished, starting parsing");
-                io.sockets.emit('state', 'PARSING', borderData);
+                        Jigsawlutioner.analyzeBorders(borderData.path).then((piece) => {
+                            Debug.endTime('3_parsing');
 
-                Jigsawlutioner.analyzeBorders(borderData.path).then((piece) => {
-                    Debug.endTime('3_parsing');
+                            let data = {
+                                pieceIndex: piece.pieceIndex,
+                                sides: piece.sides,
+                                diffs: piece.diffs,
+                                boundingBox: borderData.boundingBox,
+                                dimensions: borderData.dimensions,
+                                files: borderData.files
+                            };
+                            pieces.push(data);
 
-                    let data = {
-                        pieceIndex: piece.pieceIndex,
-                        sides: piece.sides,
-                        diffs: piece.diffs,
-                        boundingBox: borderData.boundingBox,
-                        dimensions: borderData.dimensions,
-                        files: borderData.files
-                    };
-                    pieces.push(data);
+                            io.sockets.emit('newPiece', {pieceIndex: data.pieceIndex, filename: data.files.original});
 
-                    io.sockets.emit('newPiece', {pieceIndex: data.pieceIndex, filename: data.files.original});
+                            console.log("parsing finished");
+                            io.sockets.emit('state', 'READY', data);
 
-                    console.log("parsing finished");
-                    io.sockets.emit('state', 'READY', data);
-
-                    Debug.output();
-                }).catch((err) => {
-                    console.log(err);
-                    io.sockets.emit('state', 'ERROR', {atStep: 'Parsing', message: err});
+                            Debug.output();
+                        }).catch((err) => {
+                            console.log(err);
+                            io.sockets.emit('state', 'ERROR', null, {atStep: 'Parsing', message: err.toString()});
+                        });
+                    }).catch((err) => {
+                        console.log('Error at preprocessing', err);
+                        io.sockets.emit('state', 'ERROR', null, {atStep: 'Preprocessing', message: err.toString()});
+                    });
                 });
-            }).catch((err) => {
-                console.log('Error at preprocessing', err);
-                io.sockets.emit('state', 'ERROR', {atStep: 'Preprocessing', message: err});
             });
-        });
-
-        uploader.on('error', (event) => {
-            console.log('Error at uploading', event.message);
-            io.sockets.emit('state', 'ERROR', {atStep: 'Uploading', message: event.message});
         });
 
         socket.on('getPiece', (pieceIndex) => {
