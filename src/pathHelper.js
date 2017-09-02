@@ -39,27 +39,6 @@ function getRotationGain(path, offset, threshold) {
 }
 
 /**
- * Gets the average rotation gain in the given section.
- *
- * @param diffs
- * @param from
- * @param to
- * @returns {number}
- */
-function getRotationGainAverage(diffs, from, to) {
-    let sum = 0;
-    for (let i = from; i <= to; i++) {
-        for (let j = 0; j < diffs.length; j++) {
-            if (diffs[j].offset === (i + diffs.length) % diffs.length) {
-                sum += diffs[j].diff;
-                break;
-            }
-        }
-    }
-    return sum / (to - from);
-}
-
-/**
  * Returns true, if the given side is straight without a nop.
  *
  * @param points
@@ -216,7 +195,6 @@ function simplifyPoints(points) {
 module.exports = {
     getRotation: getRotation,
     getRotationGain: getRotationGain,
-    getRotationGainAverage: getRotationGainAverage,
     isStraightSide: isStraightSide,
     hasOutsideNop: hasOutsideNop,
     getArea: getArea,

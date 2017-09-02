@@ -1,13 +1,18 @@
 {
   "name": "jigsawlutioner",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "test": "mocha"
-  },
   "author": "byWulf",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/byWulf/jigsawlutioner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/byWulf/jigsawlutioner/issues"
+  },
+  "homepage": "https://github.com/byWulf/jigsawlutioner#readme",
   "dependencies": {
     "animate.css": "^3.5.2",
     "bootstrap": "^4.0.0-beta",
