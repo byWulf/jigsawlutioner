@@ -98,24 +98,30 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
  *
  * @param piece
  * @param pieces
+ * @param onlySide (optional)
  */
-function findMatchingPieces(piece, pieces) {
+function findMatchingPieces(piece, pieces, onlySide) {
     let matches = {};
     for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
+        if (typeof onlySide === 'number' && sideIndex !== onlySide) continue;
+
         let bestDeviation = null;
         let results = [];
 
-        for (let comparePiece of pieces) {
-            if (comparePiece.pieceIndex === piece.pieceIndex) continue;
+        if (piece.sides[sideIndex].direction !== 'straight') {
+            for (let comparePiece of pieces) {
+                if (comparePiece.pieceIndex === piece.pieceIndex) continue;
 
-            for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
+                for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
 
-                let match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                    let match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
 
-                if (match.matches) {
-                    results.push(match);
-                    if (bestDeviation === null || match.deviation < bestDeviation) {
-                        bestDeviation = match.deviation;
+                    if (match.matches) {
+                        match.piece = comparePiece;
+                        results.push(match);
+                        if (bestDeviation === null || match.deviation < bestDeviation) {
+                            bestDeviation = match.deviation;
+                        }
                     }
                 }
             }
@@ -207,11 +213,13 @@ function getPieceCornerOffsets(diffs) {
 
                     //Check for straight sides for 10% before and after each corner
                     for (let i = 0; i < 4; i++) {
-                        let offsetX = (offsets[(i+1) % 4].point.x - offsets[i].point.x) * 0.1;
-                        let offsetY = (offsets[(i+1) % 4].point.y - offsets[i].point.y) * 0.1;
-                        let comparePoint = {x: offsets[i].point.x + offsetX, y: offsets[i].point.y + offsetY};
-                        if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.2) {
-                            continue nextOffset;
+                        for (let d = 0.03; d <= 0.15; d += 0.03) {
+                            let offsetX = (offsets[(i + 1) % 4].point.x - offsets[i].point.x) * d;
+                            let offsetY = (offsets[(i + 1) % 4].point.y - offsets[i].point.y) * d;
+                            let comparePoint = {x: offsets[i].point.x + offsetX, y: offsets[i].point.y + offsetY};
+                            if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.4) {
+                                continue nextOffset;
+                            }
                         }
                     }
 
@@ -257,23 +265,17 @@ function getSide(path, fromOffset, toOffset) {
         points.push(point);
     }
 
-    points = PathHelper.simplifyPoints(points);/*
-    points.unshift({x: -500, y: 0});
-    points.push({x: 500, y: 0});*/
+    let isStraight = PathHelper.isStraightSide(points, directLength);
 
-    if (!PathHelper.isStraightSide(points, directLength)) {
-        return {
-            points: points,
-            direction: PathHelper.hasOutsideNop(points) ? 'out' : 'in',
-            area: PathHelper.getArea(points),
-            directLength: directLength,
-            startPoint: startPoint,
-            endPoint: endPoint,
-            nop: PathHelper.getNopData(points)
-        };
-    }
-
-    return null;
+    return {
+        points: points,
+        direction: isStraight ? 'straight' : PathHelper.hasOutsideNop(points) ? 'out' : 'in',
+        area: PathHelper.getArea(points),
+        directLength: directLength,
+        startPoint: startPoint,
+        endPoint: endPoint,
+        nop: PathHelper.getNopData(points)
+    };
 }
 
 function analyzeBorders(paperPath) {
@@ -302,13 +304,11 @@ function analyzeBorders(paperPath) {
             let toOffset = cornerOffsets[(i + 1) % 4];
 
             let side = getSide(paperPath, fromOffset, toOffset);
-            if (side) {
-                side.pieceIndex = pieceIndex;
-                side.sideIndex = sides.length;
-                side.fromOffset = fromOffset;
-                side.toOffset = toOffset;
-                sides.push(side);
-            }
+            side.pieceIndex = pieceIndex;
+            side.sideIndex = sides.length;
+            side.fromOffset = fromOffset;
+            side.toOffset = toOffset;
+            sides.push(side);
         }
         Debug.endTime('generateSideArrays');
 
@@ -322,8 +322,90 @@ function analyzeBorders(paperPath) {
     });
 }
 
+let sideOpposites = {
+    0: {x: 0, y: -1},
+    1: {x: -1, y: 0},
+    2: {x: 0, y: 1},
+    3: {x: 1, y: 0}
+};
+
+function getPlacements(pieces) {
+    let remainingPieces = pieces.slice(0);
+    let groups = [];
+
+    while (remainingPieces.length > 0) {
+        let placed = false;
+
+        if (groups.length > 0) {
+            //Check every free side of the current group for matching pieces
+            let group = groups[groups.length - 1];
+
+            let allMatches = [];
+            for (let x in group) {
+                if (!group.hasOwnProperty(x)) continue;
+                x = parseInt(x, 10);
+
+                for (let y in group[x]) {
+                    if (!group[x].hasOwnProperty(y)) continue;
+                    y = parseInt(y, 10);
+
+                    let piece = group[x][y];
+                    for (let realSide = 0; realSide < 4; realSide++) {
+                        if  (typeof group[x + sideOpposites[realSide].x] !== 'undefined' && typeof group[x + sideOpposites[realSide].x][y + sideOpposites[realSide].y] !== 'undefined') continue;
+
+                        let pieceSide = (realSide - piece.rotation + 4) % 4;
+                        if (piece.direction !== 'straight') {
+                            let matches = findMatchingPieces(piece, remainingPieces, pieceSide);
+                            if (matches[pieceSide].length === 1) {
+                                allMatches.push({
+                                    deviation: matches[pieceSide][0].deviation,
+                                    x: x + sideOpposites[realSide].x,
+                                    y: y + sideOpposites[realSide].y,
+                                    piece: matches[pieceSide][0].piece,
+                                    rotation: (realSide - matches[pieceSide][0].sideIndex + 6) % 4
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Find the best matching piece for the current group and place it
+            if (allMatches.length > 0) {
+                allMatches.sort((a, b) => {
+                    return a.deviation - b.deviation;
+                });
+
+                let match = allMatches[0];
+
+                if (typeof group[match.x] === 'undefined') group[match.x] = {};
+                group[match.x][match.y] = match.piece;
+                group[match.x][match.y].rotation = match.rotation;
+
+                remainingPieces.splice(remainingPieces.indexOf(match.piece), 1);
+                placed = true;
+            }
+        }
+
+        //Nothing places, so nothing unique matching found - creating new group
+        if (!placed) {
+            let piece = remainingPieces.splice(0, 1)[0];
+
+            let group = {};
+            group[0] = {};
+            group[0][0] = piece;
+            group[0][0].rotation = 0;
+
+            groups.push(group);
+        }
+    }
+
+    return groups;
+}
+
 module.exports = {
     findMatchingPieces: findMatchingPieces,
     getSideMatchingFactor: getSideMatchingFactor,
-    analyzeBorders: analyzeBorders
+    analyzeBorders: analyzeBorders,
+    getPlacements: getPlacements
 };

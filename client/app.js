@@ -270,7 +270,17 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     fontSize: 40
                 });
 
-                if (result.sameSide) {
+                if (currentPiece.sides[sourceSideIndex].direction === 'straight' || comparePiece.sides[compareSideIndex].direction === 'straight') {
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250 - 150,
+                            y: 300 * compareSideIndex + 150
+                        },
+                        content: 'Straight',
+                        fillColor: '#aaaaaa',
+                        fontSize: 60
+                    });
+                } else if (result.sameSide) {
                     new paper.PointText({
                         point: {
                             x: 500 * sourceSideIndex + 250 - 150,

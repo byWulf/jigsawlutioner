@@ -20,7 +20,17 @@
             <div class="p-10" style="width: 400px;">
                 <div class="card card-transparent" style="max-height: 100%;">
                     <div class="card-body">
-                        <button type="button" id="cameraButton" class="pull-right btn btn-primary"><i class="fa fa-camera"></i> Take picture</button>
+                        <div class="btn-group" data-toggle="buttons">
+                            <label class="btn btn-secondary" id="scanButton">
+                                <input type="radio" name="mode" autocomplete="off"> <i class="fa fa-camera"></i> Scan
+                            </label>
+                            <label class="btn btn-secondary" id="compareButton">
+                                <input type="radio" name="mode" autocomplete="off"> <i class="fa fa-search"></i> Compare
+                            </label>
+                        </div>
+                        <button type="button" id="startButton" class="pull-right btn btn-primary"><i class="fa fa-play"></i> Start machine</button>
+                        <button type="button" id="stopButton" class="pull-right btn btn-primary" style="display: none;"><i class="fa fa-pause"></i> Stop machine</button>
+                        <button type="button" id="placementsButton" class="pull-right btn btn-secondary">Get placements</button>
                         <h4 class="card-title">Pieces</h4>
                     </div>
                     <div id="pieceList" class="list-group list-group-flush" style="overflow-y: auto;"></div>
@@ -28,7 +38,7 @@
             </div>
             <div id="mainContent" class="p-10" style="flex-grow: 1;">
                 <div class="loading text-center text-primary" style="display: none;"><i class="fa fa-spinner fa-spin fa-4x"></i></div>
-                <div class="card card-transparent" style="max-height: 100%; display: none;">
+                <div class="card card-transparent" id="pieceCard" style="max-height: 100%; display: none;">
                     <div class="card-body">
                         <button type="button" class="btn btn-default pull-right findMatchingPiecesButton">
                             <i class="fa fa-magnify"></i> Search matching pieces

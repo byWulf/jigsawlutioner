@@ -1,6 +1,7 @@
 const socket = io();
 
-const $cameraButton = $('#cameraButton');
+const $startButton = $('#startButton');
+const $stopButton = $('#stopButton');
 const $actionContainer = $('.actionContainer');
 const $pieceList = $('#pieceList');
 const $compareList = $('#compareList');
@@ -52,9 +53,35 @@ function comparePiece(pieceIndex) {
     socket.emit('comparePieces', currentPiece.pieceIndex, pieceIndex);
 }
 
-$cameraButton.on('click', () => {
-    $cameraButton.addClass('disabled');
-    socket.emit('takePicture');
+$('#scanButton').on('click', () => {
+    socket.emit('mode', 'scan');
+});
+$('#compareButton').on('click', () => {
+    socket.emit('mode', 'compare');
+});
+
+socket.on('mode', (mode) => {
+    console.log("mode", mode);
+    if (mode === 'compare') {
+        $('#scanButton').removeClass('active');
+        $('#compareButton').addClass('active');
+    } else {
+        $('#scanButton').addClass('active');
+        $('#compareButton').removeClass('active');
+    }
+});
+
+$startButton.on('click', () => {
+    socket.emit('startMachine');
+});
+
+$stopButton.on('click', () => {
+    socket.emit('stopMachine');
+});
+
+socket.on('machineState', (state) => {
+    $startButton.toggle(!state);
+    $stopButton.toggle(!!state);
 });
 
 socket.on('pieces', (pieceDate) => {
@@ -76,7 +103,7 @@ socket.on('piece', (piece) => {
     loadingPiece = null;
     currentPiece = piece;
 
-    $mainContent.find('.card').find('.card-title').text('Piece #' + piece.pieceIndex + ' - ' + piece.files.original);
+    $mainContent.find('#pieceCard').find('.card-title').text('Piece #' + piece.pieceIndex + ' - ' + piece.files.original);
     $mainContent.find('.imagesNav').empty();
     for (let fileType in piece.files) {
         if (!piece.files.hasOwnProperty(fileType)) continue;
@@ -90,7 +117,7 @@ socket.on('piece', (piece) => {
     }
 
 
-    $mainContent.find('> .card').show();
+    $mainContent.find('#pieceCard').show();
     $mainContent.find('> .loading').hide();
 
     setTimeout(function() {
@@ -213,8 +240,6 @@ socket.on('piece', (piece) => {
         paper.view.onResize();
         paper.view.draw();
     }, 10);
-
-    console.log(piece);
 });
 
 //Compare pieces
@@ -271,7 +296,17 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
                     fontSize: 40
                 });
 
-                if (result.sameSide) {
+                if (currentPiece.sides[sourceSideIndex].direction === 'straight' || comparePiece.sides[compareSideIndex].direction === 'straight') {
+                    new paper.PointText({
+                        point: {
+                            x: 500 * sourceSideIndex + 250 - 150,
+                            y: 300 * compareSideIndex + 150
+                        },
+                        content: 'Straight',
+                        fillColor: '#aaaaaa',
+                        fontSize: 60
+                    });
+                } else if (result.sameSide) {
                     new paper.PointText({
                         point: {
                             x: 500 * sourceSideIndex + 250 - 150,
@@ -314,10 +349,6 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
             }
         }
 
-        console.log(results);
-
-
-
         paper.view.onResize = function() {
             paper.view.scale(1 / paper.view.scaling.x, 1 / paper.view.scaling.y, {x: 0, y: 0});
             paper.view.scale($sideComparisonCanvas.width() / 2000, $sideComparisonCanvas.height() / 1200, {x: 0, y: 0});
@@ -330,6 +361,8 @@ socket.on('comparison', (sourcePiece, comparePiece, results) => {
 
 socket.on('matchingPieces', (sourcePieceIndex, matches) => {
     $elem = $pieceList.find('a[data-pieceindex="' + sourcePieceIndex + '"] .matches').empty();
+
+    console.log(matches);
 
     for (let sideIndex in matches) {
         if (!matches.hasOwnProperty(sideIndex)) continue;
@@ -369,15 +402,8 @@ $('.findMatchingPiecesButton').on('click', function() {
     socket.emit('findMatchingPieces', currentPiece.pieceIndex);
 });
 
-socket.on('state', function(state, data, error) {
-    console.log(state, data, error);
-    if (state === 'UPLOADING') {
-        $cameraButton.addClass('disabled');
-    }
-
-    if (state === 'READY') {
-        $cameraButton.removeClass('disabled');
-
+socket.on('message', function(state, error) {
+    if (state === 'success') {
         $.notify({
             message: 'Successfully processed.'
         }, {
@@ -389,9 +415,7 @@ socket.on('state', function(state, data, error) {
         });
     }
 
-    if (state === 'ERROR') {
-        $cameraButton.removeClass('disabled');
-
+    if (state === 'error') {
         $.notify({
             message: 'Got error at ' + error.atStep + ': ' + error.message
         }, {
@@ -413,4 +437,12 @@ $actionContainer.on('click', '.action', function() {
     socket.emit($(this).attr('data-action'));
 
     $actionContainer.hide();
+});
+
+$('#placementsButton').on('click', () => {
+    socket.emit('getPlacements');
+});
+
+socket.on('placements', (placements) => {
+    console.log(placements);
 });

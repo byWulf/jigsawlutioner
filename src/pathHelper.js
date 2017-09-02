@@ -1,4 +1,5 @@
 const Paper = require('paper-jsdom');
+const MathHelper = require('./mathHelper');
 
 /**
  * Gets the tangents rotation (in degree) from a specific offset in a (closed) paperjs path.
@@ -56,36 +57,6 @@ function getRotationGainAverage(diffs, from, to) {
         }
     }
     return sum / (to - from);
-}
-
-/**
- * Reduces the points drastically for better calculation performane.
- *
- * @param points
- * @param threshold
- * @returns {Array}
- */
-function simplifyPoints(points, threshold) {
-    if (typeof threshold === 'undefined') threshold = 3;
-
-    let newPoints = [];
-    for (let i = 0; i < points.length; i++) {
-        let sumX = 0;
-        let sumY = 0;
-        let count = 0;
-        for (let j = -Math.floor(threshold / 2); j <= threshold / 2; j++) {
-            if (points[i + j]) {
-                sumX += points[i + j].x;
-                sumY += points[i + j].y;
-                count++;
-            }
-        }
-        if (i % 3 === 0) {
-            newPoints.push({x: sumX / count, y: sumY / count});
-        }
-    }
-
-    return newPoints;
 }
 
 /**
@@ -223,15 +194,34 @@ function getNopData(points) {
     };
 }
 
+function simplifyPoints(points) {
+    let finishedPoints = points.slice(0);
+
+    outerLoop: for (let p1 = 0; p1 < finishedPoints.length; p1++) {
+        for (let p2 = p1 + 2; p2 < finishedPoints.length; p2++) {
+            for (let p = p1 + 1; p < p2; p++) {
+                if (MathHelper.distanceToLine(finishedPoints[p], finishedPoints[p1], finishedPoints[p2]) > 1.5) {
+                    finishedPoints.splice(p1 + 1, p2 - p1 - 2);
+                    continue outerLoop;
+                }
+            }
+        }
+        finishedPoints.splice(p1 + 1, finishedPoints.length - p1 - 2);
+        break;
+    }
+
+    return finishedPoints;
+}
+
 module.exports = {
     getRotation: getRotation,
     getRotationGain: getRotationGain,
     getRotationGainAverage: getRotationGainAverage,
-    simplifyPoints: simplifyPoints,
     isStraightSide: isStraightSide,
     hasOutsideNop: hasOutsideNop,
     getArea: getArea,
     rotatePoints: rotatePoints,
     getNegativePeaks: getNegativePeaks,
-    getNopData: getNopData
+    getNopData: getNopData,
+    simplifyPoints: simplifyPoints
 };
