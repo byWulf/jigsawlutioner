@@ -1,6 +1,5 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
-const Debug = require('./debug');
 const Cache = require('./cache');
 
 /**
@@ -51,16 +50,10 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
     let detailedCheck = !result.sameSide && result.smallNopDiff < 10 && result.bigNopDiff < 10 && result.nopCenterDiff < 10;
 
     if (detailedCheck) {
-        Debug.countIteration('getSideMatchFactor');
-
         //Check form of the sides
         for (let offsetY = -thresholdY; offsetY <= thresholdY; offsetY += Math.max(1, thresholdY / 3)) {
             for (let offsetX = -thresholdX; offsetX <= thresholdX; offsetX += Math.max(1, thresholdX / 3)) {
-                Debug.countIteration('getSideMatchingFactor_distances');
-
-                Debug.startTime('getSideMatchingFactor_distancesOfPolylines');
                 let distances = MathHelper.distancesOfPolylines(PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
-                Debug.endTime('getSideMatchingFactor_distancesOfPolylines');
 
                 if (result.avgDistance === null || distances.avgDistance < result.avgDistance) {
                     result.avgDistance = distances.avgDistance;
