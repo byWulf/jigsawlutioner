@@ -1,9 +1,6 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
-const Debug = require('./debug');
 const Cache = require('./cache');
-
-let nextPieceIndex = 0;
 
 function getPieceDiffs(path) {
     //Calculate all degree-diffs to find the corners (=extremes)
@@ -145,18 +142,12 @@ function getSide(path, fromOffset, toOffset) {
     };
 }
 
-function findSides(paperPath) {
+function findSides(pieceIndex, paperPath) {
     return new Promise((fulfill, reject) => {
-        let pieceIndex = nextPieceIndex++;
-
         //Detect corners
-        Debug.startTime('getPieceDiffs');
         let diffs = getPieceDiffs(paperPath);
-        Debug.endTime('getPieceDiffs');
 
-        Debug.startTime('getPieceCornerOffsets');
         let cornerOffsets = getPieceCornerOffsets(diffs);
-        Debug.endTime('getPieceCornerOffsets');
 
         if (cornerOffsets === null) {
             reject('No borders found.');
@@ -164,7 +155,6 @@ function findSides(paperPath) {
         }
 
         //Generate side arrays
-        Debug.startTime('generateSideArrays');
         let sides = [];
         for (let i = 0; i < 4; i++) {
             let fromOffset = cornerOffsets[i];
@@ -177,7 +167,6 @@ function findSides(paperPath) {
             side.toOffset = toOffset;
             sides.push(side);
         }
-        Debug.endTime('generateSideArrays');
 
         Cache.clear();
 
