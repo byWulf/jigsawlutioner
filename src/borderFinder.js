@@ -261,7 +261,13 @@ function hasBorderPixel(data, color) {
     return false;
 }
 
-function findPieceBorder(filename, options) {
+/**
+ *
+ * @param {string|Buffer} file
+ * @param options
+ * @returns {Promise}
+ */
+function findPieceBorder(file, options) {
     if (typeof options === 'undefined') {
         options = {};
     }
@@ -275,32 +281,32 @@ function findPieceBorder(filename, options) {
 
     return new Promise((resolve, reject) => {
         let data = null;
-        let image = sharp(filename);
+        let image = sharp(file);
         image.threshold(options.threshold).toColourspace('b-w').raw().toBuffer({resolveWithObject: true}).then((resultData) => {
 
             data = resultData;
 
             //Identify the surrounding area and make it light gray
             scanFill(data, 0, 0, 0xbb);
-            if (options.debug) return sharp(data.data, {raw: data.info}).toFile(filename + '.step2a.png');
+            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2a.png');
         }).then(() => {
 
             //Fill everything with black except the surrounding area around the piece
             replaceColor(data, 0xff, 0x00);
-            if (options.debug) return sharp(data.data, {raw: data.info}).toFile(filename + '.step2b.png');
+            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2b.png');
         }).then(() => {
 
             //remove aprox. 2 pixels of the piece border to remove some single pixels
             extendArea(data, 0xbb, 1);
-            if (options.debug) return sharp(data.data, {raw: data.info}).toFile(filename + '.step2c.png');
+            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2c.png');
         }).then(() => {
             //cut every thin lines (black pixels with at least 6 white pixels around it)
             replaceThinPixels(data, 0x00, 6, 0xbb);
-            if (options.debug) return sharp(data.data, {raw: data.info}).toFile(filename + '.step2d.png');
+            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2d.png');
         }).then(() => {
             //Remove every black area, which is not the biggest
             removeSmallAreas(data, 0x00, 0x33, 0xbb);
-            if (options.debug) return sharp(data.data, {raw: data.info}).toFile(filename + '.step2e.png');
+            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2e.png');
         }).then(() => {
             //Check if piece is cut of on an edge
             if (hasBorderPixel(data, 0x33)) {
@@ -313,15 +319,17 @@ function findPieceBorder(filename, options) {
             Paper.setup(new Paper.Size(data.info.width, data.info.height));
             let paperPath = new Paper.Path(borderData.points);
 
-            let files = {
-                original: path.basename(filename)
-            };
-            if (options.debug) {
-                files['step2a'] = path.basename(filename) + '.step2a.png';
-                files['step2b'] = path.basename(filename) + '.step2b.png';
-                files['step2c'] = path.basename(filename) + '.step2c.png';
-                files['step2d'] = path.basename(filename) + '.step2d.png';
-                files['step2e'] = path.basename(filename) + '.step2e.png';
+            let files = {};
+
+            if (typeof file === 'string') {
+                files.original = path.basename(file);
+                if (options.debug) {
+                    files['step2a'] = path.basename(file) + '.step2a.png';
+                    files['step2b'] = path.basename(file) + '.step2b.png';
+                    files['step2c'] = path.basename(file) + '.step2c.png';
+                    files['step2d'] = path.basename(file) + '.step2d.png';
+                    files['step2e'] = path.basename(file) + '.step2e.png';
+                }
             }
 
             resolve({
