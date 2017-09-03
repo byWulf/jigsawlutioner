@@ -47,7 +47,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
         nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2)),
     };
 
-    let detailedCheck = !result.sameSide && result.smallNopDiff < 10 && result.bigNopDiff < 10 && result.nopCenterDiff < 10;
+    let detailedCheck = !result.sameSide && result.smallNopDiff <= 12 && result.bigNopDiff <= 12 && result.nopCenterDiff <= 12 && result.nopHeightDiff <= 12;
 
     if (detailedCheck) {
         //Check form of the sides
@@ -92,6 +92,8 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
  * @param onlySide (optional)
  */
 function findMatchingPieces(piece, pieces, onlySide) {
+    Cache.clear();
+
     let matches = {};
     for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
         if (typeof onlySide === 'number' && sideIndex !== onlySide) continue;
