@@ -16,7 +16,7 @@ const Cache = require('./cache');
  * @param thresholdY
  * @returns {*}
  */
-function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
+function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, dontRotateTargetSide) {
     if (typeof thresholdX === 'undefined') {
         thresholdX = 0;
     }
@@ -25,8 +25,8 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
     }
 
     //Caching to reduce calculation time
-    if (Cache.has(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY])) {
-        return Cache.get(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY]);
+    if (Cache.has(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide])) {
+        return Cache.get(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide]);
     }
 
     let result = {
@@ -43,17 +43,18 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
         areaDiff: Math.abs(targetSide.area + sourceSide.area),
         smallNopDiff: Math.abs(Math.abs(targetSide.nop.min.right - targetSide.nop.min.left) - Math.abs(sourceSide.nop.min.right - sourceSide.nop.min.left)),
         bigNopDiff: Math.abs(Math.abs(targetSide.nop.max.right - targetSide.nop.max.left) - Math.abs(sourceSide.nop.max.right - sourceSide.nop.max.left)),
-        nopHeightDiff: Math.abs(targetSide.nop.height + sourceSide.nop.height),
-        nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2)),
+        nopHeightDiff: Math.abs(targetSide.nop.height + sourceSide.nop.height * (dontRotateTargetSide ? -1 : 1)),
+        nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2) * (dontRotateTargetSide ? -1 : 1)),
     };
 
-    let detailedCheck = !result.sameSide && result.smallNopDiff <= 12 && result.bigNopDiff <= 12 && result.nopCenterDiff <= 12 && result.nopHeightDiff <= 12;
+    let detailedCheck = (dontRotateTargetSide ? result.sameSide : !result.sameSide) && result.smallNopDiff <= 17 && result.bigNopDiff <= 17 && result.nopCenterDiff <= 17 && result.nopHeightDiff <= 17;
+
 
     if (detailedCheck) {
         //Check form of the sides
         for (let offsetY = -thresholdY; offsetY <= thresholdY; offsetY += Math.max(1, thresholdY / 3)) {
             for (let offsetX = -thresholdX; offsetX <= thresholdX; offsetX += Math.max(1, thresholdX / 3)) {
-                let distances = MathHelper.distancesOfPolylines(PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
+                let distances = MathHelper.distancesOfPolylines(dontRotateTargetSide ? sourceSide.points : PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
 
                 if (result.avgDistance === null || distances.avgDistance < result.avgDistance) {
                     result.avgDistance = distances.avgDistance;
@@ -80,8 +81,57 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY) {
         result.matches = true;
     }
 
-    Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY], result);
+    Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide], result);
     return result;
+}
+
+/**
+ * @param pieces
+ * @param piece
+ * @returns {null|int}
+ */
+function findExistingPieceIndex(pieces, piece) {
+    let pieceMatchings = [];
+    for (let i = 0; i < pieces.length; i++) {
+        let bestMatchingFactor = null;
+        sideOffsetLoop: for (let sideOffset = 0; sideOffset < 4; sideOffset++) {
+            //First check if the side directions match (better performance with 2 loops)
+            for (let side = 0; side < 4; side++) {
+                if (piece.sides[side].direction !== pieces[i].sides[(side + sideOffset) % 4].direction) continue sideOffsetLoop;
+            }
+            //If all 4 sides have the same direction, then get their matching factor and remember
+            let matchinFactorSum = 0;
+            for (let side = 0; side < 4; side++) {
+                if (piece.sides[side].direction === 'straight') continue;
+                let match = getSideMatchingFactor(piece.sides[side], pieces[i].sides[(side + sideOffset) % 4], 0, 0, true);
+                if (!match.matches) {
+                    continue sideOffsetLoop;
+                } else {
+                    matchinFactorSum += match.deviation;
+                }
+            }
+            if (bestMatchingFactor === null || matchinFactorSum < bestMatchingFactor) {
+                bestMatchingFactor = matchinFactorSum;
+            }
+        }
+
+        if (bestMatchingFactor !== null) {
+            pieceMatchings.push({
+                pieceIndex: pieces[i].pieceIndex,
+                deviation: bestMatchingFactor
+            });
+        }
+    }
+
+    if (pieceMatchings.length === 0) {
+        return null;
+    }
+
+    pieceMatchings.sort((a, b) => {
+        return a.deviation - b.deviation;
+    });
+
+    return pieceMatchings[0].pieceIndex;
 }
 
 /**
@@ -215,5 +265,6 @@ function getPlacements(pieces) {
 module.exports = {
     findMatchingPieces: findMatchingPieces,
     getSideMatchingFactor: getSideMatchingFactor,
-    getPlacements: getPlacements
+    getPlacements: getPlacements,
+    findExistingPieceIndex: findExistingPieceIndex
 };
