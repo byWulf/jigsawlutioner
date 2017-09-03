@@ -217,9 +217,9 @@ function extendArea(data, areaColor, extendSize) {
     let borders = getBorderPoints(data, areaColor);
 
     for (let i = 0, length = borders.length; i < length; i++) {
-        for (let x = -extendSize; x <= extendSize; x++) {
-            for (let y = -extendSize; y <= extendSize; y++) {
-                if (Math.round(Math.sqrt(x * x + y * y)) <= 2) {
+        for (let x = -Math.ceil(extendSize / 2); x <= Math.ceil(extendSize / 2); x++) {
+            for (let y = -Math.ceil(extendSize / 2); y <= Math.ceil(extendSize / 2); y++) {
+                if (Math.round(Math.sqrt(x * x + y * y)) <= extendSize) {
                     setPixel(data, borders[i].x + x, borders[i].y + y, areaColor);
                 }
             }
@@ -277,6 +277,9 @@ function findPieceBorder(file, options) {
     if (typeof options.threshold === 'undefined') {
         options.threshold = 200;
     }
+    if (typeof options.reduction === 'undefined') {
+        options.reduction = 2;
+    }
 
 
     return new Promise((resolve, reject) => {
@@ -297,7 +300,7 @@ function findPieceBorder(file, options) {
         }).then(() => {
 
             //remove aprox. 2 pixels of the piece border to remove some single pixels
-            extendArea(data, 0xbb, 1);
+            extendArea(data, 0xbb, options.reduction);
             if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2c.png');
         }).then(() => {
             //cut every thin lines (black pixels with at least 6 white pixels around it)
