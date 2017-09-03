@@ -132,7 +132,7 @@ function getSide(path, fromOffset, toOffset) {
     let isStraight = PathHelper.isStraightSide(points, directLength);
 
     return {
-        points: points,
+        points: PathHelper.simplifyPoints(points),
         direction: isStraight ? 'straight' : PathHelper.hasOutsideNop(points) ? 'out' : 'in',
         area: PathHelper.getArea(points),
         directLength: directLength,
