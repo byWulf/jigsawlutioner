@@ -112,16 +112,18 @@ function getSizes(data, areaColor, replaceWithColor) {
     return sizes;
 }
 
-function removeSmallAreas(data, areaColor, biggestAreaColor, clearColor) {
+function removeSmallAreas(data, areaColor, biggestAreaColor, clearColor, minSize = 1000) {
     let sizes = getSizes(data, areaColor, biggestAreaColor);
     if (sizes.length === 0) {
-        throw Error('No areas found');
+        throw new Error('No areas found');
     }
     sizes.sort((a, b) => {
         return b.size - a.size;
     });
-    for (let i = 1, length = sizes.length; i < length; i++) {
-        scanFill(data, sizes[i].x, sizes[i].y, clearColor + 1);
+    for (let i = 0, length = sizes.length; i < length; i++) {
+        if (sizes[i].size < minSize || sizes[i].size < sizes[0].size) {
+            scanFill(data, sizes[i].x, sizes[i].y, clearColor + 1);
+        }
     }
     replaceColor(data, clearColor + 1, clearColor);
 }
@@ -170,7 +172,7 @@ function getOrderedBorderPoints(data, areaColor) {
                 }
 
                 points.pop();
-                
+
                 for (let i = 0, length = points.length; i < length; i++) {
                     points[i].x -= boundingBox.left;
                     points[i].y -= boundingBox.top;
@@ -184,7 +186,7 @@ function getOrderedBorderPoints(data, areaColor) {
         }
     }
 
-    throw new Error('No point found');
+    throw new Error('No areas found');
 }
 
 
