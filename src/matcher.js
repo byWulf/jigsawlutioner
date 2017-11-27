@@ -88,7 +88,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
 /**
  * @param pieces
  * @param piece
- * @returns {null|int}
+ * @returns {null|object} {pieceIndex: number, deviation, number, sideOffset: number}
  */
 function findExistingPieceIndex(pieces, piece) {
     let pieceMatchings = [];
@@ -110,15 +110,16 @@ function findExistingPieceIndex(pieces, piece) {
                     matchinFactorSum += match.deviation;
                 }
             }
-            if (bestMatchingFactor === null || matchinFactorSum < bestMatchingFactor) {
-                bestMatchingFactor = matchinFactorSum;
+            if (bestMatchingFactor === null || matchinFactorSum < bestMatchingFactor.deviation) {
+                bestMatchingFactor = {deviation: matchinFactorSum, sideOffset: sideOffset};
             }
         }
 
         if (bestMatchingFactor !== null) {
             pieceMatchings.push({
                 pieceIndex: pieces[i].pieceIndex,
-                deviation: bestMatchingFactor
+                deviation: bestMatchingFactor.deviation,
+                sideOffset: bestMatchingFactor.sideOffset
             });
         }
     }
@@ -131,7 +132,7 @@ function findExistingPieceIndex(pieces, piece) {
         return a.deviation - b.deviation;
     });
 
-    return pieceMatchings[0].pieceIndex;
+    return pieceMatchings[0];
 }
 
 /**
