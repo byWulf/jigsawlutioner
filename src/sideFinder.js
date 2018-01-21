@@ -6,15 +6,19 @@ function getPieceDiffs(path) {
     //Calculate all degree-diffs to find the corners (=extremes)
     let diffsOrdered = [];
     let lastDegree = 0;
-    for (let i = 0; i < path.length; i++) {
-        let diff = PathHelper.getRotationGain(path, i, 10);
+    let diffCount = 2000;
+    let factor = path.length / diffCount;
+    for (let i = 0; i < diffCount; i++) {
+        let pathOffset = i * factor;
 
-        let deg = PathHelper.getRotation(path, i, 10);
+        let diff = PathHelper.getRotationGain(path, pathOffset, 10);
+
+        let deg = PathHelper.getRotation(path, pathOffset, 10);
         while (lastDegree - deg > 180) deg += 360;
         while (lastDegree - deg < -180) deg -= 360;
         lastDegree = deg;
 
-        diffsOrdered.push({offset: i, diff: diff, deg: deg, point: path.getPointAt(i)});
+        diffsOrdered.push({offset: pathOffset, diff: diff, deg: deg, point: path.getPointAt(pathOffset)});
     }
 
     return diffsOrdered;
@@ -107,7 +111,7 @@ function getPieceCornerOffsets(diffs) {
     return [distinctOffsets[0][0].offset, distinctOffsets[0][1].offset, distinctOffsets[0][2].offset, distinctOffsets[0][3].offset];
 }
 
-function getSide(path, fromOffset, toOffset) {
+function getSide(path, fromOffset, toOffset, colorPoints) {
     let startPoint = path.getPointAt(fromOffset);
     let endPoint = path.getPointAt(toOffset);
     let directLength = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
@@ -118,12 +122,17 @@ function getSide(path, fromOffset, toOffset) {
     let rotationCos = Math.cos(rotation);
 
     let points = [];
-    for (let offset = fromOffset; offset <= toOffset + (toOffset < fromOffset ? path.length : 0); offset++) {
-        let fixedOffset = Math.floor(offset % path.length);
+    let length = toOffset + (toOffset < fromOffset ? path.length : 0) - fromOffset;
+    let steps = 50;
+    for (let i = 0; i < steps; i++) {
+        let fixedOffset = Math.floor((fromOffset + i * (length / (steps - 1))) % path.length);
+        let pointAt = path.getPointAt(fixedOffset);
+        let colorPoint = MathHelper.getClosestPoint(colorPoints, pointAt);
 
         let point = {
-            x: (path.getPointAt(fixedOffset).x - middlePoint.x) * rotationCos + (path.getPointAt(fixedOffset).y - middlePoint.y) * rotationSin,
-            y: (path.getPointAt(fixedOffset).y - middlePoint.y) * rotationCos - (path.getPointAt(fixedOffset).x - middlePoint.x) * rotationSin
+            x: (pointAt.x - middlePoint.x) * rotationCos + (pointAt.y - middlePoint.y) * rotationSin,
+            y: (pointAt.y - middlePoint.y) * rotationCos - (pointAt.x - middlePoint.x) * rotationSin,
+            color: colorPoint ? colorPoint.color : null
         };
 
         points.push(point);
@@ -132,7 +141,7 @@ function getSide(path, fromOffset, toOffset) {
     let isStraight = PathHelper.isStraightSide(points, directLength);
 
     return {
-        points: PathHelper.simplifyPoints(points),
+        points: points,
         direction: isStraight ? 'straight' : PathHelper.hasOutsideNop(points) ? 'out' : 'in',
         area: PathHelper.getArea(points),
         directLength: directLength,
@@ -142,30 +151,42 @@ function getSide(path, fromOffset, toOffset) {
     };
 }
 
-function findSides(pieceIndex, paperPath) {
+function findSides(pieceIndex, paperPath, colorPoints, options) {
+    if (typeof options !== 'object') {
+        options = {}
+    }
+    if (typeof options.debug === 'undefined') {
+        options.debug = false;
+    }
+    if (typeof options.filename === 'undefined') {
+        options.filename = '';
+    }
+
     return new Promise((fulfill, reject) => {
         //Detect corners
         let diffs = getPieceDiffs(paperPath);
 
         let cornerOffsets = getPieceCornerOffsets(diffs);
 
-        if (cornerOffsets === null) {
-            reject('No borders found.');
-            return;
-        }
-
         //Generate side arrays
         let sides = [];
-        for (let i = 0; i < 4; i++) {
-            let fromOffset = cornerOffsets[i];
-            let toOffset = cornerOffsets[(i + 1) % 4];
+        if (cornerOffsets !== null) {
+            for (let i = 0; i < 4; i++) {
+                let fromOffset = cornerOffsets[i];
+                let toOffset = cornerOffsets[(i + 1) % 4];
 
-            let side = getSide(paperPath, fromOffset, toOffset);
-            side.pieceIndex = pieceIndex;
-            side.sideIndex = sides.length;
-            side.fromOffset = fromOffset;
-            side.toOffset = toOffset;
-            sides.push(side);
+                let side = getSide(paperPath, fromOffset, toOffset, colorPoints);
+                side.pieceIndex = pieceIndex;
+                side.sideIndex = sides.length;
+                side.fromOffset = fromOffset;
+                side.toOffset = toOffset;
+                sides.push(side);
+            }
+
+
+            if (options.debug && typeof options.filename === 'string' && options.filename) {
+                saveSideImage(options.filename, sides);
+            }
         }
 
         Cache.clear();
@@ -178,6 +199,34 @@ function findSides(pieceIndex, paperPath) {
     });
 }
 
+function saveSideImage(filename, sides) {
+    const Canvas = require('canvas');
+    const fs = require('fs');
+
+    const canvas = new Canvas(500,1200);
+    const context = canvas.getContext('2d');
+
+    for (let sideIndex = 0; sideIndex < sides.length; sideIndex++) {
+        let side = sides[sideIndex];
+        for (let i = 0; i < side.points.length; i++) {
+            let radius = 5;
+            context.beginPath();
+            context.arc(side.points[i].x + 200, side.points[i].y + 200 + sideIndex * 250, radius, 0, 2 * Math.PI, false);
+            context.fillStyle = 'rgb(' + side.points[i].color[0] + ', ' + side.points[i].color[1] + ', ' + side.points[i].color[2] + ')';
+            context.fill();
+        }
+    }
+
+    let out = fs.createWriteStream(filename + '.sides.png');
+    let stream = canvas.pngStream();
+
+    stream.on('data', function(chunk){
+      out.write(chunk);
+    });
+}
+
 module.exports = {
     findSides: findSides,
+    getPieceDiffs: getPieceDiffs,
+    getPieceCornerOffsets: getPieceCornerOffsets
 };

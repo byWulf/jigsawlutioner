@@ -89,9 +89,28 @@ function distanceOfPoints(point1, point2) {
     return Math.sqrt(diffX * diffX + diffY * diffY);
 }
 
+function getClosestPoint(points, point) {
+    let closestPoint = null;
+    for (let i = 0; i < points.length; i++) {
+        let distance = distanceOfPoints(points[i], point);
+        if (closestPoint === null || distance < closestPoint.distance) {
+            closestPoint = {
+                point: points[i],
+                distance: distance
+            };
+        }
+    }
+
+    if (closestPoint) {
+        return closestPoint.point;
+    }
+    return null;
+}
+
 module.exports = {
     distanceToLine: distanceToLine,
     distanceToPolyline: distanceToPolyline,
     distancesOfPolylines: distancesOfPolylines,
-    distanceOfPoints: distanceOfPoints
+    distanceOfPoints: distanceOfPoints,
+    getClosestPoint: getClosestPoint
 };

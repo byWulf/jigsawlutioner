@@ -3,7 +3,19 @@ const sharp = require('sharp');
 const Paper = require('paper');
 
 const PathHelper = require('./pathHelper');
+const MathHelper = require('./mathHelper');
 
+function getColorPixel(data, x, y) {
+    if (x < 0 || x >= data.info.width || y < 0 || y >= data.info.height) {
+        return null;
+    }
+
+    return [
+        data.data[(x + y * data.info.width) * data.info.channels + 0],
+        data.data[(x + y * data.info.width) * data.info.channels + 1],
+        data.data[(x + y * data.info.width) * data.info.channels + 2],
+    ];
+}
 function getPixel(data, x, y) {
     if (x < 0 || x >= data.info.width || y < 0 || y >= data.info.height) {
         return null;
@@ -128,7 +140,7 @@ function removeSmallAreas(data, areaColor, biggestAreaColor, clearColor, minSize
     replaceColor(data, clearColor + 1, clearColor);
 }
 
-function getOrderedBorderPoints(data, areaColor) {
+function getOrderedBorderPoints(data, areaColor, simplifyPoints = true) {
     let points = [];
 
     let offsets = [{x: -1, y: 0}, {x: 0, y: 1}, {x: 1, y: 0}, {x: 0, y: -1}];
@@ -179,7 +191,7 @@ function getOrderedBorderPoints(data, areaColor) {
                 }
 
                 return {
-                    points: PathHelper.simplifyPoints(points),
+                    points: simplifyPoints ? PathHelper.simplifyPoints(points) : points,
                     boundingBox: boundingBox
                 };
             }
@@ -263,13 +275,78 @@ function hasBorderPixel(data, color) {
     return false;
 }
 
+function decorateBorderPointsWithColors(borderData, reducedBorderData, sharpImageData) {
+    for (let i = 0; i < borderData.points.length; i++) {
+        let lowestDistance = null;
+        for (let j = 0; j < reducedBorderData.points.length; j++) {
+            let distance = MathHelper.distanceOfPoints(borderData.points[i], reducedBorderData.points[j]);
+            if (lowestDistance === null || distance < lowestDistance.distance) {
+                lowestDistance = {
+                    point: reducedBorderData.points[j],
+                    distance: distance
+                };
+            }
+        }
+
+        if (lowestDistance === null) {
+            continue;
+        }
+
+        borderData.points[i].color = getColorPixel(sharpImageData, lowestDistance.point.x + reducedBorderData.boundingBox.left, lowestDistance.point.y + reducedBorderData.boundingBox.top);
+    }
+
+    return borderData.points;
+}
+
+async function getOptimizedImageData(file, threshold, reduction, debug) {
+    let image = sharp(file);
+    let data = await image.threshold(threshold).toColourspace('b-w').raw().toBuffer({resolveWithObject: true});
+
+    //Identify the surrounding area and make it light gray
+    scanFill(data, 0, 0, 0xbb);
+    if (debug && typeof file === 'string') {
+        await sharp(data.data, {raw: data.info}).toFile(file + '.' + reduction + '.step2a.png');
+    }
+
+    //Fill everything with black except the surrounding area around the piece
+    replaceColor(data, 0xff, 0x00);
+    if (debug && typeof file === 'string') {
+        await sharp(data.data, {raw: data.info}).toFile(file + '.' + reduction + '.step2b.png');
+    }
+
+    //remove aprox. 2 pixels of the piece border to remove some single pixels
+    extendArea(data, 0xbb, reduction);
+    if (debug && typeof file === 'string') {
+        await sharp(data.data, {raw: data.info}).toFile(file + '.' + reduction + '.step2c.png');
+    }
+
+    //cut every thin lines (black pixels with at least 6 white pixels around it)
+    replaceThinPixels(data, 0x00, 6, 0xbb);
+    if (debug && typeof file === 'string') {
+        await sharp(data.data, {raw: data.info}).toFile(file + '.' + reduction + '.step2d.png');
+    }
+
+    //Remove every black area, which is not the biggest
+    removeSmallAreas(data, 0x00, 0x33, 0xbb);
+    if (debug && typeof file === 'string') {
+        await sharp(data.data, {raw: data.info}).toFile(file + '.' + reduction + '.step2e.png');
+    }
+
+    //Check if piece is cut of on an edge
+    if (hasBorderPixel(data, 0x33)) {
+        throw new Error('Piece is cut of');
+    }
+    
+    return data;
+}
+
 /**
  *
  * @param {string|Buffer} file
  * @param options
  * @returns {Promise}
  */
-function findPieceBorder(file, options) {
+async function findPieceBorder(file, options) {
     if (typeof options === 'undefined') {
         options = {};
     }
@@ -282,75 +359,58 @@ function findPieceBorder(file, options) {
     if (typeof options.reduction === 'undefined') {
         options.reduction = 2;
     }
+    if (typeof options.returnColorPoints === 'undefined') {
+        options.returnColorPoints = false;
+    }
 
+    //Get optimized data of the image with dark gray pixels for the piece.
+    let data = await getOptimizedImageData(file, options.threshold, options.reduction, options.debug);
 
-    return new Promise((resolve, reject) => {
-        let data = null;
-        let image = sharp(file);
-        image.threshold(options.threshold).toColourspace('b-w').raw().toBuffer({resolveWithObject: true}).then((resultData) => {
+    //Get optimized data of the imaage reduced to the point where the border shows the corect colors
+    let colorData = await getOptimizedImageData(file, options.threshold, Math.max(3, options.reduction * 10), options.debug);
 
-            data = resultData;
+    //Get list of all border pixels and decorate them with the colors
+    let decoratedBorderPoints = null;
+    if (options.returnColorPoints) {
+        let completeBorderData = getOrderedBorderPoints(data, 0x33, false);
+        let completeReducedBorderData = getOrderedBorderPoints(colorData, 0x33, false);
+        let sharpImageData = await sharp(file).blur(3).raw().toBuffer({resolveWithObject: true});
+        decoratedBorderPoints = decorateBorderPointsWithColors(completeBorderData, completeReducedBorderData, sharpImageData);
 
-            //Identify the surrounding area and make it light gray
-            scanFill(data, 0, 0, 0xbb);
-            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2a.png');
-        }).then(() => {
+        if (options.debug && typeof file === 'string') {
+            await sharp(sharpImageData.data, {raw: sharpImageData.info}).toFile(file + '.blur.png');
+        }
+    }
 
-            //Fill everything with black except the surrounding area around the piece
-            replaceColor(data, 0xff, 0x00);
-            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2b.png');
-        }).then(() => {
+    //now get the final border pixels of the piece and build path
+    let borderData = getOrderedBorderPoints(data, 0x33);
 
-            //remove aprox. 2 pixels of the piece border to remove some single pixels
-            extendArea(data, 0xbb, options.reduction);
-            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2c.png');
-        }).then(() => {
-            //cut every thin lines (black pixels with at least 6 white pixels around it)
-            replaceThinPixels(data, 0x00, 6, 0xbb);
-            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2d.png');
-        }).then(() => {
-            //Remove every black area, which is not the biggest
-            removeSmallAreas(data, 0x00, 0x33, 0xbb);
-            if (options.debug && typeof file === 'string') return sharp(data.data, {raw: data.info}).toFile(file + '.step2e.png');
-        }).then(() => {
-            //Check if piece is cut of on an edge
-            if (hasBorderPixel(data, 0x33)) {
-                throw new Error('Piece is cut of');
-            }
+    Paper.setup(new Paper.Size(data.info.width, data.info.height));
+    let paperPath = new Paper.Path(borderData.points);
 
-            //now get the final border pixels of the piece
-            let borderData = getOrderedBorderPoints(data, 0x33);
+    let files = {};
 
-            Paper.setup(new Paper.Size(data.info.width, data.info.height));
-            let paperPath = new Paper.Path(borderData.points);
+    if (typeof file === 'string') {
+        files.original = path.basename(file);
+        if (options.debug) {
+            files['step2a'] = path.basename(file) + '.step2a.png';
+            files['step2b'] = path.basename(file) + '.step2b.png';
+            files['step2c'] = path.basename(file) + '.step2c.png';
+            files['step2d'] = path.basename(file) + '.step2d.png';
+            files['step2e'] = path.basename(file) + '.step2e.png';
+        }
+    }
 
-            let files = {};
-
-            if (typeof file === 'string') {
-                files.original = path.basename(file);
-                if (options.debug) {
-                    files['step2a'] = path.basename(file) + '.step2a.png';
-                    files['step2b'] = path.basename(file) + '.step2b.png';
-                    files['step2c'] = path.basename(file) + '.step2c.png';
-                    files['step2d'] = path.basename(file) + '.step2d.png';
-                    files['step2e'] = path.basename(file) + '.step2e.png';
-                }
-            }
-
-            resolve({
-                path: paperPath,
-                boundingBox: borderData.boundingBox,
-                files: files,
-                dimensions: {
-                    width: data.info.width,
-                    height: data.info.height
-                }
-            });
-
-        }).catch((err) => {
-            reject(err);
-        });
-    })
+    return {
+        path: paperPath,
+        colorPoints: decoratedBorderPoints,
+        boundingBox: borderData.boundingBox,
+        files: files,
+        dimensions: {
+            width: data.info.width,
+            height: data.info.height
+        }
+    };
 }
 
 module.exports = {
