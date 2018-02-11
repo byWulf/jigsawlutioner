@@ -141,8 +141,9 @@ function findExistingPieceIndex(pieces, piece) {
  * @param piece
  * @param pieces
  * @param onlySide (optional)
+ * @param factors (optional)
  */
-function findMatchingPieces(piece, pieces, onlySide) {
+function findMatchingPieces(piece, pieces, onlySide, factors) {
     Cache.clear();
 
     let matches = {};
@@ -158,7 +159,12 @@ function findMatchingPieces(piece, pieces, onlySide) {
 
                 for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
 
-                    let match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                    let match = null;
+                    if (typeof factors !== 'undefined') {
+                        match = factors[getFactorMapKey(piece, sideIndex, comparePiece, compareSideIndex)];
+                    } else {
+                        match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                    }
 
                     if (match.matches) {
                         match.piece = comparePiece;
@@ -182,6 +188,52 @@ function findMatchingPieces(piece, pieces, onlySide) {
     return matches;
 }
 
+function generateFactorsMap(pieces, onUpdateCallback) {
+    let map = {};
+
+    let sum = 0;
+    for (let i1 = 0; i1 < pieces.length; i1++) {
+        let piece = pieces[i1];
+        for (let i2 = i1 + 1; i2 < pieces.length; i2++) {
+            let comparePiece = pieces[i2];
+            for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
+                for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
+                    sum++;
+                }
+            }
+        }
+    }
+
+    let done = 0;
+    for (let i1 = 0; i1 < pieces.length; i1++) {
+        let piece = pieces[i1];
+        for (let i2 = i1 + 1; i2 < pieces.length; i2++) {
+            let comparePiece = pieces[i2];
+            for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
+                for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
+                    map[getFactorMapKey(piece, sideIndex, comparePiece, compareSideIndex)] = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+
+                    done++;
+
+                    if (typeof onUpdateCallback === 'function') {
+                        onUpdateCallback(done, sum);
+                    }
+                }
+            }
+        }
+    }
+
+    return map;
+}
+
+function getFactorMapKey(piece1, side1, piece2, side2) {
+    if (piece1.pieceIndex < piece2.pieceIndex) {
+        return piece1.pieceIndex + '_' + side1 + '_' + piece2.pieceIndex + '_' + side2;
+    } else {
+        return piece2.pieceIndex + '_' + side2 + '_' + piece1.pieceIndex + '_' + side1;
+    }
+}
+
 let sideOpposites = {
     0: {x: 0, y: -1},
     1: {x: -1, y: 0},
@@ -189,11 +241,20 @@ let sideOpposites = {
     3: {x: 1, y: 0}
 };
 
-function getPlacements(pieces) {
+function getPlacements(pieces, factorMap, onUpdateCallback) {
+    let piecesSum = pieces.length;
     let remainingPieces = pieces.slice(0);
     let groups = [];
 
+    if (!factorMap) {
+        factorMap = generateFactorsMap(pieces);
+    }
+
     while (remainingPieces.length > 0) {
+        if (typeof onUpdateCallback === 'function') {
+            onUpdateCallback(piecesSum - remainingPieces.length, piecesSum);
+        }
+
         let placed = false;
 
         if (groups.length > 0) {
@@ -215,8 +276,8 @@ function getPlacements(pieces) {
 
                         let pieceSide = (realSide - piece.rotation + 4) % 4;
                         if (piece.direction !== 'straight') {
-                            let matches = findMatchingPieces(piece, remainingPieces, pieceSide);
-                            if (matches[pieceSide].length === 1) {
+                            let matches = findMatchingPieces(piece, remainingPieces, pieceSide, factorMap);
+                            if (matches[pieceSide] && matches[pieceSide].length === 1) {
                                 allMatches.push({
                                     deviation: matches[pieceSide][0].deviation,
                                     x: x + sideOpposites[realSide].x,
@@ -267,5 +328,6 @@ module.exports = {
     findMatchingPieces: findMatchingPieces,
     getSideMatchingFactor: getSideMatchingFactor,
     getPlacements: getPlacements,
-    findExistingPieceIndex: findExistingPieceIndex
+    findExistingPieceIndex: findExistingPieceIndex,
+    generateFactorsMap: generateFactorsMap
 };
