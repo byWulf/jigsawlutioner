@@ -81,13 +81,42 @@ function getPieceCornerOffsets(diffs) {
 
                     //Check for straight sides for 10% before and after each corner
                     for (let i = 0; i < 4; i++) {
-                        for (let d = 0.03; d <= 0.15; d += 0.03) {
-                            let offsetX = (offsets[(i + 1) % 4].point.x - offsets[i].point.x) * d;
-                            let offsetY = (offsets[(i + 1) % 4].point.y - offsets[i].point.y) * d;
+                        /*for (let dist = 0.03; dist <= 0.15; dist += 0.03) {
+                            let offsetX = (offsets[(i + 1) % 4].point.x - offsets[i].point.x) * dist;
+                            let offsetY = (offsets[(i + 1) % 4].point.y - offsets[i].point.y) * dist;
                             let comparePoint = {x: offsets[i].point.x + offsetX, y: offsets[i].point.y + offsetY};
                             if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.4) {
+                                //if (a == 3 && b == 2 && c == 1 && d == 0) console.log(" => anfang/ende passt nicht");
                                 continue nextOffset;
                             }
+                        }*/
+
+                        let index = null;
+                        for (let j = 0; j <= diffs.length; j++) {
+                            if (diffs[j].offset == offsets[i].offset) {
+                                index = j;
+                                break;
+                            }
+                        }
+                        if (index === null) {
+                            continue nextOffset;
+                        }
+
+                        let started = false;
+                        let goodLength = 0;
+                        for (let j = index; j <= index + 150; j++) {
+                            if (!started && Math.abs(diffs[j%2000].diff) < 10) {
+                                started = true;
+                            }
+                            if (started && Math.abs(diffs[j%2000].diff) < 15) {
+                                goodLength++;
+                            }
+                            if (started && Math.abs(diffs[j%2000].diff) >= 15) {
+                                break;
+                            }
+                        }
+                        if (goodLength < 30) {
+                            continue nextOffset;
                         }
                     }
 
@@ -127,7 +156,7 @@ function getSide(path, fromOffset, toOffset, colorPoints) {
     for (let i = 0; i < steps; i++) {
         let fixedOffset = Math.floor((fromOffset + i * (length / (steps - 1))) % path.length);
         let pointAt = path.getPointAt(fixedOffset);
-        let colorPoint = MathHelper.getClosestPoint(colorPoints, pointAt);
+        let colorPoint = colorPoints ? MathHelper.getClosestPoint(colorPoints, pointAt) : null;
 
         let point = {
             x: (pointAt.x - middlePoint.x) * rotationCos + (pointAt.y - middlePoint.y) * rotationSin,
