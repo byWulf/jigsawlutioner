@@ -81,17 +81,18 @@ function getPieceCornerOffsets(diffs) {
 
                     //Check for straight sides for 10% before and after each corner
                     for (let i = 0; i < 4; i++) {
-                        /*for (let dist = 0.03; dist <= 0.15; dist += 0.03) {
+                        //5.0%
+                        for (let dist = 0.06; dist <= 0.15; dist += 0.03) {
                             let offsetX = (offsets[(i + 1) % 4].point.x - offsets[i].point.x) * dist;
                             let offsetY = (offsets[(i + 1) % 4].point.y - offsets[i].point.y) * dist;
                             let comparePoint = {x: offsets[i].point.x + offsetX, y: offsets[i].point.y + offsetY};
-                            if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.4) {
-                                //if (a == 3 && b == 2 && c == 1 && d == 0) console.log(" => anfang/ende passt nicht");
+                            if (MathHelper.distanceToPolyline(comparePoint, points) > Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.32) {
                                 continue nextOffset;
                             }
-                        }*/
+                        }
 
-                        let index = null;
+                        //7.2%
+                        /*let index = null;
                         for (let j = 0; j <= diffs.length; j++) {
                             if (diffs[j].offset == offsets[i].offset) {
                                 index = j;
@@ -105,19 +106,19 @@ function getPieceCornerOffsets(diffs) {
                         let started = false;
                         let goodLength = 0;
                         for (let j = index; j <= index + 150; j++) {
-                            if (!started && Math.abs(diffs[j%2000].diff) < 10) {
+                            if (!started && Math.abs(diffs[j%2000].diff) < 8) {
                                 started = true;
                             }
-                            if (started && Math.abs(diffs[j%2000].diff) < 15) {
+                            if (started && Math.abs(diffs[j%2000].diff) < 25) {
                                 goodLength++;
                             }
-                            if (started && Math.abs(diffs[j%2000].diff) >= 15) {
+                            if (started && Math.abs(diffs[j%2000].diff) >= 25) {
                                 break;
                             }
                         }
                         if (goodLength < 30) {
                             continue nextOffset;
-                        }
+                        }*/
                     }
 
                     distinctOffsets.push([offsets[0], offsets[1], offsets[2], offsets[3]]);
