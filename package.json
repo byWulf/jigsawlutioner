@@ -14,8 +14,15 @@
   },
   "homepage": "https://github.com/byWulf/jigsawlutioner#readme",
   "dependencies": {
-    "chai": "^4.1.1",
-    "paper-jsdom": "^0.11.4",
-    "sharp": "^0.18.2"
+    "canvas": "^1.6.7",
+    "chai": "^4.1.2",
+    "colors": "^1.1.2",
+    "dateformat": "^3.0.3",
+    "gpu.js": "^1.0.0",
+    "paper-jsdom": "^0.11.5",
+    "round-to": "^2.0.0",
+    "sharp": "^0.18.4",
+    "single-line-log": "^1.1.2",
+    "synaptic": "^1.1.4"
   }
 }
