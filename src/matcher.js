@@ -1,6 +1,7 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
 const Cache = require('./cache');
+const colors = require('colors/safe');
 
 /**
  * Returns some values to determine, how good the given sides match up.
@@ -14,6 +15,7 @@ const Cache = require('./cache');
  * @param targetSide
  * @param thresholdX
  * @param thresholdY
+ * @param dontRotateTargetSide
  * @returns {*}
  */
 function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, dontRotateTargetSide) {
@@ -47,7 +49,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
         nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2) * (dontRotateTargetSide ? -1 : 1)),
     };
 
-    let detailedCheck = (dontRotateTargetSide ? result.sameSide : !result.sameSide) && result.smallNopDiff <= 17 && result.bigNopDiff <= 17 && result.nopCenterDiff <= 17 && result.nopHeightDiff <= 17;
+    let detailedCheck = sourceSide.direction !== 'straight' && targetSide.direction !== 'straight' && (dontRotateTargetSide ? result.sameSide : !result.sameSide) && result.smallNopDiff <= 17 && result.bigNopDiff <= 17 && result.nopCenterDiff <= 17 && result.nopHeightDiff <= 17;
 
 
     if (detailedCheck) {
@@ -161,12 +163,12 @@ function findMatchingPieces(piece, pieces, onlySide, factors) {
 
                     let match = null;
                     if (typeof factors !== 'undefined') {
-                        match = factors[getFactorMapKey(piece, sideIndex, comparePiece, compareSideIndex)];
+                        match = factors[getFactorMapKey(piece.pieceIndex, sideIndex, comparePiece.pieceIndex, compareSideIndex)];
                     } else {
                         match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
                     }
 
-                    if (match.matches) {
+                    if (match && match.matches) {
                         match.piece = comparePiece;
                         results.push(match);
                         if (bestDeviation === null || match.deviation < bestDeviation) {
@@ -211,7 +213,7 @@ function generateFactorsMap(pieces, onUpdateCallback) {
             let comparePiece = pieces[i2];
             for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
                 for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
-                    map[getFactorMapKey(piece, sideIndex, comparePiece, compareSideIndex)] = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                    map[getFactorMapKey(piece.pieceIndex, sideIndex, comparePiece.pieceIndex, compareSideIndex)] = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
 
                     done++;
 
@@ -226,11 +228,11 @@ function generateFactorsMap(pieces, onUpdateCallback) {
     return map;
 }
 
-function getFactorMapKey(piece1, side1, piece2, side2) {
-    if (piece1.pieceIndex < piece2.pieceIndex) {
-        return piece1.pieceIndex + '_' + side1 + '_' + piece2.pieceIndex + '_' + side2;
+function getFactorMapKey(pieceIndex1, sideIndex1, pieceIndex2, sideIndex2) {
+    if (parseInt(pieceIndex1) < parseInt(pieceIndex2)) {
+        return pieceIndex1 + '_' + sideIndex1 + '_' + pieceIndex2 + '_' + sideIndex2;
     } else {
-        return piece2.pieceIndex + '_' + side2 + '_' + piece1.pieceIndex + '_' + side1;
+        return pieceIndex2 + '_' + sideIndex2 + '_' + pieceIndex1 + '_' + sideIndex1;
     }
 }
 
@@ -241,7 +243,53 @@ let sideOpposites = {
     3: {x: 1, y: 0}
 };
 
-function getPlacements(pieces, factorMap, onUpdateCallback) {
+function getPlacements(pieces, factorMap, options, onUpdateCallback) {
+    let baseOptions = {
+        avgDistanceFactor: 4.725,
+        directLengthDiffFactor: 0.462,
+        worstSingleDistanceFactor: 2,
+        nopCenterDiffFactor: 0.76,
+        nopHeightDiffFactor: 1.134,
+        smallNopDiffFactor: 0.945,
+        bigNopDiffFactor: 1.26,
+        moreSidesBetterFactor: 1.575,
+        noDistinctionLimit: 0.085,
+        avgDistanceOffset: -2,
+        directLengthDiffOffset: 0,
+        bigNopDiffOffset: -1,
+        smallNopDiffOffset: -2,
+        avgDistancePow: 1,
+        directLengthDiffPow: 1.01,
+        worstSingleDistancePow: 0.99,
+        nopCenterDiffPow: 1,
+        nopHeightDiffPow: 1,
+        smallNopDiffPow: 1,
+        bigNopDiffPow: 1
+    };
+    if (!options) options = {};
+    if (typeof options.avgDistanceFactor === 'undefined') options.avgDistanceFactor = baseOptions.avgDistanceFactor;
+    if (typeof options.avgDistanceOffset === 'undefined') options.avgDistanceOffset = baseOptions.avgDistanceOffset;
+    if (typeof options.directLengthDiffFactor === 'undefined') options.directLengthDiffFactor = baseOptions.directLengthDiffFactor;
+    if (typeof options.directLengthDiffOffset === 'undefined') options.directLengthDiffOffset = baseOptions.directLengthDiffOffset;
+    if (typeof options.worstSingleDistanceFactor === 'undefined') options.worstSingleDistanceFactor = baseOptions.worstSingleDistanceFactor;
+    if (typeof options.nopCenterDiffFactor === 'undefined') options.nopCenterDiffFactor = baseOptions.nopCenterDiffFactor;
+    if (typeof options.nopHeightDiffFactor === 'undefined') options.nopHeightDiffFactor = baseOptions.nopHeightDiffFactor;
+    if (typeof options.smallNopDiffFactor === 'undefined') options.smallNopDiffFactor = baseOptions.smallNopDiffFactor;
+    if (typeof options.smallNopDiffOffset === 'undefined') options.smallNopDiffOffset = baseOptions.smallNopDiffOffset;
+    if (typeof options.bigNopDiffFactor === 'undefined') options.bigNopDiffFactor = baseOptions.bigNopDiffFactor;
+    if (typeof options.bigNopDiffOffset === 'undefined') options.bigNopDiffOffset = baseOptions.bigNopDiffOffset;
+
+    if (typeof options.moreSidesBetterFactor === 'undefined') options.moreSidesBetterFactor = baseOptions.moreSidesBetterFactor;
+    if (typeof options.noDistinctionLimit === 'undefined') options.noDistinctionLimit = baseOptions.noDistinctionLimit;
+
+    if (typeof options.avgDistancePow === 'undefined') options.avgDistancePow = baseOptions.avgDistancePow;
+    if (typeof options.directLengthDiffPow === 'undefined') options.directLengthDiffPow = baseOptions.directLengthDiffPow;
+    if (typeof options.worstSingleDistancePow === 'undefined') options.worstSingleDistancePow = baseOptions.worstSingleDistancePow;
+    if (typeof options.nopCenterDiffPow === 'undefined') options.nopCenterDiffPow = baseOptions.nopCenterDiffPow;
+    if (typeof options.nopHeightDiffPow === 'undefined') options.nopHeightDiffPow = baseOptions.nopHeightDiffPow;
+    if (typeof options.smallNopDiffPow === 'undefined') options.smallNopDiffPow = baseOptions.smallNopDiffPow;
+    if (typeof options.bigNopDiffPow === 'undefined') options.bigNopDiffPow = baseOptions.bigNopDiffPow;
+
     let piecesSum = pieces.length;
     let remainingPieces = pieces.slice(0);
     let groups = [];
@@ -250,6 +298,7 @@ function getPlacements(pieces, factorMap, onUpdateCallback) {
         factorMap = generateFactorsMap(pieces);
     }
 
+    let placeMatches = {};
     while (remainingPieces.length > 0) {
         if (typeof onUpdateCallback === 'function') {
             onUpdateCallback(piecesSum - remainingPieces.length, piecesSum);
@@ -261,49 +310,123 @@ function getPlacements(pieces, factorMap, onUpdateCallback) {
             //Check every free side of the current group for matching pieces
             let group = groups[groups.length - 1];
 
-            let allMatches = [];
-            for (let x in group) {
-                if (!group.hasOwnProperty(x)) continue;
-                x = parseInt(x, 10);
+            let places = getFreePlaces(group);
+            placeMatches = {};
+            for (let i = 0; i < places.length; i++) {
+                if (1 || typeof placeMatches[places[i].x] === 'undefined' || typeof placeMatches[places[i].x][places[i].y] === 'undefined') {
+                    if (typeof placeMatches[places[i].x] === 'undefined') placeMatches[places[i].x] = {};
+                    placeMatches[places[i].x][places[i].y] = [];
+                    for (let p = 0; p < remainingPieces.length; p++) {
+                        //Try to rotate the remaining piece to every direction to this slot
+                        pieceRotationLoop: for (let rotation = 0; rotation < 4; rotation++) {
 
-                for (let y in group[x]) {
-                    if (!group[x].hasOwnProperty(y)) continue;
-                    y = parseInt(y, 10);
+                            for (let side = 0; side < 4; side++) {
+                                if (places[i].sideLimitations[side] !== null) {
+                                    if (typeof remainingPieces[p].sides[(side - rotation + 4) % 4] !== 'undefined') {
+                                        let sideDirection = remainingPieces[p].sides[(side - rotation + 4) % 4].direction;
 
-                    let piece = group[x][y];
-                    for (let realSide = 0; realSide < 4; realSide++) {
-                        if  (typeof group[x + sideOpposites[realSide].x] !== 'undefined' && typeof group[x + sideOpposites[realSide].x][y + sideOpposites[realSide].y] !== 'undefined') continue;
+                                        if (places[i].sideLimitations[side] === 'straight' && sideDirection !== 'straight') {
+                                            continue pieceRotationLoop;
+                                        }
+                                        if (places[i].sideLimitations[side] === 'notStraight' && sideDirection === 'straight') {
+                                            continue pieceRotationLoop;
+                                        }
+                                    }
+                                }
+                            }
 
-                        let pieceSide = (realSide - piece.rotation + 4) % 4;
-                        if (piece.direction !== 'straight') {
-                            let matches = findMatchingPieces(piece, remainingPieces, pieceSide, factorMap);
-                            if (matches[pieceSide] && matches[pieceSide].length === 1) {
-                                allMatches.push({
-                                    deviation: matches[pieceSide][0].deviation,
-                                    x: x + sideOpposites[realSide].x,
-                                    y: y + sideOpposites[realSide].y,
-                                    piece: matches[pieceSide][0].piece,
-                                    rotation: (realSide - matches[pieceSide][0].sideIndex + 6) % 4
-                                });
+                            let matchFactors = [];
+                            //Now check if the connecting sides match and if they do, how good they match
+                            for (let realSide = 0; realSide < 4; realSide++) {
+                                let targetX = parseInt(places[i].x) + parseInt(sideOpposites[realSide].x);
+                                let targetY = parseInt(places[i].y) + parseInt(sideOpposites[realSide].y);
+                                if (typeof group[targetX] === 'undefined' || typeof group[targetX][targetY] === 'undefined') continue;
+
+                                let sideIndex = (realSide - rotation + 4) % 4;
+
+                                let oppositePiece = group[targetX][targetY];
+                                let oppositeSideIndex = (realSide - (oppositePiece.rotation + 2) + 4) % 4;
+
+                                let match = factorMap[getFactorMapKey(remainingPieces[p].pieceIndex, sideIndex, oppositePiece.pieceIndex, oppositeSideIndex)];
+                                if (!match || !match.matches) {
+                                    continue pieceRotationLoop;
+                                }
+
+                                let sum =
+                                    options.avgDistanceFactor * Math.pow(Math.abs(match.avgDistance + options.avgDistanceOffset), options.avgDistancePow) +
+                                    options.directLengthDiffFactor * Math.pow(Math.abs(match.directLengthDiff + options.directLengthDiffOffset), options.directLengthDiffPow) +
+                                    options.worstSingleDistanceFactor * Math.pow(match.worstSingleDistance, options.worstSingleDistancePow) +
+                                    options.nopCenterDiffFactor * Math.pow(match.nopCenterDiff, options.nopCenterDiffPow) +
+                                    options.nopHeightDiffFactor * Math.pow(match.nopHeightDiff, options.nopHeightDiffPow) +
+                                    options.smallNopDiffFactor * Math.pow(Math.abs(match.smallNopDiff + options.smallNopDiffOffset), options.smallNopDiffPow) +
+                                    options.bigNopDiffFactor * Math.pow(Math.abs(match.bigNopDiff + options.bigNopDiffOffset), options.bigNopDiffPow);
+                                match.deviation = sum / 100;
+
+                                matchFactors.push(match);
+                            }
+
+                            //Only if all existing sides matched, this part is called
+                            let avgDeviation = 0;
+                            for (let m = 0; m < matchFactors.length; m++) {
+                                avgDeviation += matchFactors[m].deviation / (matchFactors.length * options.moreSidesBetterFactor);
+                            }
+                            placeMatches[places[i].x][places[i].y].push({
+                                piece: remainingPieces[p],
+                                rotation: rotation,
+                                avgDeviation: avgDeviation,
+                                connectingSides: matchFactors.length
+                            });
+                        }
+                    }
+                }
+
+                //Save the best fitting pieces to the place for later comparision
+                placeMatches[places[i].x][places[i].y].sort((a, b) => {
+                    return a.avgDeviation - b.avgDeviation
+                });
+                //There has to be exactly ONE "best fitting" match to be sure, that THIS is for this spot and no other may fit also
+                if (placeMatches[places[i].x][places[i].y].length > 0 && (placeMatches[places[i].x][places[i].y].length === 1 || placeMatches[places[i].x][places[i].y][1].avgDeviation - placeMatches[places[i].x][places[i].y][0].avgDeviation > options.noDistinctionLimit)) {
+                    places[i].match = placeMatches[places[i].x][places[i].y][0];
+                }
+            }
+
+            //Check in all places, where the best fitting piece is
+            places.sort((a, b) => {
+                if (!a.match && !b.match) return 0;
+                if (a.match && !b.match) return -1;
+                if (!a.match && b.match) return 1;
+                return a.match.avgDeviation - b.match.avgDeviation;
+            });
+            if (places[0].match) {
+                if (typeof group[places[0].x] === 'undefined') group[places[0].x] = {};
+                group[places[0].x][places[0].y] = places[0].match.piece;
+                group[places[0].x][places[0].y].rotation = places[0].match.rotation;
+
+                remainingPieces.splice(remainingPieces.indexOf(places[0].match.piece), 1);
+
+                for (let x = -1; x <= 1; x++) {
+                    for (let y = -1; y <= 1; y++) {
+                        if (typeof placeMatches[places[0].x + x] !== 'undefined' && typeof placeMatches[places[0].x + x][places[0].y + y] !== 'undefined') {
+                            delete placeMatches[places[0].x + x][places[0].y + y];
+                        }
+                    }
+                }
+
+                for (let x in placeMatches) {
+                    if (!placeMatches.hasOwnProperty(x)) continue;
+
+                    for (let y in placeMatches[x]) {
+                        if (!placeMatches[x].hasOwnProperty(y)) continue;
+
+                        for (let i = 0; i < placeMatches[x][y].length; i++) {
+                            if (placeMatches[x][y][i].piece.pieceIndex === places[0].match.piece.pieceIndex) {
+                                placeMatches[x][y].splice(i, 1);
+                                break;
                             }
                         }
                     }
                 }
-            }
 
-            //Find the best matching piece for the current group and place it
-            if (allMatches.length > 0) {
-                allMatches.sort((a, b) => {
-                    return a.deviation - b.deviation;
-                });
-
-                let match = allMatches[0];
-
-                if (typeof group[match.x] === 'undefined') group[match.x] = {};
-                group[match.x][match.y] = match.piece;
-                group[match.x][match.y].rotation = match.rotation;
-
-                remainingPieces.splice(remainingPieces.indexOf(match.piece), 1);
                 placed = true;
             }
         }
@@ -318,10 +441,267 @@ function getPlacements(pieces, factorMap, onUpdateCallback) {
             group[0][0].rotation = 0;
 
             groups.push(group);
+
+            placeMatches = {};
         }
     }
 
     return groups;
+}
+
+function getFreePlaces(group) {
+    let places = [];
+
+    let borders = {0: null, 1: null, 2: null, 3: null};
+    let limits = {0: null, 1: null, 2: null, 3: null};
+
+    for (let x in group) {
+        if (!group.hasOwnProperty(x)) continue;
+        x = parseInt(x, 10);
+
+        for (let y in group[x]) {
+            if (!group[x].hasOwnProperty(y)) continue;
+            y = parseInt(y, 10);
+
+            for (let i = 0; i < 4; i++) {
+                if (borders[i] === null) {
+                    borders[i] = {
+                        minX: x,
+                        minY: y,
+                        maxX: x,
+                        maxY: y
+                    };
+                }
+                if (x < borders[i].minX) borders[i].minX = x;
+                if (x > borders[i].maxX) borders[i].maxX = x;
+                if (y < borders[i].minY) borders[i].minY = y;
+                if (y > borders[i].maxY) borders[i].maxY = y;
+
+                if (typeof group[x][y].sides[(i - group[x][y].rotation + 4) % 4] !== 'undefined' && group[x][y].sides[(i - group[x][y].rotation + 4) % 4].direction === 'straight') {
+                    if (limits[i] === null) {
+                        limits[i] = {
+                            minX: x,
+                            minY: y,
+                            maxX: x,
+                            maxY: y
+                        };
+                    }
+                    if (x < limits[i].minX) limits[i].minX = x;
+                    if (x > limits[i].maxX) limits[i].maxX = x;
+                    if (y < limits[i].minY) limits[i].minY = y;
+                    if (y > limits[i].maxY) limits[i].maxY = y;
+                }
+            }
+        }
+    }
+
+    for (let x in group) {
+        if (!group.hasOwnProperty(x)) continue;
+        x = parseInt(x, 10);
+
+        for (let y in group[x]) {
+            if (!group[x].hasOwnProperty(y)) continue;
+            y = parseInt(y, 10);
+
+            for (let realSide = 0; realSide < 4; realSide++) {
+                if (typeof group[x + sideOpposites[realSide].x] !== 'undefined' && typeof group[x + sideOpposites[realSide].x][y + sideOpposites[realSide].y] !== 'undefined') continue;
+
+                let place = {x: x + sideOpposites[realSide].x, y: y + sideOpposites[realSide].y, sideLimitations: {0: null, 1: null, 2: null, 3: null}};
+
+                if (limits[1] !== null && place.x === limits[1].minX) place.sideLimitations[1] = 'straight';
+                else if (limits[1] !== null && place.x > limits[1].minX) place.sideLimitations[1] = 'notStraight';
+                else if (borders[1] !== null && place.x >= borders[1].minX) place.sideLimitations[1] = 'notStraight';
+
+                if (limits[3] !== null && place.x === limits[3].maxX) place.sideLimitations[3] = 'straight';
+                else if (limits[3] !== null && place.x < limits[3].maxX) place.sideLimitations[3] = 'notStraight';
+                else if (borders[3] !== null && place.x <= borders[3].maxX) place.sideLimitations[3] = 'notStraight';
+
+                if (limits[0] !== null && place.y === limits[0].minY) place.sideLimitations[0] = 'straight';
+                else if (limits[0] !== null && place.y > limits[0].minY) place.sideLimitations[0] = 'notStraight';
+                else if (borders[0] !== null && place.y >= borders[0].minY) place.sideLimitations[0] = 'notStraight';
+
+                if (limits[2] !== null && place.y === limits[2].maxY) place.sideLimitations[2] = 'straight';
+                else if (limits[2] !== null && place.y < limits[2].maxY) place.sideLimitations[2] = 'notStraight';
+                else if (borders[2] !== null && place.y <= borders[2].maxY) place.sideLimitations[2] = 'notStraight';
+
+                let alreadyAdded = false;
+                for (let i = 0; i < places.length; i++) {
+                    if (places[i].x === place.x && places[i].y === place.y) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded) {
+                    if (limits[1] !== null && place.x < limits[1].minX) continue;
+                    if (limits[3] !== null && place.x > limits[3].maxX) continue;
+                    if (limits[0] !== null && place.y < limits[0].minY) continue;
+                    if (limits[2] !== null && place.y > limits[2].maxY) continue;
+
+                    places.push(place);
+                }
+            }
+        }
+    }
+
+    return places;
+}
+
+function outputPlacements(placements, correctnessChecker) {
+    if (typeof correctnessChecker !== 'function') {
+        correctnessChecker = () => null;
+    }
+    const colorize = (string, group, x, y, realSide) => {
+        let piece = placements[group][x][y];
+        let comparePiece = typeof placements[group][x + sideOpposites[realSide].x] !== 'undefined' ? placements[group][x + sideOpposites[realSide].x][y + sideOpposites[realSide].y] : null;
+
+        let result = correctnessChecker(
+            parseInt(piece.pieceIndex),
+            (realSide - piece.rotation + 4) % 4,
+            comparePiece ? parseInt(comparePiece.pieceIndex) : null,
+            comparePiece ? (realSide - comparePiece.rotation + 4 + 2) % 4 : null
+        );
+
+        if (result === true) return colors.green(string);
+        if (result === false) return colors.red(string);
+        return string;
+    };
+
+    for (let g = 0; g < placements.length; g++) {
+        let groupPlacements = placements[g];
+
+        let minX = 0, maxX = 0, minY = 0, maxY = 0;
+        for (let x in groupPlacements) {
+            if (!groupPlacements.hasOwnProperty(x)) continue;
+
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+
+            for (let y in groupPlacements[x]) {
+                if (!groupPlacements[x].hasOwnProperty(y)) continue;
+
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+            }
+        }
+        console.log("Gruppe " + g + ":");
+
+        let str1 = '';
+        for (let y = minY; y <= maxY; y++) {
+            str1 = '';
+            let str2 = '';
+            let str3 = '';
+            let str4 = '';
+            let str5 = '';
+            for (let x = minX; x <= maxX; x++) {
+                let pieceIndex = 0;
+                let rotation = 0;
+                let customX = 0;
+                let customY = 0;
+                let customPieceIndex = 0;
+                if (typeof groupPlacements[x] !== 'undefined' && typeof groupPlacements[x][y] !== 'undefined') {
+                    pieceIndex = groupPlacements[x][y].pieceIndex;
+                    rotation = groupPlacements[x][y].rotation;
+                    customY = Math.floor((pieceIndex - 2) / 25) + 1;
+                    customX = (pieceIndex - 2) - ((customY - 1) * 25) + 1;
+
+                    customY = (Math.abs(customY) < 10 ? ' ' : '') + (customY >= 0 ? ' ' : '') + customY;
+                    customX = (Math.abs(customX) < 10 ? ' ' : '') + (customX >= 0 ? ' ' : '') + customX;
+                    customPieceIndex = (pieceIndex < 100 ? ' ' : '') + (pieceIndex < 10 ? ' ' : '') + pieceIndex;
+                }
+
+                if (pieceIndex > 0) {
+                    str1 += '+      ';
+                    str2 += ' ' + (rotation === 0 ? '●' : '┌');
+                    str3 += ' ';
+                    str4 += ' ';
+                    str5 += ' ' + (rotation === 1 ? '●' : '└');
+
+                    if (groupPlacements[x][y].sides[(0 - rotation + 4) % 4]) {
+                        let direction = groupPlacements[x][y].sides[(0 - rotation + 4) % 4].direction;//┌┐└┘─│
+                        if (direction === 'straight') str2 += colorize('────',g, x, y, 0);
+                        if (direction === 'in') str2 += colorize('─┐┌─',g, x, y, 0);
+                        if (direction === 'out') str2 += colorize('─┘└─',g, x, y, 0);
+                    } else {
+                        str2 += '    ';
+                    }
+
+                    if (groupPlacements[x][y].sides[(1 - rotation + 4) % 4]) {
+                        let direction = groupPlacements[x][y].sides[(1 - rotation + 4) % 4].direction;
+                        if (direction === 'straight') {
+                            str3 += colorize('│',g, x, y, 1);
+                            str4 += colorize('│',g, x, y, 1);
+                        }
+                        if (direction === 'in') {
+                            str3 += colorize('└',g, x, y, 1);
+                            str4 += colorize('┌',g, x, y, 1);
+                        }
+                        if (direction === 'out') {
+                            str3 += colorize('┘',g, x, y, 1);
+                            str4 += colorize('┐',g, x, y, 1);
+                        }
+                    } else {
+                        str3 += ' ';
+                        str4 += ' ';
+                    }
+
+                    str3 += customX + ' ';
+                    str4 += customY + ' ';
+
+                    if (groupPlacements[x][y].sides[(3 - rotation + 4) % 4]) {
+                        let direction = groupPlacements[x][y].sides[(3 - rotation + 4) % 4].direction;
+                        if (direction === 'straight') {
+                            str3 += colorize('│',g, x, y, 3);
+                            str4 += colorize('│',g, x, y, 3);
+                        }
+                        if (direction === 'in') {
+                            str3 += colorize('┘',g, x, y, 3);
+                            str4 += colorize('┐',g, x, y, 3);
+                        }
+                        if (direction === 'out') {
+                            str3 += colorize('└',g, x, y, 3);
+                            str4 += colorize('┌',g, x, y, 3);
+                        }
+                    } else {
+                        str3 += ' ';
+                        str4 += ' ';
+                    }
+
+                    if (groupPlacements[x][y].sides[(2 - rotation + 4) % 4]) {
+                        let direction = groupPlacements[x][y].sides[(2 - rotation + 4) % 4].direction;
+                        if (direction === 'straight') str5 += colorize('────',g, x, y, 2);
+                        if (direction === 'in') str5 += colorize('─┘└─',g, x, y, 2);
+                        if (direction === 'out') str5 += colorize('─┐┌─',g, x, y, 2);
+                    } else {
+                        str5 += '    ';
+                    }
+
+                    str2 += rotation === 3 ? '●' : '┐';
+                    str5 += rotation === 2 ? '●' : '┘';
+                } else {
+                    str1 += '+      ';
+                    str2 += '       ';
+                    str3 += '       ';
+                    str4 += '       ';
+                    str5 += '       ';
+                }
+
+            }
+
+            str1 += '+';
+            str2 += ' ';
+            str3 += ' ';
+            str4 += ' ';
+            str5 += ' ';
+
+            console.log(str1);
+            console.log(str2);
+            console.log(str3);
+            console.log(str4);
+            console.log(str5);
+        }
+        console.log(str1);
+        console.log("\n");
+    }
 }
 
 module.exports = {
@@ -329,5 +709,8 @@ module.exports = {
     getSideMatchingFactor: getSideMatchingFactor,
     getPlacements: getPlacements,
     findExistingPieceIndex: findExistingPieceIndex,
-    generateFactorsMap: generateFactorsMap
+    generateFactorsMap: generateFactorsMap,
+    getFreePlaces: getFreePlaces,
+    outputPlacements: outputPlacements,
+    getFactorMapKey: getFactorMapKey
 };
