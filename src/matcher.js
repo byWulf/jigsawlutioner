@@ -27,8 +27,9 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
     }
 
     //Caching to reduce calculation time
-    if (Cache.has(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide])) {
-        return Cache.get(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide]);
+    let cacheKey = ['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide];
+    if (Cache.has(cacheKey)) {
+        return Cache.get(cacheKey);
     }
 
     let result = {
@@ -83,7 +84,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
         result.matches = true;
     }
 
-    Cache.set(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide], result);
+    Cache.set(cacheKey, result);
     return result;
 }
 

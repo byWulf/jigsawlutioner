@@ -57,8 +57,9 @@ function distanceToPolyline(point, polylinePoints) {
  * @returns {*}
  */
 function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY) {
-    if (Cache.has([sourcePoints, comparePoints, offsetX, offsetY])) {
-        return Cache.get([sourcePoints, comparePoints, offsetX, offsetY]);
+    let cacheKey = [sourcePoints, comparePoints, offsetX, offsetY];
+    if (Cache.has(cacheKey)) {
+        return Cache.get(cacheKey);
     }
 
     let distanceSum = 0;
@@ -78,7 +79,7 @@ function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY) {
         maxDistance: maxDistance
     };
     
-    Cache.set([sourcePoints, comparePoints, offsetX, offsetY], result);
+    Cache.set(cacheKey, result);
     
     return result;
 }
