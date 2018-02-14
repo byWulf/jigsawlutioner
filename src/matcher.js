@@ -49,7 +49,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
         nopCenterDiff: Math.abs((targetSide.nop.max.left + (targetSide.nop.max.right - targetSide.nop.max.left) / 2) + (sourceSide.nop.max.left + (sourceSide.nop.max.right - sourceSide.nop.max.left) / 2) * (dontRotateTargetSide ? -1 : 1)),
     };
 
-    let detailedCheck = sourceSide.direction !== 'straight' && targetSide.direction !== 'straight' && (dontRotateTargetSide ? result.sameSide : !result.sameSide) && result.smallNopDiff <= 17 && result.bigNopDiff <= 17 && result.nopCenterDiff <= 17 && result.nopHeightDiff <= 17;
+    let detailedCheck = (dontRotateTargetSide || (sourceSide.direction !== 'straight' && targetSide.direction !== 'straight')) && (dontRotateTargetSide ? result.sameSide : !result.sameSide) && result.smallNopDiff <= 17 && result.bigNopDiff <= 17 && result.nopCenterDiff <= 17 && result.nopHeightDiff <= 17;
 
 
     if (detailedCheck) {
