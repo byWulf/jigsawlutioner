@@ -371,6 +371,8 @@ function outputDeviationStats(factorMap) {
         let performance = getFittingPerformance(placements);
         console.log("Result: " + roundTo(performance * 100, 1) + "%");
 
+        //TODO: Angeblich hat [4.725,0.462,2,0.76,1.134,0.945,1.26,1.575,0.085,-2,0,4503599627370495,-2,1,1.01,0.99,0.99,1,1,1] 87.5% .... aber die bigNopOffset ist irrwitzig groß....
+
 /*        outputDeviationStats(factorMap);
 
         let baseOptionSet = [4.725,0.462,2,0.76,1.134,0.945,1.26,1.575,0.085,-2,0,-1,-2,1,1.01,0.99,1,1,1,1];
