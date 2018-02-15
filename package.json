@@ -23,6 +23,7 @@
     "single-line-log": "^1.1.2"
   },
   "devDependencies": {
-    "canvas": "^1.6.7"
+    "canvas": "^1.6.7",
+    "mocha": "^5.0.1"
   }
 }
