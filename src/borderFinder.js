@@ -298,7 +298,11 @@ function decorateBorderPointsWithColors(borderData, reducedBorderData, sharpImag
     return borderData.points;
 }
 
-async function getOptimizedImageData(file, threshold, reduction, debug) {
+async function getOptimizedImageData(file, threshold, reduction, debug, options) {
+    if (typeof options === 'undefined') options = {};
+    let targetPieceColor = typeof options['targetPieceColor'] !== 'undefined' ? options['targetPieceColor'] : null;
+    let targetBackgroundColor = typeof options['targetBackgroundColor'] !== 'undefined' ? options['targetBackgroundColor'] : null;
+
     let image = sharp(file);
     let data = await image.threshold(threshold).toColourspace('b-w').raw().toBuffer({resolveWithObject: true});
 
@@ -335,6 +339,13 @@ async function getOptimizedImageData(file, threshold, reduction, debug) {
     //Check if piece is cut of on an edge
     if (hasBorderPixel(data, 0x33)) {
         throw new Error('Piece is cut of');
+    }
+
+    if (targetPieceColor !== null) {
+        replaceColor(data, 0x33, targetPieceColor);
+    }
+    if (targetBackgroundColor !== null) {
+        replaceColor(data, 0xbb, targetBackgroundColor);
     }
     
     return data;
@@ -414,5 +425,6 @@ async function findPieceBorder(file, options) {
 }
 
 module.exports = {
-    findPieceBorder: findPieceBorder
+    findPieceBorder: findPieceBorder,
+    getOptimizedImageData: getOptimizedImageData
 };
