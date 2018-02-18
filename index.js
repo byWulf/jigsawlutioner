@@ -5,5 +5,6 @@ const Matcher = require('./src/matcher');
 module.exports = {
     BorderFinder: BorderFinder,
     SideFinder: SideFinder,
-    Matcher: Matcher
+    Matcher: Matcher,
+    Debug: Debug
 };

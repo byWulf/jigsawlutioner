@@ -85,6 +85,9 @@ function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY) {
 }
 
 function distanceOfPoints(point1, point2) {
+    point1 = fixPoint(point1);
+    point2 = fixPoint(point2);
+
     let diffX = point2.x - point1.x;
     let diffY = point2.y - point1.y;
     return Math.sqrt(diffX * diffX + diffY * diffY);
@@ -108,10 +111,49 @@ function getClosestPoint(points, point) {
     return null;
 }
 
+/**
+ * Point1/2 will become 0° if rotated by the return value
+ *
+ * @param point1
+ * @param point2
+ * @param point3
+ * @param point4
+ */
+function getRotationOfRectangle(point1, point2, point3, point4) {
+    let points = [point1, point2, point3, point4];
+
+    let keyY = 'y';
+    let keyX = 'x';
+    if (points[0] instanceof Array) {
+        keyY = 2;
+        keyX = 1;
+    }
+
+    let rotation = 0;
+    for (let i = 0; i < 4; i++) {
+        let singleRotation = -Math.atan2(
+            points[(i + 1) % 4][keyY] - points[i][keyY],
+            points[(i + 1) % 4][keyX] - points[i][keyX]
+        ) * 180 / Math.PI - (i + 1) * 90;
+        while (singleRotation < 0) singleRotation += 360;
+
+        rotation += singleRotation;
+    }
+
+    return rotation / 4;
+}
+
+function fixPoint(numericalPoint) {
+    if (typeof numericalPoint.x !== 'undefined') return numericalPoint;
+
+    return {x: numericalPoint[1], y: numericalPoint[2]};
+}
+
 module.exports = {
     distanceToLine: distanceToLine,
     distanceToPolyline: distanceToPolyline,
     distancesOfPolylines: distancesOfPolylines,
     distanceOfPoints: distanceOfPoints,
-    getClosestPoint: getClosestPoint
+    getClosestPoint: getClosestPoint,
+    getRotationOfRectangle: getRotationOfRectangle
 };

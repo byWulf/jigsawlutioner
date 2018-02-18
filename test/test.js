@@ -1,18 +1,58 @@
 const fs = require('fs');
 const Matcher = require(__dirname + '/../src/matcher');
+const debug = require(__dirname + '/../src/debug');
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
 const sharp = require('sharp');
 
-/*
-(async() => {
-    let pieces = JSON.parse(fs.readFileSync(__dirname + '/../../jigsawlutioner-machine/getplacements.json'));
-    console.log(pieces);
-    let placements = await Matcher.getPlacements(pieces.pieces);
-    console.log(placements);
-    Matcher.outputPlacements(placements);
-})();*/
+/**
+ * @return {Promise<object[]>}
+ */
+function getPieces() {
+    return new Promise((resolve, reject) => {
+        if (this.piecesLoaded) {
+            resolve();
+            return;
+        }
 
+        let pieces = [];
+
+        const fs = require('fs');
+        let dir = __dirname + '/../../jigsawlutioner-machine/projects/Default/pieces/';
+        fs.readdir(dir, (err, fileNames) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            fileNames.forEach((filename) => {
+                let content = fs.readFileSync(dir + filename, 'utf-8');
+
+                pieces.push(JSON.parse(content));
+            });
+
+            resolve(pieces);
+        });
+    });
+}
+
+(async() => {
+    try {
+        let pieces = await getPieces();
+
+        console.log(pieces);
+        console.log("start: ", Date.now());
+        let placements = await Matcher.getPlacements(pieces);
+        //let placements = JSON.parse(fs.readFileSync(__dirname + '/../../jigsawlutioner-machine/projects/Default/placements', 'utf-8'));
+        console.log("end: ", Date.now());
+        //debug.outputPlacements(placements);
+        debug.createPlacementsImage(placements, 'foobar.png', {imagesPath: __dirname + '/../../jigsawlutioner-machine/projects/Default/images', threshold: 245, pieceSize: 256});
+    } catch (e) {
+        console.log(e);
+    }
+})();
+
+/*
 let photobox = require('../../jigsawlutioner-machine/src/stations/photobox');
 
 (async() => {
@@ -30,4 +70,4 @@ let photobox = require('../../jigsawlutioner-machine/src/stations/photobox');
     } catch (e) {
         console.log(e);
     }
-})();
+})();*/
