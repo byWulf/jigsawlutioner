@@ -4,6 +4,7 @@ const debug = require(__dirname + '/../src/debug');
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
 const sharp = require('sharp');
+const opn = require('opn');
 
 /**
  * @return {Promise<object[]>}
@@ -18,35 +19,83 @@ function getPieces() {
         let pieces = [];
 
         const fs = require('fs');
-        let dir = __dirname + '/../../jigsawlutioner-machine/projects/Default/pieces/';
+        let dir = __dirname + '/fixtures/pieces/';
         fs.readdir(dir, (err, fileNames) => {
             if (err) {
                 reject(err);
                 return;
             }
 
-            fileNames.forEach((filename) => {
-                let content = fs.readFileSync(dir + filename, 'utf-8');
+            fileNames.forEach(async (filename) => {
+                if (['piece2.jpg', 'piece3.jpg', 'piece4.jpg', 'piece27.jpg', 'piece28.jpg', 'piece29.jpg', 'piece52.jpg', 'piece53.jpg', 'piece54.jpg'].indexOf(filename) === -1) {
+                    return;
+                }
 
-                pieces.push(JSON.parse(content));
+                //let content = fs.readFileSync(dir + filename, 'utf-8');
+
+                console.log('Loading ' + dir + filename);
+
+                let piece, sidePiece;
+
+                try {
+                    piece = await BorderFinder.findPieceBorder(dir + filename, {
+                        threshold: 245,
+                        reduction: 2,
+                        debug: true
+                    });
+                } catch (err) {
+                    console.log(err);
+                }
+
+                try {
+                    sidePiece = await SideFinder.findSides(pieces.length, piece.path, null, {
+                        debug: true,
+                        filename: dir + filename
+                    });
+                    piece.pieceIndex = pieces.length;
+                    piece.sides = sidePiece.sides;
+                    piece.diffs = sidePiece.diffs;
+                } catch (err) {
+                    console.log(err);
+                }
+
+                fs.writeFileSync(dir + filename + '.parsed.json', JSON.stringify(piece));
+
+                console.log(dir + filename + ' loaded');
+                pieces.push(piece);
+
+                if (pieces.length === 9) {
+                    resolve(pieces);
+                }
             });
-
-            resolve(pieces);
         });
     });
 }
 
 (async() => {
     try {
-        let pieces = await getPieces();
+        let regenerate = false;
 
-        console.log(pieces);
-        console.log("start: ", Date.now());
-        let placements = await Matcher.getPlacements(pieces);
-        //let placements = JSON.parse(fs.readFileSync(__dirname + '/../../jigsawlutioner-machine/projects/Default/placements', 'utf-8'));
-        console.log("end: ", Date.now());
-        //debug.outputPlacements(placements);
-        debug.createPlacementsImage(placements, 'foobar.png', {imagesPath: __dirname + '/../../jigsawlutioner-machine/projects/Default/images', threshold: 245, pieceSize: 256});
+        let placements;
+        if (regenerate) {
+            let pieces = await getPieces();
+
+            console.log("pieces loaded: ", pieces.length);
+            console.log("start placement-generation: ", Date.now());
+            placements = await Matcher.getPlacements(pieces);
+            fs.writeFileSync(__dirname + '/fixtures/placements', JSON.stringify(placements));
+        } else {
+            placements = JSON.parse(fs.readFileSync(__dirname + '/fixtures/placements', 'utf-8'));
+        }
+        console.log("end placement-generation:  ", Date.now());
+        debug.outputPlacements(placements);
+        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 256});
+
+        opn('file://' + __dirname + '/fixtures/placements.png').then(() => {
+            console.log("closed?");
+        });
+
+        console.log("done");
     } catch (e) {
         console.log(e);
     }
