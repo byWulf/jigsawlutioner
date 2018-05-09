@@ -1,5 +1,4 @@
 const colors = require('colors/safe');
-const borderFinder = require('./borderFinder');
 const mathHelper = require('./mathHelper');
 
 class Debug {
@@ -172,7 +171,6 @@ class Debug {
         if (typeof options !== 'object') options = {};
         let pieceSize = options['pieceSize'] || 48;
         let imagesPath = options['imagesPath'] || '';
-        let threshold = options['threshold'] || 200;
 
         let width = 0;
         let height = 0;
@@ -209,19 +207,12 @@ class Debug {
 
             groupSizes[g].avgWidth /= groupSizes[g].count * 2;
             groupSizes[g].avgHeight /= groupSizes[g].count * 2;
-
-            console.log(g, groupSizes[g]);
         }
 
-        console.log("???");
         const Canvas = require('canvas');
-        console.log("!!!");
-        const fs = require('fs');
         const sharp = require('sharp');
 
-        console.log("creating canvas", (width + 1) * pieceSize, (height + 1) * pieceSize);
         const canvas = new Canvas((width + 1) * pieceSize, (height + 1) * pieceSize);
-        console.log("done");
         const context = canvas.getContext('2d');
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, (width + 1) * pieceSize, (height + 1) * pieceSize);
@@ -242,26 +233,14 @@ class Debug {
 
                     let piece = groupPlacements[x][y];
                     if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
+                    if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
 
-
-                    console.log("doing ", g, x, y);
-
-                    if (typeof piece.files === 'undefined' || typeof piece.files.original === 'undefined') continue;
-
-                    let sharpImage = sharp(imagesPath + '/' + piece.files.original);
-                    let maskData = await borderFinder.getOptimizedImageData(imagesPath + '/' + piece.files.original, threshold, 0, false, {
-                        targetPieceColor: 0xff,
-                        targetBackgroundColor: 0x00
-                    });
-
-                    sharpImage.joinChannel(maskData.data, {raw: maskData.info}).toColourspace('sRGB');
-
-                    let buffer = await sharpImage.toFormat('png').toBuffer();
+                    let sharpImage = sharp(imagesPath + '/' + piece.files.transparent);
+                    let metadata = await sharpImage.metadata();
+                    let buffer = await sharpImage.toBuffer();
 
                     let img = new Canvas.Image();
                     img.src = buffer;
-
-                    let metadata = await sharpImage.metadata();
 
                     let distanceXFactor = 1;
                     let distanceYFactor = groupSizes[g].avgHeight / groupSizes[g].avgWidth;
@@ -270,10 +249,11 @@ class Debug {
                     let destinationX = ((parseInt(x, 10) - groupSizes[g].minX + 1) * pieceSize) * distanceXFactor;
                     let destinationY = ((currentY + 1 + parseInt(y, 10) - groupSizes[g].minY + 1) * pieceSize) * distanceYFactor;
 
-                    let centerX = piece.boundingBox.left + (piece.sides[0].startPoint[1] + piece.sides[1].startPoint[1] + piece.sides[2].startPoint[1] + piece.sides[3].startPoint[1]) / 4;
-                    let centerY = piece.boundingBox.top + (piece.sides[0].startPoint[2] + piece.sides[1].startPoint[2] + piece.sides[2].startPoint[2] + piece.sides[3].startPoint[2]) / 4;
+                    let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
+                    let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
 
-                    console.log(g, x, y, destinationX, destinationY);
+                    let centerX = piece.boundingBox.left + (piece.sides[0].startPoint[xKey] + piece.sides[1].startPoint[xKey] + piece.sides[2].startPoint[xKey] + piece.sides[3].startPoint[xKey]) / 4;
+                    let centerY = piece.boundingBox.top + (piece.sides[0].startPoint[yKey] + piece.sides[1].startPoint[yKey] + piece.sides[2].startPoint[yKey] + piece.sides[3].startPoint[yKey]) / 4;
 
                     let pieceCanvasSize = Math.sqrt(metadata.width * metadata.width + metadata.height * metadata.height);
                     let pieceCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
@@ -303,12 +283,23 @@ class Debug {
             currentY += groupSizes[g].maxY - groupSizes[g].minY + 2;
         }
 
+        await this._savePlacementsImage(filename, canvas);
+    }
 
-        let out = fs.createWriteStream(filename);
-        let stream = canvas.pngStream();
+    _savePlacementsImage(filename, canvas) {
+        return new Promise((resolve) => {
+            const fs = require('fs');
 
-        stream.on('data', function(chunk){
-          out.write(chunk);
+            let out = fs.createWriteStream(filename);
+            let stream = canvas.pngStream();
+
+            stream.on('data', (chunk) => {
+                out.write(chunk);
+            });
+
+            stream.on('end', () => {
+                resolve();
+            });
         });
     }
 }
