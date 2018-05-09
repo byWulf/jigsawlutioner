@@ -351,6 +351,19 @@ async function getOptimizedImageData(file, threshold, reduction, debug, options)
     return data;
 }
 
+async function saveTransparentImage(filename, threshold) {
+    let sharpImage = sharp(filename);
+
+    let maskData = await getOptimizedImageData(filename, threshold, 0, false, {
+        targetPieceColor: 0xff,
+        targetBackgroundColor: 0x00
+    });
+
+    sharpImage.joinChannel(maskData.data, {raw: maskData.info}).toColourspace('sRGB');
+
+    await sharpImage.toFormat('png').toFile(filename + '.transparent.png');
+}
+
 /**
  *
  * @param {string|Buffer} file
@@ -377,12 +390,12 @@ async function findPieceBorder(file, options) {
     //Get optimized data of the image with dark gray pixels for the piece.
     let data = await getOptimizedImageData(file, options.threshold, options.reduction, options.debug);
 
-    //Get optimized data of the imaage reduced to the point where the border shows the corect colors
-    let colorData = await getOptimizedImageData(file, options.threshold, Math.max(3, options.reduction * 10), options.debug);
-
     //Get list of all border pixels and decorate them with the colors
     let decoratedBorderPoints = null;
     if (options.returnColorPoints) {
+        //Get optimized data of the imaage reduced to the point where the border shows the corect colors
+        let colorData = await getOptimizedImageData(file, options.threshold, Math.max(3, options.reduction * 10), options.debug);
+
         let completeBorderData = getOrderedBorderPoints(data, 0x33, false);
         let completeReducedBorderData = getOrderedBorderPoints(colorData, 0x33, false);
         let sharpImageData = await sharp(file).blur(3).raw().toBuffer({resolveWithObject: true});
@@ -409,6 +422,9 @@ async function findPieceBorder(file, options) {
             files['step2c'] = path.basename(file) + '.step2c.png';
             files['step2d'] = path.basename(file) + '.step2d.png';
             files['step2e'] = path.basename(file) + '.step2e.png';
+
+            await saveTransparentImage(file, options.threshold);
+            files['transparent'] = path.basename(file) + '.transparent.png';
         }
     }
 
