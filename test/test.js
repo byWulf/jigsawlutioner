@@ -9,33 +9,30 @@ const opn = require('opn');
 /**
  * @return {Promise<object[]>}
  */
-function getPieces() {
+function getPieces(fromX, toX, fromY, toY) {
     return new Promise((resolve, reject) => {
         if (this.piecesLoaded) {
             resolve();
             return;
         }
 
-        let pieces = [];
-
-        const fs = require('fs');
         let dir = __dirname + '/fixtures/pieces/';
-        fs.readdir(dir, (err, fileNames) => {
-            if (err) {
-                reject(err);
-                return;
+        let fileNames = [];
+        for (let x = fromX; x <= toX; x++) {
+            for (let y = fromY; y <= toY; y++) {
+                fileNames.push('piece' + (2 + y*25 + x) + '.jpg');
             }
+        }
 
-            fileNames.forEach(async (filename) => {
-                if (['piece2.jpg', 'piece3.jpg', 'piece4.jpg', 'piece27.jpg', 'piece28.jpg', 'piece29.jpg', 'piece52.jpg', 'piece53.jpg', 'piece54.jpg'].indexOf(filename) === -1) {
-                    return;
-                }
+        let pieces = [];
+        fileNames.forEach(async (filename) => {
+            console.log('Loading ' + dir + filename);
 
-                //let content = fs.readFileSync(dir + filename, 'utf-8');
+            let piece, sidePiece;
 
-                console.log('Loading ' + dir + filename);
-
-                let piece, sidePiece;
+            if (fs.existsSync(dir + filename + '.parsed.json')) {
+                piece = JSON.parse(fs.readFileSync(dir + filename + '.parsed.json', 'utf-8'));
+            } else {
 
                 try {
                     piece = await BorderFinder.findPieceBorder(dir + filename, {
@@ -60,14 +57,14 @@ function getPieces() {
                 }
 
                 fs.writeFileSync(dir + filename + '.parsed.json', JSON.stringify(piece));
+            }
 
-                console.log(dir + filename + ' loaded');
-                pieces.push(piece);
+            console.log(dir + filename + ' loaded');
+            pieces.push(piece);
 
-                if (pieces.length === 9) {
-                    resolve(pieces);
-                }
-            });
+            if (pieces.length === fileNames.length) {
+                resolve(pieces);
+            }
         });
     });
 }
@@ -78,7 +75,7 @@ function getPieces() {
 
         let placements;
         if (regenerate) {
-            let pieces = await getPieces();
+            let pieces = await getPieces(0,24,0,19);
 
             console.log("pieces loaded: ", pieces.length);
             console.log("start placement-generation: ", Date.now());
@@ -89,7 +86,7 @@ function getPieces() {
         }
         console.log("end placement-generation:  ", Date.now());
         debug.outputPlacements(placements);
-        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 256});
+        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 64});
 
         opn('file://' + __dirname + '/fixtures/placements.png').then(() => {
             console.log("closed?");

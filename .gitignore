@@ -1,7 +1,9 @@
 .idea/
 node_modules/
 test/fixtures/pieces/*.png
+test/fixtures/pieces/*.*.jpg
 test/fixtures/pieces/*_*.jpg
 test/fixtures/pieces/*.json
 test/fixtures/pieces/Thumbs.db
 test/fixtures/fittingPerformance_*
+test/fixtures/placements*
