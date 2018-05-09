@@ -1,5 +1,4 @@
 const fs = require('fs');
-let trainingSet = JSON.parse(fs.readFileSync(__dirname + '/fixtures/pieces/cornerSolution.json'));
 
 const sideFinder = require('../src/sideFinder');
 
