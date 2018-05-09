@@ -242,7 +242,11 @@ function saveSideImage(filename, sides) {
             let radius = 5;
             context.beginPath();
             context.arc(side.points[i].x + 200, side.points[i].y + 200 + sideIndex * 250, radius, 0, 2 * Math.PI, false);
-            context.fillStyle = 'rgb(' + side.points[i].color[0] + ', ' + side.points[i].color[1] + ', ' + side.points[i].color[2] + ')';
+            if (side.points[i].color !== null) {
+                context.fillStyle = 'rgb(' + side.points[i].color[0] + ', ' + side.points[i].color[1] + ', ' + side.points[i].color[2] + ')';
+            } else {
+                context.fillStyle = 'rgb(0,255,255)';
+            }
             context.fill();
         }
     }
