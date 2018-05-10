@@ -69,13 +69,19 @@ function getPieces(fromX, toX, fromY, toY) {
     });
 }
 
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
+}
+
 (async() => {
     try {
-        let regenerate = false;
+        let regenerate = true;
 
         let placements;
         if (regenerate) {
-            let pieces = await getPieces(0,24,0,19);
+            let pieces = await getPieces(0,1,0,1);
 
             console.log("pieces loaded: ", pieces.length);
             console.log("start placement-generation: ", Date.now());
@@ -86,7 +92,9 @@ function getPieces(fromX, toX, fromY, toY) {
         }
         console.log("end placement-generation:  ", Date.now());
         debug.outputPlacements(placements);
-        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 64});
+        await debug.createPlacementsImage_new(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 64});
+
+        await sleep(1000);
 
         opn('file://' + __dirname + '/fixtures/placements.png').then(() => {
             console.log("closed?");

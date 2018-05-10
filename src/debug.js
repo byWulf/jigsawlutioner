@@ -286,6 +286,111 @@ class Debug {
         await this._savePlacementsImage(filename, canvas);
     }
 
+    async createPlacementsImage_new(placements, filename, options) {
+        if (typeof options !== 'object') options = {};
+        let pieceSize = options['pieceSize'] || 48;
+        let imagesPath = options['imagesPath'] || '';
+
+        let width = 0;
+        let height = 0;
+        nextGroup: for (let g = 0; g < placements.length; g++) {
+            let groupPlacements = placements[g];
+
+            for (let x in groupPlacements) {
+                if (!groupPlacements.hasOwnProperty(x)) continue;
+
+                for (let y in groupPlacements[x]) {
+                    if (!groupPlacements[x].hasOwnProperty(y)) continue;
+
+                    let piece = groupPlacements[x][y];
+                    if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
+
+                    width = Math.max(width, piece.groupSizes.maxX - piece.groupSizes.minX + 1);
+                    height += piece.groupSizes.maxY - piece.groupSizes.minY + 1 + 2;
+
+                    continue nextGroup;
+                }
+            }
+        }
+
+        const Canvas = require('canvas');
+        const sharp = require('sharp');
+
+        const canvas = new Canvas((width + 1) * pieceSize, (height + 1) * pieceSize);
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, (width + 1) * pieceSize, (height + 1) * pieceSize);
+
+        let currentY = 0;
+        for (let g = 0; g < placements.length; g++) {
+            let groupPlacements = placements[g];
+
+            context.font = Math.floor(pieceSize * 0.25) + 'px Tahoma';
+            context.fillStyle = '#000000';
+            context.fillText('Group #' + g, pieceSize * 0.1, (currentY + 0.5) * pieceSize);
+
+            let groupSizes;
+
+            for (let x in groupPlacements) {
+                if (!groupPlacements.hasOwnProperty(x)) continue;
+
+                for (let y in groupPlacements[x]) {
+                    if (!groupPlacements[x].hasOwnProperty(y)) continue;
+
+                    let piece = groupPlacements[x][y];
+                    if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
+                    if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
+
+                    let sharpImage = sharp(imagesPath + '/' + piece.files.transparent);
+                    let metadata = await sharpImage.metadata();
+                    let buffer = await sharpImage.toBuffer();
+
+                    let img = new Canvas.Image();
+                    img.src = buffer;
+
+                    let resizeFactor = pieceSize / piece.groupSizes.avgWidth;
+
+                    let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
+                    let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
+
+                    let centerX = piece.boundingBox.left + (piece.sides[0].startPoint[xKey] + piece.sides[1].startPoint[xKey] + piece.sides[2].startPoint[xKey] + piece.sides[3].startPoint[xKey]) / 4;
+                    let centerY = piece.boundingBox.top + (piece.sides[0].startPoint[yKey] + piece.sides[1].startPoint[yKey] + piece.sides[2].startPoint[yKey] + piece.sides[3].startPoint[yKey]) / 4;
+
+                    let pieceCanvasSize = Math.sqrt(metadata.width * metadata.width + metadata.height * metadata.height);
+                    let pieceCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
+                    let pieceContext = pieceCanvas.getContext('2d');
+
+                    pieceContext.drawImage(img, pieceCanvasSize / 2 - centerX, pieceCanvasSize / 2 - centerY);
+
+                    let rotationCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
+                    let rotationContext = rotationCanvas.getContext('2d');
+
+                    rotationContext.translate(pieceCanvasSize / 2, pieceCanvasSize / 2);
+                    rotationContext.rotate(piece.correctPosition.rotation * Math.PI/180);
+
+                    rotationContext.drawImage(pieceCanvas, -pieceCanvasSize / 2, -pieceCanvasSize / 2);
+
+                    context.drawImage(
+                        rotationCanvas,
+                        0,
+                        0,
+                        pieceCanvasSize,
+                        pieceCanvasSize,
+                        piece.correctPosition.x * resizeFactor - pieceCanvasSize * resizeFactor / 2,
+                        (currentY + 1) * pieceSize + piece.correctPosition.y * resizeFactor - pieceCanvasSize * resizeFactor / 2,
+                        pieceCanvasSize * resizeFactor,
+                        pieceCanvasSize * resizeFactor);
+
+                    groupSizes = piece.groupSizes;
+                }
+            }
+
+            currentY += groupSizes.maxY - groupSizes.minY + 2;
+        }
+
+        await this._savePlacementsImage(filename, canvas);
+    }
+
     _savePlacementsImage(filename, canvas) {
         return new Promise((resolve) => {
             const fs = require('fs');

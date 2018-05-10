@@ -447,7 +447,91 @@ function getPlacements(pieces, factorMap, options, onUpdateCallback) {
         }
     }
 
+    decoratePlacementsWithCorrectPositions(groups);
+
     return groups;
+}
+
+function decoratePlacementsWithCorrectPositions(placements) {
+    let width = 0;
+    let height = 0;
+    let groupSizes = {};
+    for (let g = 0; g < placements.length; g++) {
+        let groupPlacements = placements[g];
+        groupSizes[g] = {minX: 0, maxX: 0, minY: 0, maxY: 0, avgWidth: 0, avgHeight: 0, count: 0};
+
+        for (let x in groupPlacements) {
+            if (!groupPlacements.hasOwnProperty(x)) continue;
+
+            groupSizes[g].minX = Math.min(groupSizes[g].minX, x);
+            groupSizes[g].maxX = Math.max(groupSizes[g].maxX, x);
+
+            for (let y in groupPlacements[x]) {
+                if (!groupPlacements[x].hasOwnProperty(y)) continue;
+
+                let piece = groupPlacements[x][y];
+                if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
+
+                groupSizes[g].minY = Math.min(groupSizes[g].minY, y);
+                groupSizes[g].maxY = Math.max(groupSizes[g].maxY, y);
+
+                groupSizes[g].count++;
+                groupSizes[g].avgHeight += MathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation) % 4].startPoint, piece.sides[(3 - piece.rotation) % 4].endPoint);
+                groupSizes[g].avgWidth += MathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 1) % 4].startPoint, piece.sides[(3 - piece.rotation + 1) % 4].endPoint);
+                groupSizes[g].avgHeight += MathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 2) % 4].startPoint, piece.sides[(3 - piece.rotation + 2) % 4].endPoint);
+                groupSizes[g].avgWidth += MathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 3) % 4].startPoint, piece.sides[(3 - piece.rotation + 3) % 4].endPoint);
+            }
+        }
+
+        width = Math.max(width, groupSizes[g].maxX - groupSizes[g].minX + 1);
+        height += groupSizes[g].maxY - groupSizes[g].minY + 1 + 2;
+
+        groupSizes[g].avgWidth /= groupSizes[g].count * 2;
+        groupSizes[g].avgHeight /= groupSizes[g].count * 2;
+    }
+
+    let currentY = 0;
+    for (let g = 0; g < placements.length; g++) {
+        let groupPlacements = placements[g];
+
+        let pieceSize = groupSizes[g].avgWidth;
+
+        for (let x in groupPlacements) {
+            if (!groupPlacements.hasOwnProperty(x)) continue;
+
+            for (let y in groupPlacements[x]) {
+                if (!groupPlacements[x].hasOwnProperty(y)) continue;
+
+                let piece = groupPlacements[x][y];
+                if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
+                if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
+
+                let distanceXFactor = 1;
+                let distanceYFactor = groupSizes[g].avgHeight / groupSizes[g].avgWidth;
+
+                let destinationX = ((parseInt(x, 10) - groupSizes[g].minX + 1) * pieceSize) * distanceXFactor;
+                let destinationY = ((/*todo: currentY + 1 + */parseInt(y, 10) - groupSizes[g].minY + 1) * pieceSize) * distanceYFactor;
+
+                let rotation = MathHelper.getRotationOfRectangle( //TODO: Rotation of side 0 and not of the scanned puzzle.....
+                    piece.sides[(3 - piece.rotation) % 4].startPoint,
+                    piece.sides[(3 - piece.rotation + 1) % 4].startPoint,
+                    piece.sides[(3 - piece.rotation + 2) % 4].startPoint,
+                    piece.sides[(3 - piece.rotation + 3) % 4].startPoint
+                );
+
+                piece.correctPosition = {
+                    x: destinationX,
+                    y: destinationY,
+                    rotation: rotation
+                };
+                console.log(piece.correctPosition);
+
+                piece.groupSizes = groupSizes[g];
+            }
+        }
+
+        currentY += groupSizes[g].maxY - groupSizes[g].minY + 2;
+    }
 }
 
 function getFreePlaces(group) {
