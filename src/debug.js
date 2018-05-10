@@ -329,7 +329,12 @@ class Debug {
             context.fillStyle = '#000000';
             context.fillText('Group #' + g, pieceSize * 0.1, (currentY + 0.5) * pieceSize);
 
-            let groupSizes;
+            let groupSizes = {
+                minx: 0,
+                maxX: 0,
+                minY: 0,
+                maxY: 0
+            };
 
             for (let x in groupPlacements) {
                 if (!groupPlacements.hasOwnProperty(x)) continue;
