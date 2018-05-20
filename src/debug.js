@@ -170,126 +170,6 @@ class Debug {
     async createPlacementsImage(placements, filename, options) {
         if (typeof options !== 'object') options = {};
         let pieceSize = options['pieceSize'] || 48;
-        let imagesPath = options['imagesPath'] || '';
-
-        let width = 0;
-        let height = 0;
-        let groupSizes = {};
-        for (let g = 0; g < placements.length; g++) {
-            let groupPlacements = placements[g];
-            groupSizes[g] = {minX: 0, maxX: 0, minY: 0, maxY: 0, avgWidth: 0, avgHeight: 0, count: 0};
-
-            for (let x in groupPlacements) {
-                if (!groupPlacements.hasOwnProperty(x)) continue;
-
-                groupSizes[g].minX = Math.min(groupSizes[g].minX, x);
-                groupSizes[g].maxX = Math.max(groupSizes[g].maxX, x);
-
-                for (let y in groupPlacements[x]) {
-                    if (!groupPlacements[x].hasOwnProperty(y)) continue;
-
-                    let piece = groupPlacements[x][y];
-                    if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
-
-                    groupSizes[g].minY = Math.min(groupSizes[g].minY, y);
-                    groupSizes[g].maxY = Math.max(groupSizes[g].maxY, y);
-
-                    groupSizes[g].count++;
-                    groupSizes[g].avgHeight += mathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation) % 4].startPoint, piece.sides[(3 - piece.rotation) % 4].endPoint);
-                    groupSizes[g].avgWidth += mathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 1) % 4].startPoint, piece.sides[(3 - piece.rotation + 1) % 4].endPoint);
-                    groupSizes[g].avgHeight += mathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 2) % 4].startPoint, piece.sides[(3 - piece.rotation + 2) % 4].endPoint);
-                    groupSizes[g].avgWidth += mathHelper.distanceOfPoints(piece.sides[(3 - piece.rotation + 3) % 4].startPoint, piece.sides[(3 - piece.rotation + 3) % 4].endPoint);
-                }
-            }
-
-            width = Math.max(width, groupSizes[g].maxX - groupSizes[g].minX + 1);
-            height += groupSizes[g].maxY - groupSizes[g].minY + 1 + 2;
-
-            groupSizes[g].avgWidth /= groupSizes[g].count * 2;
-            groupSizes[g].avgHeight /= groupSizes[g].count * 2;
-        }
-
-        const Canvas = require('canvas');
-        const sharp = require('sharp');
-
-        const canvas = new Canvas((width + 1) * pieceSize, (height + 1) * pieceSize);
-        const context = canvas.getContext('2d');
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, (width + 1) * pieceSize, (height + 1) * pieceSize);
-
-        let currentY = 0;
-        for (let g = 0; g < placements.length; g++) {
-            let groupPlacements = placements[g];
-
-            context.font = Math.floor(pieceSize * 0.25) + 'px Tahoma';
-            context.fillStyle = '#000000';
-            context.fillText('Group #' + g, pieceSize * 0.1, (currentY + 0.5) * pieceSize);
-
-            for (let x in groupPlacements) {
-                if (!groupPlacements.hasOwnProperty(x)) continue;
-
-                for (let y in groupPlacements[x]) {
-                    if (!groupPlacements[x].hasOwnProperty(y)) continue;
-
-                    let piece = groupPlacements[x][y];
-                    if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
-                    if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
-
-                    let sharpImage = sharp(imagesPath + '/' + piece.files.transparent);
-                    let metadata = await sharpImage.metadata();
-                    let buffer = await sharpImage.toBuffer();
-
-                    let img = new Canvas.Image();
-                    img.src = buffer;
-
-                    let distanceXFactor = 1;
-                    let distanceYFactor = groupSizes[g].avgHeight / groupSizes[g].avgWidth;
-                    let resizeFactor = pieceSize / groupSizes[g].avgWidth;
-
-                    let destinationX = ((parseInt(x, 10) - groupSizes[g].minX + 1) * pieceSize) * distanceXFactor;
-                    let destinationY = ((currentY + 1 + parseInt(y, 10) - groupSizes[g].minY + 1) * pieceSize) * distanceYFactor;
-
-                    let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
-                    let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
-
-                    let centerX = piece.boundingBox.left + (piece.sides[0].startPoint[xKey] + piece.sides[1].startPoint[xKey] + piece.sides[2].startPoint[xKey] + piece.sides[3].startPoint[xKey]) / 4;
-                    let centerY = piece.boundingBox.top + (piece.sides[0].startPoint[yKey] + piece.sides[1].startPoint[yKey] + piece.sides[2].startPoint[yKey] + piece.sides[3].startPoint[yKey]) / 4;
-
-                    let pieceCanvasSize = Math.sqrt(metadata.width * metadata.width + metadata.height * metadata.height);
-                    let pieceCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
-                    let pieceContext = pieceCanvas.getContext('2d');
-
-                    pieceContext.drawImage(img, pieceCanvasSize / 2 - centerX, pieceCanvasSize / 2 - centerY);
-
-                    let rotation = mathHelper.getRotationOfRectangle(
-                        piece.sides[(3 - piece.rotation) % 4].startPoint,
-                        piece.sides[(3 - piece.rotation + 1) % 4].startPoint,
-                        piece.sides[(3 - piece.rotation + 2) % 4].startPoint,
-                        piece.sides[(3 - piece.rotation + 3) % 4].startPoint
-                    );
-
-                    let rotationCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
-                    let rotationContext = rotationCanvas.getContext('2d');
-
-                    rotationContext.translate(pieceCanvasSize / 2, pieceCanvasSize / 2);
-                    rotationContext.rotate(rotation * Math.PI/180);
-
-                    rotationContext.drawImage(pieceCanvas, -pieceCanvasSize / 2, -pieceCanvasSize / 2);
-
-                    context.drawImage(rotationCanvas, 0, 0, pieceCanvasSize, pieceCanvasSize, destinationX - pieceCanvasSize * resizeFactor / 2, destinationY - pieceCanvasSize * resizeFactor / 2, pieceCanvasSize * resizeFactor, pieceCanvasSize * resizeFactor);
-                }
-            }
-
-            currentY += groupSizes[g].maxY - groupSizes[g].minY + 2;
-        }
-
-        await this._savePlacementsImage(filename, canvas);
-    }
-
-    async createPlacementsImage_new(placements, filename, options) {
-        if (typeof options !== 'object') options = {};
-        let pieceSize = options['pieceSize'] || 48;
-        let imagesPath = options['imagesPath'] || '';
 
         let width = 0;
         let height = 0;
@@ -344,24 +224,20 @@ class Debug {
 
                     let piece = groupPlacements[x][y];
                     if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
-                    if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
-
-                    let sharpImage = sharp(imagesPath + '/' + piece.files.transparent);
-                    let metadata = await sharpImage.metadata();
-                    let buffer = await sharpImage.toBuffer();
+                    if (typeof piece.images === 'undefined' || typeof piece.images.transparent === 'undefined') continue;
 
                     let img = new Canvas.Image();
-                    img.src = buffer;
+                    img.src = Buffer.from(piece.images.transparent.buffer, piece.images.transparent.encoding);
 
                     let resizeFactor = pieceSize / piece.groupSizes.avgWidth;
 
                     let xKey = typeof piece.sides[0].startPoint.x !== 'undefined' ? 'x' : 1;
                     let yKey = typeof piece.sides[0].startPoint.y !== 'undefined' ? 'y' : 2;
 
-                    let centerX = piece.boundingBox.left + (piece.sides[0].startPoint[xKey] + piece.sides[1].startPoint[xKey] + piece.sides[2].startPoint[xKey] + piece.sides[3].startPoint[xKey]) / 4;
-                    let centerY = piece.boundingBox.top + (piece.sides[0].startPoint[yKey] + piece.sides[1].startPoint[yKey] + piece.sides[2].startPoint[yKey] + piece.sides[3].startPoint[yKey]) / 4;
+                    let centerX = (piece.boundingBox.left + (piece.sides[0].startPoint[xKey] + piece.sides[1].startPoint[xKey] + piece.sides[2].startPoint[xKey] + piece.sides[3].startPoint[xKey]) / 4) * piece.images.transparent.resizeFactor;
+                    let centerY = (piece.boundingBox.top + (piece.sides[0].startPoint[yKey] + piece.sides[1].startPoint[yKey] + piece.sides[2].startPoint[yKey] + piece.sides[3].startPoint[yKey]) / 4) * piece.images.transparent.resizeFactor;
 
-                    let pieceCanvasSize = Math.sqrt(metadata.width * metadata.width + metadata.height * metadata.height);
+                    let pieceCanvasSize = Math.sqrt(piece.dimensions.width * piece.dimensions.width + piece.dimensions.height * piece.dimensions.height) * piece.images.transparent.resizeFactor;
                     let pieceCanvas = new Canvas(pieceCanvasSize, pieceCanvasSize);
                     let pieceContext = pieceCanvas.getContext('2d');
 
@@ -375,16 +251,18 @@ class Debug {
 
                     rotationContext.drawImage(pieceCanvas, -pieceCanvasSize / 2, -pieceCanvasSize / 2);
 
+                    let resizedCanvasSize = pieceCanvasSize * resizeFactor / piece.images.transparent.resizeFactor;
+
                     context.drawImage(
                         rotationCanvas,
                         0,
                         0,
                         pieceCanvasSize,
                         pieceCanvasSize,
-                        piece.correctPosition.x * resizeFactor - pieceCanvasSize * resizeFactor / 2,
-                        (currentY + 1) * pieceSize + piece.correctPosition.y * resizeFactor - pieceCanvasSize * resizeFactor / 2,
-                        pieceCanvasSize * resizeFactor,
-                        pieceCanvasSize * resizeFactor);
+                        piece.correctPosition.x * resizeFactor - resizedCanvasSize / 2,
+                        (currentY + 1) * pieceSize + piece.correctPosition.y * resizeFactor - resizedCanvasSize / 2,
+                        resizedCanvasSize,
+                        resizedCanvasSize);
 
                     groupSizes = piece.groupSizes;
                 }

@@ -504,7 +504,6 @@ function decoratePlacementsWithCorrectPositions(placements) {
 
                 let piece = groupPlacements[x][y];
                 if (typeof piece.sides === 'undefined' || !(piece.sides instanceof Array) || piece.sides.length !== 4) continue;
-                if (typeof piece.files === 'undefined' || typeof piece.files.transparent === 'undefined') continue;
 
                 let distanceXFactor = 1;
                 let distanceYFactor = groupSizes[g].avgHeight / groupSizes[g].avgWidth;

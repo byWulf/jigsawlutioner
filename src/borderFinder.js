@@ -351,17 +351,30 @@ async function getOptimizedImageData(file, threshold, reduction, debug, options)
     return data;
 }
 
-async function saveTransparentImage(filename, threshold) {
-    let sharpImage = sharp(filename);
+async function getTransparentImage(file, threshold, resizeFactor = 1) {
+    let sharpImage = sharp(file);
 
-    let maskData = await getOptimizedImageData(filename, threshold, 0, false, {
+    let maskData = await getOptimizedImageData(file, threshold, 0, false, {
         targetPieceColor: 0xff,
         targetBackgroundColor: 0x00
     });
 
-    sharpImage.joinChannel(maskData.data, {raw: maskData.info}).toColourspace('sRGB');
+    sharpImage.joinChannel(maskData.data, {raw: maskData.info}).toColourspace('sRGB').toFormat('png');
 
-    await sharpImage.toFormat('png').toFile(filename + '.transparent.png');
+    if (resizeFactor !== 1) {
+        let buffer = await sharpImage.toBuffer();
+        sharpImage = sharp(buffer);
+    }
+
+    sharpImage.resize(Math.round(maskData.info.width * resizeFactor), Math.round(maskData.info.height * resizeFactor));
+
+    return sharpImage;
+}
+
+async function saveTransparentImage(filename, threshold) {
+    let sharpImage = await getTransparentImage(filename, threshold);
+
+    await sharpImage.toFile(filename + '.transparent.png');
 }
 
 /**
@@ -385,6 +398,9 @@ async function findPieceBorder(file, options) {
     }
     if (typeof options.returnColorPoints === 'undefined') {
         options.returnColorPoints = false;
+    }
+    if (typeof options.returnTransparentImage === 'undefined') {
+        options.returnTransparentImage = false;
     }
 
     //Get optimized data of the image with dark gray pixels for the piece.
@@ -428,11 +444,26 @@ async function findPieceBorder(file, options) {
         }
     }
 
+    let images = {};
+    if (options.returnTransparentImage) {
+        let resizeFactor = 0.25;
+        let encoding = 'hex';
+        let sharpImage = await getTransparentImage(file, options.threshold, resizeFactor);
+        let buffer = await sharpImage.toBuffer();
+        images.transparent = {
+            resizeFactor: resizeFactor,
+            encoding: encoding,
+            buffer: buffer.toString(encoding)
+        };
+        await sharp(buffer).toFile(path.basename(file) + '.transparent_new.png');
+    }
+
     return {
         path: paperPath,
         colorPoints: decoratedBorderPoints,
         boundingBox: borderData.boundingBox,
         files: files,
+        images: images,
         dimensions: {
             width: data.info.width,
             height: data.info.height

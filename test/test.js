@@ -3,6 +3,7 @@ const Matcher = require(__dirname + '/../src/matcher');
 const debug = require(__dirname + '/../src/debug');
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
+const PieceHelper = require(__dirname + '/../src/pieceHelper');
 const sharp = require('sharp');
 const opn = require('opn');
 
@@ -28,9 +29,9 @@ function getPieces(fromX, toX, fromY, toY) {
         fileNames.forEach(async (filename) => {
             console.log('Loading ' + dir + filename);
 
-            let piece, sidePiece;
+            let piece, sidePiece, limitedPiece;
 
-            if (fs.existsSync(dir + filename + '.parsed.json')) {
+            if (0 && fs.existsSync(dir + filename + '.parsed.json')) {
                 piece = JSON.parse(fs.readFileSync(dir + filename + '.parsed.json', 'utf-8'));
             } else {
 
@@ -38,29 +39,25 @@ function getPieces(fromX, toX, fromY, toY) {
                     piece = await BorderFinder.findPieceBorder(dir + filename, {
                         threshold: 245,
                         reduction: 2,
-                        debug: true
+                        returnTransparentImage: true
                     });
                 } catch (err) {
                     console.log(err);
                 }
 
                 try {
-                    sidePiece = await SideFinder.findSides(pieces.length, piece.path, null, {
-                        debug: true,
-                        filename: dir + filename
-                    });
-                    piece.pieceIndex = pieces.length;
-                    piece.sides = sidePiece.sides;
-                    piece.diffs = sidePiece.diffs;
+                    sidePiece = await SideFinder.findSides(pieces.length, piece.path, null);
                 } catch (err) {
                     console.log(err);
                 }
 
-                fs.writeFileSync(dir + filename + '.parsed.json', JSON.stringify(piece));
+                limitedPiece = PieceHelper.getLimitedPiece(piece, sidePiece);
+
+                fs.writeFileSync(dir + filename + '.parsed.json', JSON.stringify(limitedPiece));
             }
 
             console.log(dir + filename + ' loaded');
-            pieces.push(piece);
+            pieces.push(limitedPiece);
 
             if (pieces.length === fileNames.length) {
                 resolve(pieces);
@@ -81,7 +78,7 @@ function sleep(ms) {
 
         let placements;
         if (regenerate) {
-            let pieces = await getPieces(0,1,0,1);
+            let pieces = await getPieces(0,3,0,3);
 
             console.log("pieces loaded: ", pieces.length);
             console.log("start placement-generation: ", Date.now());
@@ -92,13 +89,7 @@ function sleep(ms) {
         }
         console.log("end placement-generation:  ", Date.now());
         debug.outputPlacements(placements);
-        await debug.createPlacementsImage_new(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 64});
-
-        await sleep(1000);
-
-        opn('file://' + __dirname + '/fixtures/placements.png').then(() => {
-            console.log("closed?");
-        });
+        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 48});
 
         console.log("done");
     } catch (e) {
