@@ -447,7 +447,7 @@ async function findPieceBorder(file, options) {
     let images = {};
     if (options.returnTransparentImage) {
         let resizeFactor = 0.25;
-        let encoding = 'hex';
+        let encoding = 'base64';
         let sharpImage = await getTransparentImage(file, options.threshold, resizeFactor);
         let buffer = await sharpImage.toBuffer();
         images.transparent = {
