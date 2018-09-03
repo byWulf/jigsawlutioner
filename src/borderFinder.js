@@ -455,7 +455,6 @@ async function findPieceBorder(file, options) {
             encoding: encoding,
             buffer: buffer.toString(encoding)
         };
-        await sharp(buffer).toFile(path.basename(file) + '.transparent_new.png');
     }
 
     return {
