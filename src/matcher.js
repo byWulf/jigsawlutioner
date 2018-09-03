@@ -291,6 +291,8 @@ function getPlacements(pieces, factorMap, options, onUpdateCallback) {
     if (typeof options.smallNopDiffPow === 'undefined') options.smallNopDiffPow = baseOptions.smallNopDiffPow;
     if (typeof options.bigNopDiffPow === 'undefined') options.bigNopDiffPow = baseOptions.bigNopDiffPow;
 
+    if (typeof options.ignoreMatches === 'undefined') options.ignoreMatches = [];
+
     let piecesSum = pieces.length;
     let remainingPieces = pieces.slice(0);
     let groups = [];
@@ -351,6 +353,17 @@ function getPlacements(pieces, factorMap, options, onUpdateCallback) {
                                 let match = factorMap[getFactorMapKey(remainingPieces[p].pieceIndex, sideIndex, oppositePiece.pieceIndex, oppositeSideIndex)];
                                 if (!match || !match.matches) {
                                     continue pieceRotationLoop;
+                                }
+
+                                for (let ii = 0; ii < options.ignoreMatches.length; ii++) {
+                                    if (
+                                        options.ignoreMatches[ii].source.pieceIndex === remainingPieces[p].pieceIndex &&
+                                        options.ignoreMatches[ii].source.sideIndex === sideIndex &&
+                                        options.ignoreMatches[ii].target.pieceIndex === oppositePiece.pieceIndex &&
+                                        options.ignoreMatches[ii].target.sideIndex === oppositeSideIndex
+                                    ) {
+                                        continue pieceRotationLoop;
+                                    }
                                 }
 
                                 let sum =
