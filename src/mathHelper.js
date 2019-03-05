@@ -1,4 +1,3 @@
-const Cache = require('./cache');
 
 //https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
 function sqr(x) { return x * x }
@@ -54,12 +53,13 @@ function distanceToPolyline(point, polylinePoints) {
  * @param comparePoints
  * @param offsetX
  * @param offsetY
+ * @param {Cache} cache
  * @returns {*}
  */
-function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY) {
+function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY, cache) {
     let cacheKey = [sourcePoints, comparePoints, offsetX, offsetY];
-    if (Cache.has(cacheKey)) {
-        return Cache.get(cacheKey);
+    if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
     }
 
     let distanceSum = 0;
@@ -78,8 +78,8 @@ function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY) {
         avgDistance: distanceSum / sourcePoints.length,
         maxDistance: maxDistance
     };
-    
-    Cache.set(cacheKey, result);
+
+    cache.set(cacheKey, result);
     
     return result;
 }

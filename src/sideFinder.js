@@ -1,6 +1,5 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
-const Cache = require('./cache');
 
 function getPieceDiffs(path) {
     //Calculate all degree-diffs to find the corners (=extremes)
@@ -218,8 +217,6 @@ function findSides(pieceIndex, paperPath, colorPoints, options) {
                 saveSideImage(options.filename, sides);
             }
         }
-
-        Cache.clear();
 
         fulfill({
             pieceIndex: pieceIndex,

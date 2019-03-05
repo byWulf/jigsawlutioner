@@ -16,9 +16,10 @@ const colors = require('colors/safe');
  * @param thresholdX
  * @param thresholdY
  * @param dontRotateTargetSide
+ * @param {Cache} cache
  * @returns {*}
  */
-function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, dontRotateTargetSide) {
+function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, dontRotateTargetSide, cache) {
     if (typeof thresholdX === 'undefined') {
         thresholdX = 0;
     }
@@ -28,8 +29,8 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
 
     //Caching to reduce calculation time
     let cacheKey = ['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide];
-    if (Cache.has(cacheKey)) {
-        return Cache.get(cacheKey);
+    if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
     }
 
     let result = {
@@ -57,7 +58,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
         //Check form of the sides
         for (let offsetY = -thresholdY; offsetY <= thresholdY; offsetY += Math.max(1, thresholdY / 3)) {
             for (let offsetX = -thresholdX; offsetX <= thresholdX; offsetX += Math.max(1, thresholdX / 3)) {
-                let distances = MathHelper.distancesOfPolylines(dontRotateTargetSide ? sourceSide.points : PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY);
+                let distances = MathHelper.distancesOfPolylines(dontRotateTargetSide ? sourceSide.points : PathHelper.rotatePoints(sourceSide.points), targetSide.points, offsetX, offsetY, cache);
 
                 if (result.avgDistance === null || distances.avgDistance < result.avgDistance) {
                     result.avgDistance = distances.avgDistance;
@@ -84,7 +85,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
         result.matches = true;
     }
 
-    Cache.set(cacheKey, result);
+    cache.set(cacheKey, result);
     return result;
 }
 
@@ -94,6 +95,8 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
  * @returns {null|object} {pieceIndex: number, deviation, number, sideOffset: number}
  */
 function findExistingPieceIndex(pieces, piece) {
+    let cache = new Cache();
+
     let pieceMatchings = [];
     for (let i = 0; i < pieces.length; i++) {
         let bestMatchingFactor = null;
@@ -106,7 +109,7 @@ function findExistingPieceIndex(pieces, piece) {
             let matchinFactorSum = 0;
             for (let side = 0; side < 4; side++) {
                 if (piece.sides[side].direction === 'straight') continue;
-                let match = getSideMatchingFactor(piece.sides[side], pieces[i].sides[(side + sideOffset) % 4], 0, 0, true);
+                let match = getSideMatchingFactor(piece.sides[side], pieces[i].sides[(side + sideOffset) % 4], 0, 0, true, cache);
                 if (!match.matches) {
                     continue sideOffsetLoop;
                 } else {
@@ -147,7 +150,7 @@ function findExistingPieceIndex(pieces, piece) {
  * @param factors (optional)
  */
 function findMatchingPieces(piece, pieces, onlySide, factors) {
-    Cache.clear();
+    let cache = new Cache();
 
     let matches = {};
     for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
@@ -166,7 +169,7 @@ function findMatchingPieces(piece, pieces, onlySide, factors) {
                     if (typeof factors !== 'undefined') {
                         match = factors[getFactorMapKey(piece.pieceIndex, sideIndex, comparePiece.pieceIndex, compareSideIndex)];
                     } else {
-                        match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                        match = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex], undefined, undefined, undefined, cache);
                     }
 
                     if (match && match.matches) {
@@ -191,7 +194,7 @@ function findMatchingPieces(piece, pieces, onlySide, factors) {
     return matches;
 }
 
-function generateFactorsMap(pieces, onUpdateCallback) {
+function generateFactorsMap(pieces, onUpdateCallback, cache) {
     let map = {};
 
     let sum = 0;
@@ -214,7 +217,7 @@ function generateFactorsMap(pieces, onUpdateCallback) {
             let comparePiece = pieces[i2];
             for (let sideIndex = 0; sideIndex < piece.sides.length; sideIndex++) {
                 for (let compareSideIndex = 0; compareSideIndex < comparePiece.sides.length; compareSideIndex++) {
-                    map[getFactorMapKey(piece.pieceIndex, sideIndex, comparePiece.pieceIndex, compareSideIndex)] = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex]);
+                    map[getFactorMapKey(piece.pieceIndex, sideIndex, comparePiece.pieceIndex, compareSideIndex)] = getSideMatchingFactor(piece.sides[sideIndex], comparePiece.sides[compareSideIndex], undefined, undefined, undefined, cache);
 
                     done++;
 
@@ -245,6 +248,8 @@ let sideOpposites = {
 };
 
 function getPlacements(pieces, factorMap, options, onUpdateCallback) {
+    let cache = new Cache();
+
     let baseOptions = {
         avgDistanceFactor: 4.725,
         directLengthDiffFactor: 0.462,
@@ -298,7 +303,7 @@ function getPlacements(pieces, factorMap, options, onUpdateCallback) {
     let groups = [];
 
     if (!factorMap) {
-        factorMap = generateFactorsMap(pieces);
+        factorMap = generateFactorsMap(pieces, undefined, cache);
     }
 
     let placeMatches = {};

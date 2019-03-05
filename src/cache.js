@@ -1,23 +1,21 @@
-let cache = {};
+function Cache() {
+    let cache = {};
 
-function get(key) {
-    return cache[JSON.stringify(key)];
+    this.get = (key) => {
+        return cache[JSON.stringify(key)];
+    }
+
+    this.has = (key) => {
+        return typeof cache[JSON.stringify(key)] !== 'undefined';
+    }
+
+    this.set = (key, value) => {
+        cache[JSON.stringify(key)] = value;
+    }
+
+    this.clear = () => {
+        cache = {};
+    }
 }
 
-function has(key) {
-    return typeof cache[JSON.stringify(key)] !== 'undefined';
-}
-
-function set(key, value) {
-    cache[JSON.stringify(key)] = value;
-}
-function clear() {
-    cache = {};
-}
-
-module.exports = {
-    get: get,
-    has: has,
-    set: set,
-    clear: clear
-};
+module.exports = Cache;
