@@ -167,7 +167,7 @@ class Debug {
         }
     }
 
-    async createPlacementsImage(placements, filename, options) {
+    async createPlacementsImage(placements, options) {
         if (typeof options !== 'object') options = {};
         let pieceSize = options['pieceSize'] || 48;
 
@@ -271,24 +271,7 @@ class Debug {
             currentY += groupSizes.maxY - groupSizes.minY + 2;
         }
 
-        await this._savePlacementsImage(filename, canvas);
-    }
-
-    _savePlacementsImage(filename, canvas) {
-        return new Promise((resolve) => {
-            const fs = require('fs');
-
-            let out = fs.createWriteStream(filename);
-            let stream = canvas.pngStream();
-
-            stream.on('data', (chunk) => {
-                out.write(chunk);
-            });
-
-            stream.on('end', () => {
-                resolve();
-            });
-        });
+        return canvas.toBuffer('image/png').toString('base64');
     }
 }
 
