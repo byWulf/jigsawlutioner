@@ -129,18 +129,35 @@ function getRotationOfRectangle(point1, point2, point3, point4) {
         keyX = 1;
     }
 
-    let rotation = 0;
+    let rotations = [];
     for (let i = 0; i < 4; i++) {
         let singleRotation = -Math.atan2(
             points[(i + 1) % 4][keyY] - points[i][keyY],
             points[(i + 1) % 4][keyX] - points[i][keyX]
         ) * 180 / Math.PI - (i + 1) * 90;
-        while (singleRotation < 0) singleRotation += 360;
 
-        rotation += singleRotation;
+        rotations.push(singleRotation);
     }
 
-    return rotation / 4;
+    return getAverageRotation(rotations);
+}
+
+function getAverageRotation(rotations) {
+    return 180 / Math.PI * Math.atan2(
+        sum(rotations.map(degToRad).map(Math.sin)) / rotations.length,
+        sum(rotations.map(degToRad).map(Math.cos)) / rotations.length
+    );
+}
+function sum(a) {
+    var s = 0;
+    for (let i = 0; i < a.length; i++) {
+        s += a[i];
+    }
+    return s;
+}
+
+function degToRad(a) {
+    return Math.PI / 180 * a;
 }
 
 function fixPoint(numericalPoint) {
