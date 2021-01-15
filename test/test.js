@@ -89,7 +89,6 @@ function sleep(ms) {
         }
         console.log("end placement-generation:  ", Date.now());
         debug.outputPlacements(placements);
-        await debug.createPlacementsImage(placements, __dirname + '/fixtures/placements.png', {imagesPath: __dirname + '/fixtures/pieces', pieceSize: 48});
 
         console.log("done");
     } catch (e) {
