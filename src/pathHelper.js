@@ -1,18 +1,19 @@
 const Paper = require('paper-jsdom');
 const MathHelper = require('./mathHelper');
 
+const NopData = require('../model/NopData');
+const Distance = require('../model/Distance');
+
 /**
  * Gets the tangents rotation (in degree) from a specific offset in a (closed) paperjs path.
  * Specify a high threshold to get a better result on shaky paths.
  *
- * @param path
- * @param offset
- * @param threshold
+ * @param {Path} path
+ * @param {number} offset
+ * @param {number} threshold
  * @returns {number}
  */
-function getRotation(path, offset, threshold) {
-    if (typeof threshold === 'undefined') threshold = 4;
-
+function getRotation(path, offset, threshold = 4) {
     let point1 = path.getPointAt((offset + path.length - threshold) % path.length);
     let point2 = path.getPointAt((offset + threshold) % path.length);
 
@@ -21,9 +22,9 @@ function getRotation(path, offset, threshold) {
 
 /**
  * Gets the difference in
- * @param path
- * @param offset
- * @param threshold
+ * @param {Path} path
+ * @param {number} offset
+ * @param {number} threshold
  * @returns {number}
  */
 function getRotationGain(path, offset, threshold) {
@@ -41,8 +42,9 @@ function getRotationGain(path, offset, threshold) {
 /**
  * Returns true, if the given side is straight without a nop.
  *
- * @param points
- * @param sideLength
+ * @param {Point[]} points
+ * @param {number} sideLength
+ * @returns {boolean}
  */
 function isStraightSide(points, sideLength) {
     for (let j = 0; j < points.length; j++) {
@@ -57,7 +59,7 @@ function isStraightSide(points, sideLength) {
 /**
  * Returns true, if the side has its nop to the outside. Outside is defined in the path as "down"/"below the x-axis"
  *
- * @param points
+ * @param {Point[]} points
  * @returns {boolean}
  */
 function hasOutsideNop(points) {
@@ -74,8 +76,8 @@ function hasOutsideNop(points) {
 /**
  * Rotates the given points by 180 degree.
  *
- * @param points
- * @returns {*}
+ * @param {Point[]} points
+ * @returns {Point[]}
  */
 function rotatePoints(points) {
     let newPoints = [];
@@ -89,8 +91,8 @@ function rotatePoints(points) {
 
 /**
  * Returns the negative peak diffs from a set of diffs
- * @param diffs
- * @returns {*}
+ * @param {Diff[]} diffs
+ * @returns {Diff[]}
  */
 function getNegativePeaks(diffs) {
     diffs.sort((a,b) => a.offset - b.offset);
@@ -115,6 +117,11 @@ function getNegativePeaks(diffs) {
     return peaks;
 }
 
+/**
+ *
+ * @param {Point[]} points
+ * @returns {number}
+ */
 function getArea(points) {
     Paper.setup(new Paper.Size(1,1));
     let paperPath = new Paper.Path({
@@ -125,6 +132,10 @@ function getArea(points) {
     return paperPath.area;
 }
 
+/**
+ * @param {Point[]} points
+ * @returns {NopData}
+ */
 function getNopData(points) {
     let extremePointIndex = 0;
     for (let i = 0; i < points.length; i++) {
@@ -161,18 +172,17 @@ function getNopData(points) {
         }
     }
 
-    return {
-        max: {
-            left: points[leftExtremeIndex].x,
-            right: points[rightExtremeIndex].x
-        }, min: {
-            left: points[leftMinimumIndex].x,
-            right: points[rightMinimumIndex].x,
-        },
-        height: points[extremePointIndex].y
-    };
+    return new NopData(
+        new Distance(points[leftExtremeIndex].x, points[rightExtremeIndex].x),
+        new Distance(points[leftMinimumIndex].x, points[rightMinimumIndex].x),
+        points[extremePointIndex].y
+    );
 }
 
+/**
+ * @param {Point[]} points
+ * @returns {Point[]}
+ */
 function simplifyPoints(points) {
     let finishedPoints = points.slice(0);
 

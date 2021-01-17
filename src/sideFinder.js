@@ -1,5 +1,6 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
+const Diff = require('../model/Diff');
 
 function getPieceDiffs(path) {
     //Calculate all degree-diffs to find the corners (=extremes)
@@ -17,7 +18,7 @@ function getPieceDiffs(path) {
         while (lastDegree - deg < -180) deg -= 360;
         lastDegree = deg;
 
-        diffsOrdered.push({offset: pathOffset, diff: diff, deg: deg, point: path.getPointAt(pathOffset)});
+        diffsOrdered.push(new Diff(pathOffset, diff, deg, path.getPointAt(pathOffset)));
     }
 
     return diffsOrdered;
