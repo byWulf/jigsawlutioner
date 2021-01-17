@@ -10,6 +10,7 @@ const singleLog = require('single-line-log').stdout;
 const roundTo = require('round-to');
 const fs = require('fs');
 const colors = require('colors/safe');
+const Cache = require('node-cache');
 
 async function parseBorders(min, max, useCache) {
     let startTime = Date.now();

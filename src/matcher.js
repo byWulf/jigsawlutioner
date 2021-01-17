@@ -1,6 +1,6 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
-const Cache = require('./cache');
+const Cache = require('node-cache');
 const colors = require('colors/safe');
 
 /**
@@ -28,7 +28,7 @@ function getSideMatchingFactor(sourceSide, targetSide, thresholdX, thresholdY, d
     }
 
     //Caching to reduce calculation time
-    let cacheKey = ['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide];
+    let cacheKey = JSON.stringify(['sideMatches', sourceSide.pieceIndex, sourceSide.sideIndex, targetSide.pieceIndex, targetSide.sideIndex, thresholdX, thresholdY, dontRotateTargetSide]);
     if (cache.has(cacheKey)) {
         return cache.get(cacheKey);
     }
@@ -138,6 +138,9 @@ function findExistingPieceIndex(pieces, piece) {
         return a.deviation - b.deviation;
     });
 
+    cache.flushAll();
+    cache.close();
+
     return pieceMatchings[0];
 }
 
@@ -190,6 +193,9 @@ function findMatchingPieces(piece, pieces, onlySide, factors) {
             }
         }
     }
+
+    cache.flushAll();
+    cache.close();
 
     return matches;
 }
@@ -467,6 +473,9 @@ function getPlacements(pieces, factorMap, options, onUpdateCallback) {
 
     decoratePlacementsWithCorrectPositions(groups);
 
+    cache.flushAll();
+    cache.close();
+
     return groups;
 }
 
@@ -541,7 +550,6 @@ function decoratePlacementsWithCorrectPositions(placements) {
                     y: destinationY,
                     rotation: rotation
                 };
-                console.log(piece.correctPosition);
 
                 piece.groupSizes = groupSizes[g];
             }

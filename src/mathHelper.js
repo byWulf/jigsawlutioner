@@ -48,7 +48,7 @@ function distanceToPolyline(point, polylinePoints) {
 
 /**
  * Calculates the average distance and the maximum distance between two lines.
- * 
+ *
  * @param sourcePoints
  * @param comparePoints
  * @param offsetX
@@ -57,7 +57,7 @@ function distanceToPolyline(point, polylinePoints) {
  * @returns {*}
  */
 function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY, cache) {
-    let cacheKey = [sourcePoints, comparePoints, offsetX, offsetY];
+    let cacheKey = JSON.stringify([sourcePoints, comparePoints, offsetX, offsetY]);
     if (cache.has(cacheKey)) {
         return cache.get(cacheKey);
     }
@@ -73,14 +73,14 @@ function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY, cac
             maxDistance = distance;
         }
     }
-    
+
     let result = {
         avgDistance: distanceSum / sourcePoints.length,
         maxDistance: maxDistance
     };
 
     cache.set(cacheKey, result);
-    
+
     return result;
 }
 
