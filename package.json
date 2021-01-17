@@ -16,6 +16,7 @@
   "dependencies": {
     "dateformat": "^4.4.1",
     "node-cache": "^5.1.2",
+    "paper": "^0.12.11",
     "paper-jsdom": "^0.12.11",
     "round-to": "^5.0.0",
     "sharp": "^0.27.0"
