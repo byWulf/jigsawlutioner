@@ -3,6 +3,7 @@
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
 const Matcher = require(__dirname + '/../src/matcher');
+const Debug = require(__dirname + '/../src/debug');
 
 const dateFormat = require('dateformat');
 const singleLog = require('single-line-log').stdout;
@@ -151,11 +152,12 @@ async function generateFactorsMap(pieces, useCache) {
     let errors = [];
     let factorMap = null;
     try {
+        const cache = new Cache();
         factorMap = Matcher.generateFactorsMap(piecesArray, (done, sum) => {
             let avg = (Date.now() - startTime) / Math.max(done, 1);
 
             singleLog('[' + dateFormat(startTime, 'yyyy-mm-dd HH:MM:ss') + '] Generating factor map (' + done + '/' + sum + ') - Avg ' + roundTo(avg / 1000, 3) + 's - Remaining ' + roundTo((avg * (sum - done)) / 1000, 1) + 's');
-        });
+        }, cache);
     } catch (e) {
         errors.push(e);
     }
@@ -180,7 +182,7 @@ async function match(pieces, factorMap, options, clearOutput) {
         if (!pieces.hasOwnProperty(i)) continue;
 
         piecesArray.push(pieces[i]);
-    }    
+    }
 
     let errors = [];
     let placements = null;
@@ -278,7 +280,7 @@ function getFittingPerformance(placements) {
             }
         }
     }
-    
+
     return correctSum / Math.max(matchSum, 1);
 }
 
@@ -367,7 +369,7 @@ function outputDeviationStats(factorMap) {
 
         let placements = await match(sidePieces, factorMap, null, false);
         //let placements = getPerfectMatching(sidePieces);
-        Matcher.outputPlacements(placements, correctnessCheck);
+        Debug.outputPlacements(placements, correctnessCheck);
         let performance = getFittingPerformance(placements);
         console.log("Result: " + roundTo(performance * 100, 1) + "%");
 
@@ -427,7 +429,7 @@ function outputDeviationStats(factorMap) {
                     directLengthDiffOffset: optionSets[i][10],//0,
                     bigNopDiffOffset: optionSets[i][11],//-0.5,
                     smallNopDiffOffset: optionSets[i][12],//0,
-                    
+
                     avgDistancePow: optionSets[i][13],//1,
                     directLengthDiffPow: optionSets[i][14],//1.01,
                     worstSingleDistancePow: optionSets[i][15],//0.99,
