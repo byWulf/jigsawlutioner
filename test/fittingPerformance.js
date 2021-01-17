@@ -169,7 +169,7 @@ async function generateFactorsMap(pieces, useCache) {
         console.log(errors[i]);
     }
 
-    fs.writeFileSync(cacheFile, JSON.stringify(factorMap));
+    //fs.writeFileSync(cacheFile, JSON.stringify(factorMap));
 
     return factorMap;
 }
@@ -362,11 +362,11 @@ function outputDeviationStats(factorMap) {
 
 (async () => {
     try {
-        let borderPieces = await parseBorders(2, 501, true);
+        let borderPieces = await parseBorders(2, 501, false);
 
-        let sidePieces = await parseSides(borderPieces, true);
+        let sidePieces = await parseSides(borderPieces, false);
 
-        let factorMap = await generateFactorsMap(sidePieces, true);
+        let factorMap = await generateFactorsMap(sidePieces, false);
 
         let placements = await match(sidePieces, factorMap, null, false);
         //let placements = getPerfectMatching(sidePieces);

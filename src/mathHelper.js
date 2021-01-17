@@ -1,3 +1,7 @@
+// noinspection JSUnusedLocalSymbols (needed for typehinting below)
+const NodeCache = require('node-cache');
+const DistanceStatistics = require('../model/DistanceStatistics');
+const Paper = require('paper-jsdom');
 
 //https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
 function sqr(x) { return x * x }
@@ -14,9 +18,9 @@ function distToSegmentSquared(p, v, w) {
 /**
  * Gets the closest distance between a point and a (capped) line.
  *
- * @param point
- * @param lineStartPoint
- * @param lineEndPoint
+ * @param {Point} point
+ * @param {Point} lineStartPoint
+ * @param {Point} lineEndPoint
  * @returns {number}
  */
 function distanceToLine(point, lineStartPoint, lineEndPoint) {
@@ -26,8 +30,9 @@ function distanceToLine(point, lineStartPoint, lineEndPoint) {
 /**
  * Returns the shortest distance between the point and the line (consisting out of many points).
  *
- * @param point
- * @param polylinePoints
+ * @param {Point} point
+ * @param {Point[]} polylinePoints
+ * @returns {number|null}
  */
 function distanceToPolyline(point, polylinePoints) {
     let closestDist = null;
@@ -49,50 +54,58 @@ function distanceToPolyline(point, polylinePoints) {
 /**
  * Calculates the average distance and the maximum distance between two lines.
  *
- * @param sourcePoints
- * @param comparePoints
- * @param offsetX
- * @param offsetY
- * @param {Cache} cache
- * @returns {*}
+ * @param {Point[]} sourcePoints
+ * @param {Point[]} comparePoints
+ * @param {number} offsetX
+ * @param {number} offsetY
+ * @param {NodeCache} cache
+ * @returns {DistanceStatistics}
  */
 function distancesOfPolylines(sourcePoints, comparePoints, offsetX, offsetY, cache) {
-    let cacheKey = JSON.stringify([sourcePoints, comparePoints, offsetX, offsetY]);
+    const cacheKey = JSON.stringify([sourcePoints, comparePoints, offsetX, offsetY]);
     if (cache.has(cacheKey)) {
         return cache.get(cacheKey);
     }
 
     let distanceSum = 0;
-    let maxDistance = null;
+    let maxDistance = 0;
     for (let i = 0; i < sourcePoints.length; i++) {
-        let distance = distanceToPolyline({x: sourcePoints[i].x + offsetX, y: sourcePoints[i].y + offsetY}, comparePoints);
+        let distance = distanceToPolyline(new Paper.Point(sourcePoints[i].x + offsetX, sourcePoints[i].y + offsetY), comparePoints);
 
         distanceSum += distance;
 
-        if (maxDistance === null || distance > maxDistance) {
+        if (distance > maxDistance) {
             maxDistance = distance;
         }
     }
 
-    let result = {
-        avgDistance: distanceSum / sourcePoints.length,
-        maxDistance: maxDistance
-    };
+    const result = new DistanceStatistics(
+        distanceSum / sourcePoints.length,
+        maxDistance
+    );
 
     cache.set(cacheKey, result);
 
     return result;
 }
 
+/**
+ * @param {Point} point1
+ * @param {Point} point2
+ * @returns {number}
+ */
 function distanceOfPoints(point1, point2) {
-    point1 = fixPoint(point1);
-    point2 = fixPoint(point2);
-
     let diffX = point2.x - point1.x;
     let diffY = point2.y - point1.y;
     return Math.sqrt(diffX * diffX + diffY * diffY);
 }
 
+/**
+ *
+ * @param {Point[]} points
+ * @param {Point} point
+ * @returns {Point}
+ */
 function getClosestPoint(points, point) {
     let closestPoint = null;
     for (let i = 0; i < points.length; i++) {
@@ -105,35 +118,31 @@ function getClosestPoint(points, point) {
         }
     }
 
-    if (closestPoint) {
-        return closestPoint.point;
+    if (closestPoint === null) {
+        throw new Error('Could not determine closest point, because we did not get a list of points.');
     }
-    return null;
+
+    return closestPoint.point;
 }
 
 /**
  * Point1/2 will become 0° if rotated by the return value
  *
- * @param point1
- * @param point2
- * @param point3
- * @param point4
+ * @param {Point} point1
+ * @param {Point} point2
+ * @param {Point} point3
+ * @param {Point} point4
+ *
+ * @returns {number}
  */
 function getRotationOfRectangle(point1, point2, point3, point4) {
     let points = [point1, point2, point3, point4];
 
-    let keyY = 'y';
-    let keyX = 'x';
-    if (points[0] instanceof Array) {
-        keyY = 2;
-        keyX = 1;
-    }
-
     let rotations = [];
     for (let i = 0; i < 4; i++) {
         let singleRotation = -Math.atan2(
-            points[(i + 1) % 4][keyY] - points[i][keyY],
-            points[(i + 1) % 4][keyX] - points[i][keyX]
+            points[(i + 1) % 4].y - points[i].y,
+            points[(i + 1) % 4].x - points[i].x
         ) * 180 / Math.PI - (i + 1) * 90;
 
         rotations.push(singleRotation);
@@ -142,28 +151,35 @@ function getRotationOfRectangle(point1, point2, point3, point4) {
     return getAverageRotation(rotations);
 }
 
+/**
+ * @param {number[]} rotations
+ * @returns {number}
+ */
 function getAverageRotation(rotations) {
     return 180 / Math.PI * Math.atan2(
         sum(rotations.map(degToRad).map(Math.sin)) / rotations.length,
         sum(rotations.map(degToRad).map(Math.cos)) / rotations.length
     );
 }
+
+/**
+ * @param {number[]} a
+ * @returns {number}
+ */
 function sum(a) {
-    var s = 0;
+    let s = 0;
     for (let i = 0; i < a.length; i++) {
         s += a[i];
     }
     return s;
 }
 
-function degToRad(a) {
-    return Math.PI / 180 * a;
-}
-
-function fixPoint(numericalPoint) {
-    if (typeof numericalPoint.x !== 'undefined') return numericalPoint;
-
-    return {x: numericalPoint[1], y: numericalPoint[2]};
+/**
+ * @param {number} degree
+ * @returns {number}
+ */
+function degToRad(degree) {
+    return Math.PI / 180 * degree;
 }
 
 module.exports = {
