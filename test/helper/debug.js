@@ -1,5 +1,4 @@
 const colors = require('colors/safe');
-const mathHelper = require('./mathHelper');
 
 class Debug {
     outputPlacements(placements, correctnessChecker) {
