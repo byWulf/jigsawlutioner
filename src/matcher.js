@@ -1,7 +1,6 @@
 const MathHelper = require('./mathHelper');
 const PathHelper = require('./pathHelper');
 const Cache = require('node-cache');
-const colors = require('colors/safe');
 
 /**
  * Returns some values to determine, how good the given sides match up.

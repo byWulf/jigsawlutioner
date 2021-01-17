@@ -14,16 +14,16 @@
   },
   "homepage": "https://github.com/byWulf/jigsawlutioner#readme",
   "dependencies": {
-    "colors": "^1.4.0",
     "dateformat": "^4.4.1",
     "node-cache": "^5.1.2",
     "paper-jsdom": "^0.12.11",
     "round-to": "^5.0.0",
-    "sharp": "^0.27.0",
-    "single-line-log": "^1.1.2"
+    "sharp": "^0.27.0"
   },
   "devDependencies": {
+    "colors": "^1.4.0",
     "mocha": "^8.2.1",
-    "opn": "^6.0.0"
+    "opn": "^6.0.0",
+    "single-line-log": "^1.1.2"
   }
 }

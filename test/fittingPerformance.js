@@ -3,7 +3,7 @@
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
 const Matcher = require(__dirname + '/../src/matcher');
-const Debug = require(__dirname + '/../src/debug');
+const Debug = require(__dirname + '/helper/debug');
 
 const dateFormat = require('dateformat');
 const singleLog = require('single-line-log').stdout;

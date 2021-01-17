@@ -1,6 +1,6 @@
 const fs = require('fs');
 const Matcher = require(__dirname + '/../src/matcher');
-const debug = require(__dirname + '/../src/debug');
+const debug = require(__dirname + '/helper/debug');
 const BorderFinder = require(__dirname + '/../src/borderFinder');
 const SideFinder = require(__dirname + '/../src/sideFinder');
 const PieceHelper = require(__dirname + '/../src/pieceHelper');
