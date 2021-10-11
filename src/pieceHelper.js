@@ -14,7 +14,7 @@ function getLimitedPiece(borderData, sideData) {
             let x = Math.round(sides[sideIndex].points[i].x * 100) / 100;
             let y = Math.round(sides[sideIndex].points[i].y * 100) / 100;
 
-            sides[sideIndex].points[i] = new Point(x, y);
+            sides[sideIndex].points[i] = new Point(x, y, sides[sideIndex].points[i].color);
         }
     }
 
