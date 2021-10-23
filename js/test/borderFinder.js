@@ -5,6 +5,17 @@ const BorderFinder = require('../src/borderFinder');
 const SideFinder = require('../src/sideFinder');
 
 (async () => {
+    console.time();
+    let borderData = await BorderFinder.findPieceBorder(__dirname + '/../../tests/fixtures/pieces/piece2.jpg', {
+        threshold: 245,
+        reduction: 2,
+        debug: true,
+        returnColorPoints: true
+    });
+    console.timeEnd();
+    return;
+
+
         let ok = 0;
         let error = 0;
         for (let i = 2; i <= 501; i++) {

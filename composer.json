@@ -1,0 +1,23 @@
+{
+    "name": "bywulf/jigsawlutioner",
+    "description": "Jigsaw puzzle solving algorithm",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Bywulf\\Jigsawlutioner\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "byWulf",
+            "email": "wulf1337@gmail.com"
+        }
+    ],
+    "require": {
+        "ext-imagick": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9"
+    }
+}
