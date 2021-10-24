@@ -9,3 +9,4 @@ test/fixtures/fittingPerformance_*
 test/fixtures/placements*
 
 /vendor/
+.phpunit.result.cache
