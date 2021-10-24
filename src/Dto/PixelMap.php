@@ -11,10 +11,37 @@ class PixelMap
     /**
      * @param int[][] $pixels
      */
-    public function __construct(
+    private function __construct(
         private GdImage $image,
-        private array $pixels
+        private array $pixels,
+        private int $width,
+        private int $height
     ) {
+    }
+
+    public static function createFromImage(GdImage $image): PixelMap
+    {
+        $pixels = [];
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $pixels[$y][$x] = imagecolorat($image, $x, $y);
+            }
+        }
+
+        return new PixelMap($image, $pixels, $width, $height);
+    }
+
+    public function applyToImage(): void
+    {
+        foreach ($this->pixels as $y => $row) {
+            foreach ($row as $x => $color) {
+                imagesetpixel($this->image, $x, $y, $color);
+            }
+        }
     }
 
     public function getImage(): GdImage
@@ -24,12 +51,17 @@ class PixelMap
 
     public function getWidth(): int
     {
-        return imagesx($this->image);
+        return $this->width;
     }
 
     public function getHeight(): int
     {
-        return imagesy($this->image);
+        return $this->height;
+    }
+
+    public function getColor(int $x, int $y): ?int
+    {
+        return $this->pixels[$y][$x] ?? null;
     }
 
     /**
@@ -40,7 +72,7 @@ class PixelMap
         return $this->pixels;
     }
 
-    public function setPixel(int $x, int $y, int $color): void
+    public function setColor(int $x, int $y, int $color): void
     {
         if (!isset($this->pixels[$y][$x])) {
             return;

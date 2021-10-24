@@ -33,7 +33,7 @@ class BorderFinder
         $backgroundColor = imagecolorallocate($image, 255, 255, 255);
         $surroundingColor = imagecolorallocate($image, 200, 200, 200);
 
-        $pixelMap = $this->getPixelMap($image);
+        $pixelMap = PixelMap::createFromImage($image);
 
         // Make the image black and white to find the borders
         $this->transformImageToMonochrome($pixelMap, $threshold, $objectColor, $backgroundColor);
@@ -68,28 +68,6 @@ class BorderFinder
         );
     }
 
-    private function getPixelMap(GdImage $image): PixelMap
-    {
-        $pixels = [];
-
-        for ($y = 0; $y < imagesy($image); $y++) {
-            for ($x = 0; $x < imagesx($image); $x++) {
-                $pixels[$y][$x] = imagecolorat($image, $x, $y);
-            }
-        }
-
-        return new PixelMap($image, $pixels);
-    }
-
-    private function applyPixelMap(PixelMap $pixelMap): void
-    {
-        foreach ($pixelMap->getPixels() as $y => $row) {
-            foreach ($row as $x => $color) {
-                imagesetpixel($pixelMap->getImage(), $x, $y, $color);
-            }
-        }
-    }
-
     private function transformImageToMonochrome(PixelMap $pixelMap, float $threshold, int $objectColor, int $backgroundColor)
     {
         foreach ($pixelMap->getPixels() as $y => $rows) {
@@ -100,7 +78,7 @@ class BorderFinder
 
                 $brightness = (0.2126 * $red + 0.7152 * $green + 0.0722 * $blue);
 
-                $pixelMap->setPixel($x, $y, $brightness <= (255 * $threshold) ? $objectColor : $backgroundColor);
+                $pixelMap->setColor($x, $y, $brightness <= (255 * $threshold) ? $objectColor : $backgroundColor);
             }
         }
     }
@@ -115,7 +93,7 @@ class BorderFinder
         foreach ($pixelMap->getPixels() as $y => $rows) {
             foreach ($rows as $x => $color) {
                 if ($color === $colorToBeReplaced) {
-                    $pixelMap->setPixel($x, $y, $newColor);
+                    $pixelMap->setColor($x, $y, $newColor);
                 }
             }
         }
@@ -139,7 +117,7 @@ class BorderFinder
                 }
 
                 foreach ($surroundingOffsets as $offset) {
-                    if (($pixelMap->getPixels()[$y + $offset['y']][$x + $offset['x']] ?? $surroundingColor) !== $surroundingColor) {
+                    if (($pixelMap->getColor($x + $offset['x'], $y + $offset['y']) ?? $surroundingColor) !== $surroundingColor) {
                         $borderPixels[] = ['x' => $x, 'y' => $y];
                     }
                 }
@@ -153,11 +131,11 @@ class BorderFinder
                         continue;
                     }
 
-                    if ($pixelMap->getPixels()[$pixel['y'] + (int) $yOffset][$pixel['x'] + (int) $xOffset] ?? null === $surroundingColor) {
+                    if (($pixelMap->getColor($pixel['x'] + (int) $xOffset, $pixel['y'] + (int) $yOffset) ?? $surroundingColor) === $surroundingColor) {
                         continue;
                     }
 
-                    $pixelMap->setPixel($pixel['x'] + (int) $xOffset, $pixel['y'] + (int) $yOffset, $newColor);
+                    $pixelMap->setColor($pixel['x'] + (int) $xOffset, $pixel['y'] + (int) $yOffset, $newColor);
                 }
             }
         }
@@ -184,13 +162,13 @@ class BorderFinder
 
                 $positiveSurroundingPixels = 0;
                 foreach ($surroundingOffsets as $offset) {
-                    if (($pixelMap->getPixels()[$y + $offset['y']][$x + $offset['x']] ?? $objectColor) !== $objectColor) {
+                    if (($pixelMap->getColor($x + $offset['x'], $y + $offset['y']) ?? $objectColor) !== $objectColor) {
                         $positiveSurroundingPixels++;
                     }
                 }
 
                 if ($positiveSurroundingPixels >= $minSurroundingPixels) {
-                    $pixelMap->setPixel($x + $offset['x'], $y + $offset['y'], $newColor);
+                    $pixelMap->setColor($x + $offset['x'], $y + $offset['y'], $newColor);
                 }
             }
         }
@@ -231,13 +209,13 @@ class BorderFinder
         $height = $pixelMap->getHeight();
 
         for ($x = 0; $x < $width; $x++) {
-            if ($pixelMap->getPixels()[0][$x] === $objectColor || $pixelMap->getPixels()[$height - 1][$x] === $objectColor) {
+            if ($pixelMap->getColor($x, 0) === $objectColor || $pixelMap->getColor($x, $height - 1) === $objectColor) {
                 return true;
             }
         }
 
         for ($y = 0; $y < $height; $y++) {
-            if ($pixelMap->getPixels()[$y][0] === $objectColor || $pixelMap->getPixels()[$y][$width - 1] === $objectColor) {
+            if ($pixelMap->getColor(0, $y) === $objectColor || $pixelMap->getColor($width - 1, $y) === $objectColor) {
                 return true;
             }
         }
@@ -273,7 +251,7 @@ class BorderFinder
                     for ($i = $direction + 3; $i < $direction + 7; $i++) {
                         $checkDirection = $i % 4;
 
-                        if (($pixelMap->getPixels()[$y + $directionOffsets[$checkDirection]['y']][$x + $directionOffsets[$checkDirection]['x']] ?? null) === $objectColor) {
+                        if (($pixelMap->getColor($x + $directionOffsets[$checkDirection]['x'], $y + $directionOffsets[$checkDirection]['y']) ?? null) === $objectColor) {
                             $x += $directionOffsets[$checkDirection]['x'];
                             $y += $directionOffsets[$checkDirection]['y'];
                             $direction = $checkDirection;
