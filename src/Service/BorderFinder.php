@@ -18,6 +18,11 @@ class BorderFinder
     private const DIRECTION_RIGHT = 2;
     private const DIRECTION_DOWN = 1;
 
+    public function __construct(
+        private PathService $pathService
+    ) {
+    }
+
     /**
      * @throws BorderParsingException
      */
@@ -32,6 +37,7 @@ class BorderFinder
         $biggestObjectColor = imagecolorallocate($image, 50, 50, 50);
         $backgroundColor = imagecolorallocate($image, 255, 255, 255);
         $surroundingColor = imagecolorallocate($image, 200, 200, 200);
+        $simplifiedPointsColor = imagecolorallocate($image, 255, 255, 0);
 
         $pixelMap = PixelMap::createFromImage($image);
 
@@ -58,9 +64,18 @@ class BorderFinder
             throw new BorderParsingException('Piece is cut off');
         }
 
+        /** @var BoundingBox $boundingBox */
         list($points, $boundingBox) = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
 
-        // TODO: Simplify points -> https://github.com/byWulf/jigsawlutioner/blob/feaa73dc16249484629ace4900a1440c397a6473/src/pathHelper.js#L186
+        $points = $this->pathService->simplifyPoints($points);
+        array_pop($points);
+
+        foreach ($points as $point) {
+            $pixelMap->setColor($point->getX() + $boundingBox->getLeft(), $point->getY() + $boundingBox->getTop(), $simplifiedPointsColor);
+        }
+
+//        $pixelMap->applyToImage();
+//        imagepng($image, 'test2.png');
 
         return new Border(
             points: $points,
