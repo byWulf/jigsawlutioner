@@ -4,31 +4,41 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
-class Point
+use JsonSerializable;
+
+class Point implements JsonSerializable
 {
     public function __construct(
-        private int $x,
-        private int $y
+        private float $x,
+        private float $y
     ) {
     }
 
-    public function getX(): int
+    public function getX(): float
     {
         return $this->x;
     }
 
-    public function setX(int $x): void
+    public function setX(float $x): void
     {
         $this->x = $x;
     }
 
-    public function getY(): int
+    public function getY(): float
     {
         return $this->y;
     }
 
-    public function setY(int $y): void
+    public function setY(float $y): void
     {
         $this->y = $y;
+    }
+
+    public function jsonSerialize()
+    {
+        return [
+            'x' => $this->x,
+            'y' => $this->y,
+        ];
     }
 }

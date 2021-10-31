@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
+use Bywulf\Jigsawlutioner\Exception\PixelMapException;
+use function count;
 use GdImage;
 
 class PixelMap
@@ -19,6 +21,9 @@ class PixelMap
     ) {
     }
 
+    /**
+     * @throws PixelMapException
+     */
     public static function createFromImage(GdImage $image): PixelMap
     {
         $pixels = [];
@@ -26,9 +31,14 @@ class PixelMap
         $width = imagesx($image);
         $height = imagesy($image);
 
-        for ($y = 0; $y < $height; $y++) {
-            for ($x = 0; $x < $width; $x++) {
-                $pixels[$y][$x] = imagecolorat($image, $x, $y);
+        for ($y = 0; $y < $height; ++$y) {
+            for ($x = 0; $x < $width; ++$x) {
+                $color = imagecolorat($image, $x, $y);
+                if ($color === false) {
+                    throw new PixelMapException('Could not read pixel color at ' . $x . '/' . $y . '.');
+                }
+
+                $pixels[$y][$x] = $color;
             }
         }
 
@@ -86,61 +96,83 @@ class PixelMap
         $sourceColor = $this->pixels[$y][$x];
 
         $filledPixels = 0;
-        $stack[] = ['x' => $x, 'y' => $y];
+        $stack = [new Point($x, $y)];
+
         while (count($stack) > 0) {
             $element = array_pop($stack);
-            $x = $element['x'];
-            $y = $element['y'];
+            $x = (int) $element->getX();
+            $y = (int) $element->getY();
 
             $this->pixels[$y][$x] = $color;
-            $filledPixels++;
+            ++$filledPixels;
 
-            $saveX = $x;
+            $xLeft = $this->fillToLeft($x, $y, $sourceColor, $color, $filledPixels);
+            $xRight = $this->fillToRight($x, $y, $sourceColor, $color, $filledPixels);
 
-            $x--;
-            while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
-                $this->pixels[$y][$x] = $color;
-                $filledPixels++;
-                $x--;
-            }
-            $xLeft = $x + 1;
-
-            $x = $saveX + 1;
-            while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
-                $this->pixels[$y][$x] = $color;
-                $filledPixels++;
-                $x++;
-            }
-            $xRight = $x - 1;
-
-            $currentY = $y;
-            foreach ([-1, 1] as $offset) {
-                $y = $currentY + $offset;
-                $x = $xLeft;
-
-                while ($x <= $xRight) {
-                    $pFlag = false;
-
-                    while (($this->pixels[$y][$x] ?? null) === $sourceColor && $x <= $xRight) {
-                        $pFlag = true;
-                        $x++;
-                    }
-
-                    if ($pFlag) {
-                        if ($x === $xRight && ($this->pixels[$y][$x] ?? null) === $sourceColor) {
-                            $stack[] = ['x' => $x, 'y' => $y];
-                        } else {
-                            $stack[] = ['x' => $x - 1, 'y' => $y];
-                        }
-                    }
-
-                    do {
-                        $x++;
-                    } while (isset($this->pixels[$y][$x]) && $this->pixels[$y][$x] !== $sourceColor && $x <= $xRight);
-                }
-            }
+            $this->expandStack($xLeft, $xRight, $y + 1, $sourceColor, $stack);
+            $this->expandStack($xLeft, $xRight, $y - 1, $sourceColor, $stack);
         }
 
         return $filledPixels;
+    }
+
+    private function fillToRight(int $x, int $y, mixed $sourceColor, int $color, int &$filledPixels): int
+    {
+        $x = $x + 1;
+        while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
+            $this->pixels[$y][$x] = $color;
+            ++$filledPixels;
+            ++$x;
+        }
+
+        return $x - 1;
+    }
+
+    private function fillToLeft(int $x, int $y, int $sourceColor, int $color, int &$filledPixels): int
+    {
+        $x = $x - 1;
+        while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
+            $this->pixels[$y][$x] = $color;
+            ++$filledPixels;
+            --$x;
+        }
+
+        return $x + 1;
+    }
+
+    /**
+     * @param Point[] $stack
+     */
+    private function expandStack(int $xLeft, int $xRight, int $y, int $sourceColor, array &$stack): void
+    {
+        $x = $xLeft;
+
+        while ($x <= $xRight) {
+            $pFlag = false;
+
+            while ($this->isColor($x, $y, $sourceColor) && $x <= $xRight) {
+                $pFlag = true;
+                ++$x;
+            }
+
+            if ($pFlag) {
+                $offset = $x === $xRight && $this->isColor($x, $y, $sourceColor) ? 0 : -1;
+                $stack[] = new Point($x + $offset, $y);
+            }
+
+            do {
+                ++$x;
+            } while ($this->isNotColor($x, $y, $sourceColor) && $x <= $xRight);
+        }
+    }
+
+    private function isColor(int $x, int $y, int $color): bool
+    {
+        return ($this->pixels[$y][$x] ?? null) === $color;
+    }
+
+    private function isNotColor(int $x, int $y, int $color): bool
+    {
+        return ($this->pixels[$y][$x] ?? $color) !== $color;
     }
 }
