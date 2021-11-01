@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Tests\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
-use Bywulf\Jigsawlutioner\Service\MathService;
+use Bywulf\Jigsawlutioner\Service\PointService;
 use PHPUnit\Framework\TestCase;
 
-class MathServiceTest extends TestCase
+class PointServiceTest extends TestCase
 {
-    private MathService $mathService;
+    private PointService $pointService;
 
     protected function setUp(): void
     {
-        $this->mathService = new MathService();
+        $this->pointService = new PointService();
     }
 
     /**
@@ -25,7 +25,7 @@ class MathServiceTest extends TestCase
      */
     public function testDistanceToLine(Point $point, Point $lineStart, Point $lineEnd, float $expectedDistance): void
     {
-        $result = $this->mathService->getDistanceToLine($point, $lineStart, $lineEnd);
+        $result = $this->pointService->getDistanceToLine($point, $lineStart, $lineEnd);
 
         $this->assertEquals($expectedDistance, $result);
     }

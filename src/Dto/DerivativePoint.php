@@ -10,6 +10,8 @@ class DerivativePoint extends Point implements JsonSerializable
 {
     private bool $extreme = false;
 
+    private bool $usedAsCorner = false;
+
     public function __construct(
         float $x,
         float $y,
@@ -39,6 +41,16 @@ class DerivativePoint extends Point implements JsonSerializable
         $this->extreme = $extreme;
     }
 
+    public function isUsedAsCorner(): bool
+    {
+        return $this->usedAsCorner;
+    }
+
+    public function setUsedAsCorner(bool $usedAsCorner): void
+    {
+        $this->usedAsCorner = $usedAsCorner;
+    }
+
     public function jsonSerialize(): array
     {
         return array_merge(
@@ -47,6 +59,7 @@ class DerivativePoint extends Point implements JsonSerializable
                 'derivative' => $this->derivative,
                 'index' => $this->index,
                 'extreme' => $this->extreme,
+                'usedAsCorner' => $this->usedAsCorner,
             ]
         );
     }

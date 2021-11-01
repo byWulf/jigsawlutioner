@@ -7,8 +7,8 @@ namespace Bywulf\Jigsawlutioner\Service\SideFinder;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
-use Bywulf\Jigsawlutioner\Service\MathService;
 use Bywulf\Jigsawlutioner\Service\PathService;
+use Bywulf\Jigsawlutioner\Service\PointService;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 
@@ -17,13 +17,13 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
     private const DERIVATIVE_LIMIT = -40;
     private const DERIVATIVE_NEIGHBOUR_LOOKAHEAD = 20;
     private ?LoggerInterface $logger = null;
-    private MathService $mathService;
+    private PointService $pointService;
     private PathService $pathService;
 
     public function __construct(
         private float $derivationLookahead = 25
     ) {
-        $this->mathService = new MathService();
+        $this->pointService = new PointService();
         $this->pathService = new PathService();
     }
 
@@ -46,16 +46,16 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             $this->logger?->debug('Looking at the following points:', $activeDerivatives);
 
             // 1. Check that opposite sides are equally long
-            $distance0 = $this->mathService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
-            $distance2 = $this->mathService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
+            $distance0 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
+            $distance2 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
             if (abs($distance0 - $distance2) > 0.4 * min($distance0, $distance2)) {
                 $this->logger?->debug(' -> Distance of sides 0 and 2 more than 40% apart', [$distance0, $distance2]);
 
                 continue;
             }
 
-            $distance1 = $this->mathService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
-            $distance3 = $this->mathService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
+            $distance1 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
+            $distance3 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
             if (abs($distance1 - $distance3) > 0.4 * min($distance1, $distance3)) {
                 $this->logger?->debug(' -> Distance of sides 1 and 3 more than 40% apart', [$distance1, $distance3]);
 
@@ -63,18 +63,18 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             }
 
             // 2. Check that opposite sides are equally rotated
-            $rotation0 = $this->mathService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
-            $rotation2 = $this->mathService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
-            $rotationDiff0 = abs($this->mathService->normalizeRotation($rotation0 - $rotation2));
+            $rotation0 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
+            $rotation2 = $this->pointService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
+            $rotationDiff0 = abs($this->pointService->normalizeRotation($rotation0 - $rotation2));
             if ($rotationDiff0 > 30) {
                 $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 30° apart', [$rotation0, $rotation2]);
 
                 continue;
             }
 
-            $rotation1 = $this->mathService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
-            $rotation3 = $this->mathService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
-            $rotationDiff1 = abs($this->mathService->normalizeRotation($rotation1 - $rotation3));
+            $rotation1 = $this->pointService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
+            $rotation3 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
+            $rotationDiff1 = abs($this->pointService->normalizeRotation($rotation1 - $rotation3));
             if ($rotationDiff1 > 30) {
                 $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 30° apart', [$rotation1, $rotation3]);
 
@@ -90,14 +90,14 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
 
             // 5. Check that the first 10% are straight to the side
             for ($i = 0; $i < 4; ++$i) {
-                $sideDistance = $this->mathService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+                $sideDistance = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
                 $extendedPoints = $this->pathService->extendPointsByCount(
                     $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
                     100
                 );
 
                 for ($j = 0; $j < 10; ++$j) {
-                    $distanceToLine = $this->mathService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+                    $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
                     if ($distanceToLine > 0.05 * $sideDistance) {
                         $this->logger?->debug(' -> Starting part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
 
@@ -105,7 +105,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                     }
                 }
                 for ($j = 90; $j < 100; ++$j) {
-                    $distanceToLine = $this->mathService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+                    $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
                     if ($distanceToLine > 0.05 * $sideDistance) {
                         $this->logger?->debug(' -> Ending part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
 
@@ -115,6 +115,10 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             }
 
             $this->logger?->debug(' -> Fitting!');
+
+            foreach ($activeDerivatives as $derivative) {
+                $derivative->setUsedAsCorner(true);
+            }
 
             return [
                 new Side($this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[0]->getIndex(), $activeDerivatives[1]->getIndex())),
@@ -208,17 +212,17 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             $pointBefore = $this->pathService->getPointOnPolyline($points, $index, -$this->derivationLookahead);
             $pointAfter = $this->pathService->getPointOnPolyline($points, $index, $this->derivationLookahead);
 
-            $rotationBefore = $this->mathService->getRotation($pointBefore, $point);
-            $rotationAfter = $this->mathService->getRotation($point, $pointAfter);
+            $rotationBefore = $this->pointService->getRotation($pointBefore, $point);
+            $rotationAfter = $this->pointService->getRotation($point, $pointAfter);
 
             $derivativePoints[] = new DerivativePoint(
                 $point->getX(),
                 $point->getY(),
-                $this->mathService->normalizeRotation($rotationAfter - $rotationBefore),
+                $this->pointService->normalizeRotation($rotationAfter - $rotationBefore),
                 $index
             );
 
-            $length += $this->mathService->getDistanceBetweenPoints($point, $pointAfter);
+            $length += $this->pointService->getDistanceBetweenPoints($point, $pointAfter);
         }
 
         return $derivativePoints;

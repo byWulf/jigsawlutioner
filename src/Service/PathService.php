@@ -10,11 +10,11 @@ use PointReduction\Common\Point as ReductionPoint;
 
 class PathService
 {
-    private MathService $mathService;
+    private PointService $pointService;
 
     public function __construct()
     {
-        $this->mathService = new MathService();
+        $this->pointService = new PointService();
     }
 
     /**
@@ -68,7 +68,7 @@ class PathService
         $extendedPoints = [$points[0]];
         $offset = 0;
         for ($i = 0; $i < count($points) - 1; ++$i) {
-            $lineLength = $this->mathService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
+            $lineLength = $this->pointService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
             while ($offset <= $lineLength - $distance) {
                 $offset += $distance;
                 $extendedPoints[] = new Point(
@@ -94,7 +94,7 @@ class PathService
             $nextIndex = $index + $indexDirection;
             $nextIndex = $nextIndex < 0 ? count($points) - 1 : $nextIndex;
             $nextIndex = $nextIndex >= count($points) ? 0 : $nextIndex;
-            $lineLength = $this->mathService->getDistanceBetweenPoints($points[$index], $points[$nextIndex]);
+            $lineLength = $this->pointService->getDistanceBetweenPoints($points[$index], $points[$nextIndex]);
 
             if ($movedLength + $lineLength >= $length) {
                 $offset = $length - $movedLength;
@@ -117,7 +117,7 @@ class PathService
         $length = 0;
 
         for ($i = 0; $i < count($points) - 1; ++$i) {
-            $length += $this->mathService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
+            $length += $this->pointService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
         }
 
         return $length;

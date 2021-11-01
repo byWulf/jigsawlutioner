@@ -6,7 +6,7 @@ namespace Bywulf\Jigsawlutioner\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
 
-class MathService
+class PointService
 {
     private function getDistanceSquared(Point $point1, Point $point2): float
     {
