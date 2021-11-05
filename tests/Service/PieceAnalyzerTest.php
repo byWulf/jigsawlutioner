@@ -25,6 +25,30 @@ use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
 use ReflectionClass;
+use Rubix\ML\Classifiers\ClassificationTree;
+use Rubix\ML\Classifiers\ExtraTreeClassifier;
+use Rubix\ML\Classifiers\KDNeighbors;
+use Rubix\ML\Classifiers\KNearestNeighbors;
+use Rubix\ML\Classifiers\LogisticRegression;
+use Rubix\ML\Classifiers\LogitBoost;
+use Rubix\ML\Classifiers\MultilayerPerceptron;
+use Rubix\ML\Classifiers\NaiveBayes;
+use Rubix\ML\Classifiers\RadiusNeighbors;
+use Rubix\ML\Classifiers\RandomForest;
+use Rubix\ML\Classifiers\SoftmaxClassifier;
+use Rubix\ML\CrossValidation\Metrics\Accuracy;
+use Rubix\ML\Datasets\Labeled;
+use Rubix\ML\Extractors\CSV;
+use Rubix\ML\NeuralNet\ActivationFunctions\LeakyReLU;
+use Rubix\ML\NeuralNet\Layers\Activation;
+use Rubix\ML\NeuralNet\Layers\BatchNorm;
+use Rubix\ML\NeuralNet\Layers\Dense;
+use Rubix\ML\NeuralNet\Layers\Dropout;
+use Rubix\ML\NeuralNet\Layers\PReLU;
+use Rubix\ML\NeuralNet\Optimizers\Adam;
+use Rubix\ML\NeuralNet\Optimizers\AdaMax;
+use Rubix\ML\PersistentModel;
+use Rubix\ML\Persisters\Filesystem;
 
 class PieceAnalyzerTest extends TestCase
 {
@@ -83,6 +107,8 @@ class PieceAnalyzerTest extends TestCase
 
     public function testCornersFromFixtures(): void
     {
+        $this->markTestSkipped('Only for manual execution');
+
         $borderFinder = new ByWulfBorderFinder();
         $sideFinder = new ByWulfSideFinder();
         $pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
@@ -610,6 +636,148 @@ class PieceAnalyzerTest extends TestCase
         }
     }
 
+    public function testLearnNopMatching(): void
+    {
+        //$this->markTestSkipped('Only for manual execution');
+
+        $nopInformation = [];
+        for ($i = 2; $i <= 501; $i++) {
+            //echo "piece " . $i . PHP_EOL;
+            $pieceData = json_decode(file_get_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.json'), true);
+            $cornerIndex = 0;
+            foreach ($pieceData['borderPoints'] as $point) {
+                if ($point['usedAsCorner']) {
+                    $pieceData['sides'][$cornerIndex]['yPoint'] = $point['y'];
+                    $cornerIndex++;
+                }
+            }
+            if (count($pieceData['sides']) !== 4) {
+                continue;
+            }
+
+            while (
+                $pieceData['sides'][1]['yPoint'] < $pieceData['sides'][0]['yPoint'] ||
+                $pieceData['sides'][2]['yPoint'] < $pieceData['sides'][0]['yPoint'] ||
+                $pieceData['sides'][3]['yPoint'] < $pieceData['sides'][0]['yPoint']
+            ) {
+                $side = array_splice($pieceData['sides'], 0, 1);
+                $pieceData['sides'][] = $side[0];
+                $pieceData['sides'] = array_values($pieceData['sides']);
+                //echo " -> moving sides because first side is not the first side" . PHP_EOL;
+            }
+
+            foreach (array_values($pieceData['sides']) as $index => $side) {
+                $nopInformation[$i][$index] = $side;
+            }
+        }
+
+        $datasets = [];
+        $labels = [];
+        for ($x = 0; $x < 25; $x++) {
+            for ($y = 0; $y < 20; $y++) {
+                $rightSide = $nopInformation[$y * 25 + $x + 2][3] ?? null;
+                $rightOppositeSide = $nopInformation[$y * 25 + $x + 3][1] ?? null;
+
+                $bottomSide = $nopInformation[$y * 25 + $x + 2][2] ?? null;
+                $bottomOppositeSide = $nopInformation[($y + 1) * 25 + $x + 2][0] ?? null;
+
+                $dataset = $this->getDataset($rightSide, $rightOppositeSide);
+                if ($dataset) {
+                    $datasets[] = $dataset;
+                    $labels[] = 'yes';
+                }
+
+                $dataset = $this->getDataset($bottomSide, $bottomOppositeSide);
+                if ($dataset) {
+                    $datasets[] = $dataset;
+                    $labels[] = 'yes';
+                }
+
+                $dataset = $this->findNonmatchingDataset($rightSide, $rightOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
+                if ($dataset) {
+                    $datasets[] = $dataset;
+                    $labels[] = 'no';
+                }
+
+                $dataset = $this->findNonmatchingDataset($bottomSide, $bottomOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
+                if ($dataset) {
+                    $datasets[] = $dataset;
+                    $labels[] = 'no';
+                }
+            }
+        }
+
+        $labeledDataset = new Labeled($datasets, $labels);
+        [$training, $testing] = $labeledDataset->stratifiedSplit(0.8);
+
+        $estimator = new PersistentModel(
+            new ClassificationTree(PHP_INT_MAX, 5),
+            new Filesystem('smallNopMatcher.model')
+        );
+
+        echo "Training..." . PHP_EOL;
+        $estimator->train($training);
+
+        echo "Predicting..." . PHP_EOL;
+        $predictions = $estimator->proba($testing);
+
+        $difference = 0;
+        foreach ($predictions as $index => $prediction) {
+            $difference += 1 - $prediction[$testing->label($index)];
+            //echo $index . ': Prediction: ' . json_encode($prediction) . ' Label: ' . $testing->label($index) . PHP_EOL;
+        }
+
+        $score = 1 - ($difference / count($predictions));
+        echo "Score is " . $score . PHP_EOL;
+
+        $estimator->save();
+    }
+
+    private function findNonmatchingDataset(?array $side1, ?array $side2, ?array $piece): ?array
+    {
+        if ($side1 !== null && $side2 !== null && $piece !== null) {
+            for ($i = 0; $i < 4; $i++) {
+                $otherSide = $piece[$i] ?? null;
+                if (
+                    $otherSide !== null &&
+                    $otherSide['classifiers'][DirectionClassifier::class] === $side2['classifiers'][DirectionClassifier::class]
+                ) {
+                    return $this->getDataset($side1, $otherSide);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function getDataset(?array $side1, ?array $side2): ?array {
+        if ($side1 === null || $side1['classifiers'][DirectionClassifier::class] === DirectionClassifier::NOP_STRAIGHT) {
+            return null;
+        }
+        if ($side2 === null || $side2['classifiers'][DirectionClassifier::class] === DirectionClassifier::NOP_STRAIGHT) {
+            return null;
+        }
+        if ($side1['classifiers'][DirectionClassifier::class] === $side2['classifiers'][DirectionClassifier::class]) {
+            return null;
+        }
+
+        // Make the inside-side the first side
+        if ($side1['classifiers'][DirectionClassifier::class] !== DirectionClassifier::NOP_INSIDE) {
+            $sideTmp = $side1;
+            $side1 = $side2;
+            $side2 = $sideTmp;
+        }
+
+        return [
+//            -$side1['classifiers'][BigWidthClassifier::class]['centerPoint']['x'] - $side2['classifiers'][BigWidthClassifier::class]['centerPoint']['x'],
+//            $side2['classifiers'][BigWidthClassifier::class]['centerPoint']['y'] + $side1['classifiers'][BigWidthClassifier::class]['centerPoint']['y'],
+//            $side1['classifiers'][BigWidthClassifier::class]['pointWidths'][$side1['classifiers'][BigWidthClassifier::class]['biggestWidthIndex']] - $side2['classifiers'][BigWidthClassifier::class]['pointWidths'][$side2['classifiers'][BigWidthClassifier::class]['biggestWidthIndex']],
+            -$side1['classifiers'][SmallWidthClassifier::class]['centerPoint']['x'] - $side2['classifiers'][SmallWidthClassifier::class]['centerPoint']['x'],
+            $side2['classifiers'][SmallWidthClassifier::class]['centerPoint']['y'] + $side1['classifiers'][SmallWidthClassifier::class]['centerPoint']['y'],
+            $side1['classifiers'][SmallWidthClassifier::class]['width'] - $side2['classifiers'][SmallWidthClassifier::class]['width'],
+        ];
+    }
+
     public function testFull(): void
     {
         //$this->markTestSkipped('Only for manual execution');
@@ -621,10 +789,10 @@ class PieceAnalyzerTest extends TestCase
         $start = 2;
         $max = 501;
 
-        $start = $max = 27;
+        $start = $max = 2;
 
-        foreach ([2, 3, 4, 5, 27, 28, 29, 30] as $i) {
-            //for ($i = $start; $i <= $max; ++$i) {
+        //foreach ([2, 3, 4, 5, 27, 28, 29, 30] as $i) {
+        for ($i = $start; $i <= $max; ++$i) {
 
             $image = imagecreatefromjpeg(__DIR__ . '/../fixtures/pieces/piece' . $i . '.jpg');
 

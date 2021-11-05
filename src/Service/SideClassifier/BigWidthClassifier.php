@@ -7,9 +7,15 @@ namespace Bywulf\Jigsawlutioner\Service\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Rubix\ML\Datasets\Unlabeled;
+use Rubix\ML\Estimator;
+use Rubix\ML\PersistentModel;
+use Rubix\ML\Persisters\Filesystem;
 
 class BigWidthClassifier implements SideClassifierInterface
 {
+    private static ?Estimator $estimator = null;
+
     /**
      * @var array<int, float>
      */
@@ -81,10 +87,14 @@ class BigWidthClassifier implements SideClassifierInterface
         $outsideClassifier = $direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = -$insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
-        $yDiff = $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY() - 5;
-        $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth() - 6;
+        $yDiff = $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY();
+        $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
-        return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);
+        if (self::$estimator === null) {
+            self::$estimator = PersistentModel::load(new Filesystem(__DIR__ . '/../../../resources/Model/bigNopMatcher.model'));
+        }
+
+        return self::$estimator->proba(Unlabeled::quick([[$xDiff, $yDiff, $widthDiff]]))[0]['yes'] ?? 0;
     }
 
     /**
