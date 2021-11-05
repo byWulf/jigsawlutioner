@@ -36,9 +36,11 @@ class DerivativePoint extends Point implements JsonSerializable
         return $this->extreme;
     }
 
-    public function setExtreme(bool $extreme): void
+    public function setExtreme(bool $extreme): self
     {
         $this->extreme = $extreme;
+
+        return $this;
     }
 
     public function isUsedAsCorner(): bool
@@ -46,9 +48,11 @@ class DerivativePoint extends Point implements JsonSerializable
         return $this->usedAsCorner;
     }
 
-    public function setUsedAsCorner(bool $usedAsCorner): void
+    public function setUsedAsCorner(bool $usedAsCorner): self
     {
         $this->usedAsCorner = $usedAsCorner;
+
+        return $this;
     }
 
     public function jsonSerialize(): array
@@ -62,5 +66,13 @@ class DerivativePoint extends Point implements JsonSerializable
                 'usedAsCorner' => $this->usedAsCorner,
             ]
         );
+    }
+
+    public static function fromArray(array $data): self
+    {
+        return (new DerivativePoint($data['x'], $data['y'], $data['derivative'], $data['index']))
+            ->setExtreme($data['extreme'])
+            ->setUsedAsCorner($data['usedAsCorner'])
+        ;
     }
 }

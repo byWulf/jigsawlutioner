@@ -9,8 +9,8 @@ use JsonSerializable;
 class Piece implements JsonSerializable
 {
     /**
-     * @param Point[] $borderPoints
-     * @param Side[]  $sides
+     * @param DerivativePoint[] $borderPoints
+     * @param Side[]            $sides
      */
     public function __construct(
         private array $borderPoints,
@@ -19,7 +19,7 @@ class Piece implements JsonSerializable
     }
 
     /**
-     * @return Point[]
+     * @return DerivativePoint[]
      */
     public function getBorderPoints(): array
     {
@@ -38,7 +38,7 @@ class Piece implements JsonSerializable
     {
         return [
             'borderPoints' => array_map(
-                fn (Point $point): array => $point->jsonSerialize(),
+                fn (DerivativePoint $point): array => $point->jsonSerialize(),
                 $this->borderPoints
             ),
             'sides' => array_map(
@@ -46,5 +46,13 @@ class Piece implements JsonSerializable
                 $this->sides
             ),
         ];
+    }
+
+    public static function fromArray(array $data): self
+    {
+        return new Piece(
+            array_map(fn (array $pointData): DerivativePoint => DerivativePoint::fromArray($pointData), $data['borderPoints']),
+            array_map(fn (array $sideData): Side => Side::fromArray($sideData), $data['sides']),
+        );
     }
 }

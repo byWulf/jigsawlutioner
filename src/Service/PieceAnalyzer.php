@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service;
 
+use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Bywulf\Jigsawlutioner\Exception\SideParsingException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\BorderFinderInterface;
-use Bywulf\Jigsawlutioner\Service\SideClassifier\BigWidthClassifier;
-use Bywulf\Jigsawlutioner\Service\SideClassifier\DirectionClassifier;
-use Bywulf\Jigsawlutioner\Service\SideClassifier\SideClassifierInterface;
-use Bywulf\Jigsawlutioner\Service\SideClassifier\SmallWidthClassifier;
 use Bywulf\Jigsawlutioner\Service\SideFinder\SideFinderInterface;
+use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
+use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use GdImage;
 
 class PieceAnalyzer
@@ -44,6 +45,7 @@ class PieceAnalyzer
     {
         $borderPoints = $this->borderFinder->findPieceBorder($image);
 
+        /** @var DerivativePoint[] $borderPoints */
         $sides = $this->sideFinder->getSides($borderPoints);
 
         foreach ($sides as $side) {

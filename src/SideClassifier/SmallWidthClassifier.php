@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bywulf\Jigsawlutioner\Service\SideClassifier;
+namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
@@ -12,16 +12,13 @@ use Rubix\ML\Estimator;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
 
-class BigWidthClassifier implements SideClassifierInterface
+class SmallWidthClassifier implements SideClassifierInterface
 {
-    private static ?Estimator $estimator = null;
+    private static ?PersistentModel $estimator = null;
 
-    /**
-     * @var array<int, float>
-     */
-    private array $pointWidths = [];
+    private int $smallestWidthIndex;
 
-    private int $biggestWidthIndex = 0;
+    private float $width = 0;
 
     private Point $centerPoint;
 
@@ -33,47 +30,38 @@ class BigWidthClassifier implements SideClassifierInterface
             throw new SideClassifierException('Not available on straight sides.');
         }
 
+        /** @var BigWidthClassifier $bigWidthClassifier */
+        $bigWidthClassifier = $side->getClassifier(BigWidthClassifier::class);
+
         $points = $side->getPoints();
-        $pointsCount = count($points);
+        $pointWidths = $bigWidthClassifier->getPointWidths();
+        $pointWidthsCount = count($pointWidths);
 
-        $yMultiplier = $directionClassifier->getDirection() === DirectionClassifier::NOP_INSIDE ? -1 : 1;
-
-        $gettingBigger = true;
-        $latestCompareIndex = $directionClassifier->getDeepestIndex() + 1;
-        for ($i = $directionClassifier->getDeepestIndex() - 5; $i >= 0; --$i) {
-            for ($j = $latestCompareIndex; $j < $pointsCount; ++$j) {
-                if ($points[$j]->getY() * $yMultiplier <= $points[$i]->getY() * $yMultiplier) {
-                    if (abs($points[$j - 1]->getY() - $points[$i]->getY()) < abs($points[$j]->getY() - $points[$i]->getY())) {
-                        --$j;
-                    }
-
-                    $this->pointWidths[$i] = $points[$j]->getX() - $points[$i]->getX();
-                    $latestCompareIndex = $j;
-
-                    if (isset($this->pointWidths[$i + 1]) && $this->pointWidths[$i] < $this->pointWidths[$i + 1] && $gettingBigger) {
-                        $gettingBigger = false;
-                        $this->biggestWidthIndex = $i + 1;
-                    }
-
-                    continue 2;
-                }
+        $smallestWidthIndex = null;
+        for ($i = 0; $i < $pointWidthsCount; ++$i) {
+            if ($smallestWidthIndex === null || $pointWidths[$i] < $this->width) {
+                $this->width = $pointWidths[$i];
+                $smallestWidthIndex = $i;
             }
-            $this->pointWidths[$i] = $points[$j - 1]->getX() - $points[$i]->getX();
-            $latestCompareIndex = $j - 1;
+
+            if ($i >= $bigWidthClassifier->getBiggestWidthIndex()) {
+                break;
+            }
         }
 
-        if ($this->biggestWidthIndex === 0) {
-            throw new SideClassifierException('Couldn\'t determine biggest width of nop.');
+        if ($smallestWidthIndex === null) {
+            throw new SideClassifierException('Couldn\'t determine smallest width of nop.');
         }
+        $this->smallestWidthIndex = $smallestWidthIndex;
 
         $this->centerPoint = new Point(
-            $points[$this->biggestWidthIndex]->getX() + $this->pointWidths[$this->biggestWidthIndex] / 2,
-            $points[$this->biggestWidthIndex]->getY()
+            $points[$smallestWidthIndex]->getX() + $this->width / 2,
+            $points[$smallestWidthIndex]->getY()
         );
     }
 
     /**
-     * @param BigWidthClassifier $classifier
+     * @param SmallWidthClassifier $classifier
      *
      * @throws SideClassifierException
      */
@@ -91,14 +79,14 @@ class BigWidthClassifier implements SideClassifierInterface
         $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
         if (self::$estimator === null) {
-            self::$estimator = PersistentModel::load(new Filesystem(__DIR__ . '/../../../resources/Model/bigNopMatcher.model'));
+            self::$estimator = PersistentModel::load(new Filesystem(__DIR__ . '/../../resources/Model/bigNopMatcher.model'));
         }
 
         return self::$estimator->proba(Unlabeled::quick([[$xDiff, $yDiff, $widthDiff]]))[0]['yes'] ?? 0;
     }
 
     /**
-     * @param BigWidthClassifier $classifier
+     * @param SmallWidthClassifier $classifier
      *
      * @throws SideClassifierException
      */
@@ -118,22 +106,14 @@ class BigWidthClassifier implements SideClassifierInterface
         return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);
     }
 
-    /**
-     * @return array<int, float>
-     */
-    public function getPointWidths(): array
+    public function getSmallestWidthIndex(): int
     {
-        return $this->pointWidths;
-    }
-
-    public function getBiggestWidthIndex(): int
-    {
-        return $this->biggestWidthIndex;
+        return $this->smallestWidthIndex;
     }
 
     public function getWidth(): float
     {
-        return $this->pointWidths[$this->biggestWidthIndex];
+        return $this->width;
     }
 
     public function getCenterPoint(): Point
@@ -144,8 +124,8 @@ class BigWidthClassifier implements SideClassifierInterface
     public function jsonSerialize(): array
     {
         return [
-            'pointWidths' => $this->pointWidths,
-            'biggestWidthIndex' => $this->biggestWidthIndex,
+            'width' => $this->width,
+            'smallestWidthIndex' => $this->smallestWidthIndex,
             'centerPoint' => $this->centerPoint->jsonSerialize(),
         ];
     }

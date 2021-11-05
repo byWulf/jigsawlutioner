@@ -120,12 +120,16 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                 $derivative->setUsedAsCorner(true);
             }
 
-            return [
-                new Side($this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[0]->getIndex(), $activeDerivatives[1]->getIndex())),
-                new Side($this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[1]->getIndex(), $activeDerivatives[2]->getIndex())),
-                new Side($this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[2]->getIndex(), $activeDerivatives[3]->getIndex())),
-                new Side($this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[3]->getIndex(), $activeDerivatives[0]->getIndex())),
-            ];
+            $sides = [];
+            for ($i = 0; $i < 4; ++$i) {
+                $sides[] = new Side(
+                    $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
+                    $activeDerivatives[$i],
+                    $activeDerivatives[($i + 1) % 4]
+                );
+            }
+
+            return $sides;
         }
 
         $this->logger?->error('Not recognized as piece');

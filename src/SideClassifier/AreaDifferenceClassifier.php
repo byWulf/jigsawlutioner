@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bywulf\Jigsawlutioner\Service\SideClassifier;
+namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 class AreaDifferenceClassifier
 {

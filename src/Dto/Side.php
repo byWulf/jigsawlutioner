@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Dto;
 
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Bywulf\Jigsawlutioner\Service\SideClassifier\SideClassifierInterface;
+use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
 use JsonSerializable;
 
 class Side implements JsonSerializable
@@ -19,7 +19,9 @@ class Side implements JsonSerializable
      * @param Point[] $points
      */
     public function __construct(
-        private array $points
+        private array $points,
+        private Point $startPoint,
+        private Point $endPoint
     ) {
     }
 
@@ -66,6 +68,16 @@ class Side implements JsonSerializable
         return $this;
     }
 
+    public function getStartPoint(): Point
+    {
+        return $this->startPoint;
+    }
+
+    public function getEndPoint(): Point
+    {
+        return $this->endPoint;
+    }
+
     public function jsonSerialize(): array
     {
         return [
@@ -77,6 +89,24 @@ class Side implements JsonSerializable
                 fn (SideClassifierInterface $classifier) => $classifier->jsonSerialize(),
                 $this->classifiers
             ),
+            'startPoint' => $this->startPoint->jsonSerialize(),
+            'endPoint' => $this->endPoint->jsonSerialize(),
         ];
+    }
+
+    public static function fromArray(array $data): self
+    {
+        $side = new Side(
+            array_map(fn (array $pointData): Point => Point::fromArray($pointData), $data['points']),
+            Point::fromArray($data['startPoint']),
+            Point::fromArray($data['endPoint'])
+        );
+
+        /** @var class-string<SideClassifierInterface> $classifierName */
+        foreach ($data['classifiers'] as $classifierName => $classifierData) {
+            $side->addClassifier(new $classifierName($side));
+        }
+
+        return $side;
     }
 }

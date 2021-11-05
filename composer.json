@@ -20,7 +20,7 @@
         }
     ],
     "require": {
-        "ext-imagick": "*",
+        "ext-gd": "*",
         "emcconville/point-reduction-algorithms": "^1.2",
         "psr/log": "^1.0",
         "rubix/ml": "^1.2"
