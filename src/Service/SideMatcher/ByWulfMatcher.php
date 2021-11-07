@@ -44,4 +44,14 @@ class ByWulfMatcher implements SideMatcherInterface
 
         return $sum / count($classifiers);
     }
+
+    public function getMatchingProbabilities(Side $side, array $sides): array
+    {
+        $probabilities = [];
+        foreach ($sides as $index => $otherSide) {
+            $probabilities[$index] = $this->getMatchingProbability($side, $otherSide);
+        }
+
+        return $probabilities;
+    }
 }
