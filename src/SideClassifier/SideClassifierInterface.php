@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use JsonSerializable;
 
@@ -13,7 +14,7 @@ interface SideClassifierInterface extends JsonSerializable
     /**
      * @throws SideClassifierException
      */
-    public function __construct(Side $side);
+    public static function fromMetadata(SideMetadata $metadata): self;
 
     /**
      * Used to see, if this side can be attached to the side of another piece.

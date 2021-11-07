@@ -4,6 +4,8 @@ namespace Bywulf\Jigsawlutioner\Service\SideMatcher;
 
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
@@ -13,9 +15,9 @@ interface SideMatcherInterface
         DirectionClassifier::class,
         BigWidthClassifier::class,
         SmallWidthClassifier::class,
+        CornerDistanceClassifier::class,
+        DepthClassifier::class,
     ];
-
-    public function getMatchingProbability(Side $side1, Side $side2): float;
 
     /**
      * @param Side[] $sides

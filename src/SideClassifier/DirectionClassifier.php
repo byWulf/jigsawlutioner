@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Service\PointService;
+use JsonSerializable;
 
 class DirectionClassifier implements SideClassifierInterface
 {
@@ -13,43 +15,23 @@ class DirectionClassifier implements SideClassifierInterface
     public const NOP_INSIDE = 'inside';
     public const NOP_OUTSIDE = 'outside';
 
-    private string $direction;
+    public function __construct(
+        private string $direction
+    ) {
+    }
 
-    private float $depth = 0;
-
-    private int $deepestIndex = 0;
-
-    public function __construct(Side $side)
+    public static function fromMetadata(SideMetadata $metadata): self
     {
-        $pointService = new PointService();
-        $points = $side->getPoints();
-
-        $this->deepestIndex = 0;
-        foreach ($points as $index => $point) {
-            if (abs($point->getY()) > abs($this->depth)) {
-                $this->depth = $point->getY();
-                $this->deepestIndex = $index;
-            }
+        if (abs($metadata->getDepth()) < $metadata->getSideWidth() * 0.1) {
+            return new DirectionClassifier(self::NOP_STRAIGHT);
         }
 
-        $width = $pointService->getDistanceBetweenPoints($points[0], $points[count($points) - 1]);
-
-        $this->direction = abs($this->depth) < $width * 0.1 ? self::NOP_STRAIGHT : ($this->depth < 0 ? self::NOP_INSIDE : self::NOP_OUTSIDE);
+        return new DirectionClassifier($metadata->getDepth() < 0 ? self::NOP_INSIDE : self::NOP_OUTSIDE);
     }
 
     public function getDirection(): string
     {
         return $this->direction;
-    }
-
-    public function getDepth(): float
-    {
-        return $this->depth;
-    }
-
-    public function getDeepestIndex(): int
-    {
-        return $this->deepestIndex;
     }
 
     /**

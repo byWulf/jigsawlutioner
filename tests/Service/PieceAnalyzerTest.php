@@ -17,7 +17,7 @@ use Bywulf\Jigsawlutioner\Service\PathService;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
 use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use Bywulf\Jigsawlutioner\Service\SideFinder\SideFinderInterface;
-use Bywulf\Jigsawlutioner\Service\SideMatcher\ByWulfMatcher;
+use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
@@ -624,7 +624,7 @@ class PieceAnalyzerTest extends TestCase
         $nopInformation = [];
         for ($i = 2; $i <= 501; ++$i) {
             //echo "piece " . $i . PHP_EOL;
-            $piece = Piece::fromArray(json_decode(file_get_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.json'), true));
+            $piece = unserialize(file_get_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.ser'));
 
             if (count($piece->getSides()) !== 4) {
                 continue;
@@ -648,7 +648,7 @@ class PieceAnalyzerTest extends TestCase
             }
         }
 
-        $sideMatcher = new ByWulfMatcher();
+        $sideMatcher = new WeightedMatcher();
 
         $datasets = [];
         $labels = [];
@@ -773,7 +773,7 @@ class PieceAnalyzerTest extends TestCase
         $start = 2;
         $max = 501;
 
-        //$start = $max = 2;
+        //$start = $max = 3;
 
         //foreach ([2, 3, 4, 5, 27, 28, 29, 30] as $i) {
         for ($i = $start; $i <= $max; ++$i) {
@@ -841,6 +841,7 @@ class PieceAnalyzerTest extends TestCase
                     imagestring($image, 5, 175, 30 + $sideIndex * 100, $side->getClassifier(DirectionClassifier::class)->getDirection(), $black);
                 }
 
+                file_put_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.ser', serialize($piece));
                 file_put_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.json', json_encode($piece));
                 echo 'Piece ' . $i . ' parsed successfully.' . PHP_EOL;
             } catch (BorderParsingException $exception) {

@@ -67,12 +67,4 @@ class DerivativePoint extends Point implements JsonSerializable
             ]
         );
     }
-
-    public static function fromArray(array $data): self
-    {
-        return (new DerivativePoint($data['x'], $data['y'], $data['derivative'], $data['index']))
-            ->setExtreme($data['extreme'])
-            ->setUsedAsCorner($data['usedAsCorner'])
-        ;
-    }
 }

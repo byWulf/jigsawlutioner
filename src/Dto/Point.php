@@ -41,9 +41,4 @@ class Point implements JsonSerializable
             'y' => $this->y,
         ];
     }
-
-    public static function fromArray(array $data): self
-    {
-        return new Point($data['x'], $data['y']);
-    }
 }

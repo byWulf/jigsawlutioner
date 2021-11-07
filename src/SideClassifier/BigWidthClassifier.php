@@ -6,7 +6,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use JsonSerializable;
 use Rubix\ML\Datasets\Unlabeled;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
@@ -15,75 +17,48 @@ class BigWidthClassifier implements SideClassifierInterface
 {
     private static ?PersistentModel $estimator = null;
 
-    /**
-     * @var array<int, float>
-     */
-    private array $pointWidths = [];
+    public function __construct(
+        private string $direction,
+        private float $width,
+        private Point $centerPoint
+    ) {
+    }
 
-    private int $biggestWidthIndex = 0;
-
-    private Point $centerPoint;
-
-    public function __construct(private Side $side)
+    public static function fromMetadata(SideMetadata $metadata): self
     {
         /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $side->getClassifier(DirectionClassifier::class);
+        $directionClassifier = $metadata->getSide()->getClassifier(DirectionClassifier::class);
         if ($directionClassifier->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
 
-        $points = $side->getPoints();
-        $pointsCount = count($points);
+        $points = $metadata->getSide()->getPoints();
 
-        $yMultiplier = $directionClassifier->getDirection() === DirectionClassifier::NOP_INSIDE ? -1 : 1;
-
-        $gettingBigger = true;
-        $latestCompareIndex = $directionClassifier->getDeepestIndex() + 1;
-        for ($i = $directionClassifier->getDeepestIndex() - 5; $i >= 0; --$i) {
-            for ($j = $latestCompareIndex; $j < $pointsCount; ++$j) {
-                if ($points[$j]->getY() * $yMultiplier <= $points[$i]->getY() * $yMultiplier) {
-                    if (abs($points[$j - 1]->getY() - $points[$i]->getY()) < abs($points[$j]->getY() - $points[$i]->getY())) {
-                        --$j;
-                    }
-
-                    $this->pointWidths[$i] = $points[$j]->getX() - $points[$i]->getX();
-                    $latestCompareIndex = $j;
-
-                    if (isset($this->pointWidths[$i + 1]) && $this->pointWidths[$i] < $this->pointWidths[$i + 1] && $gettingBigger) {
-                        $gettingBigger = false;
-                        $this->biggestWidthIndex = $i + 1;
-                    }
-
-                    continue 2;
-                }
+        $pointWidths = $metadata->getPointWidths();
+        for ($i = $metadata->getDeepestIndex(); $i >= 0; $i--) {
+            // Search for the first width, that gets smaller than the width before
+            if (isset($pointWidths[$i + 1]) && $pointWidths[$i] < $pointWidths[$i + 1]) {
+                return new BigWidthClassifier(
+                    $directionClassifier->getDirection(),
+                    $pointWidths[$i + 1],
+                    new Point(
+                        $points[$i + 1]->getX() + $pointWidths[$i + 1] / 2,
+                        $points[$i + 1]->getY()
+                    )
+                );
             }
-            $this->pointWidths[$i] = $points[$j - 1]->getX() - $points[$i]->getX();
-            $latestCompareIndex = $j - 1;
         }
 
-        if ($this->biggestWidthIndex === 0) {
-            throw new SideClassifierException('Couldn\'t determine biggest width of nop.');
-        }
-
-        $this->centerPoint = new Point(
-            $points[$this->biggestWidthIndex]->getX() + $this->pointWidths[$this->biggestWidthIndex] / 2,
-            $points[$this->biggestWidthIndex]->getY()
-        );
+        throw new SideClassifierException('Couldn\'t determine biggest width of nop.');
     }
 
     /**
      * @param BigWidthClassifier $classifier
-     *
-     * @throws SideClassifierException
      */
     public function compareOppositeSide(SideClassifierInterface $classifier): float
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $this->side->getClassifier(DirectionClassifier::class);
-        $direction = $directionClassifier->getDirection();
-
-        $insideClassifier = $direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = -$insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
         $yDiff = $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY();
@@ -98,17 +73,11 @@ class BigWidthClassifier implements SideClassifierInterface
 
     /**
      * @param BigWidthClassifier $classifier
-     *
-     * @throws SideClassifierException
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $this->side->getClassifier(DirectionClassifier::class);
-        $direction = $directionClassifier->getDirection();
-
-        $insideClassifier = $direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = $insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
         $yDiff = $insideClassifier->getCenterPoint()->getY() - $insideClassifier->getCenterPoint()->getY();
@@ -117,22 +86,9 @@ class BigWidthClassifier implements SideClassifierInterface
         return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);
     }
 
-    /**
-     * @return array<int, float>
-     */
-    public function getPointWidths(): array
-    {
-        return $this->pointWidths;
-    }
-
-    public function getBiggestWidthIndex(): int
-    {
-        return $this->biggestWidthIndex;
-    }
-
     public function getWidth(): float
     {
-        return $this->pointWidths[$this->biggestWidthIndex];
+        return $this->width;
     }
 
     public function getCenterPoint(): Point
@@ -143,8 +99,8 @@ class BigWidthClassifier implements SideClassifierInterface
     public function jsonSerialize(): array
     {
         return [
-            'pointWidths' => $this->pointWidths,
-            'biggestWidthIndex' => $this->biggestWidthIndex,
+            'direction' => $this->direction,
+            'width' => $this->width,
             'centerPoint' => $this->centerPoint->jsonSerialize(),
         ];
     }

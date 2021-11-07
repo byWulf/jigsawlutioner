@@ -6,7 +6,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use JsonSerializable;
 use Rubix\ML\Datasets\Unlabeled;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
@@ -15,63 +17,58 @@ class SmallWidthClassifier implements SideClassifierInterface
 {
     private static ?PersistentModel $estimator = null;
 
-    private int $smallestWidthIndex;
+    public function __construct(
+        private string $direction,
+        private float $width,
+        private Point $centerPoint
+    ) {
+    }
 
-    private float $width = 0;
-
-    private Point $centerPoint;
-
-    public function __construct(private Side $side)
+    public static function fromMetadata(SideMetadata $metadata): self
     {
         /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $side->getClassifier(DirectionClassifier::class);
+        $directionClassifier = $metadata->getSide()->getClassifier(DirectionClassifier::class);
         if ($directionClassifier->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
 
-        /** @var BigWidthClassifier $bigWidthClassifier */
-        $bigWidthClassifier = $side->getClassifier(BigWidthClassifier::class);
+        $points = $metadata->getSide()->getPoints();
 
-        $points = $side->getPoints();
-        $pointWidths = $bigWidthClassifier->getPointWidths();
-        $pointWidthsCount = count($pointWidths);
+        $pointWidths = $metadata->getPointWidths();
+        $gettingBigger = true;
+        $smallestWidthIndex = 0;
+        for ($i = $metadata->getDeepestIndex(); $i >= 0; $i--) {
+            if ($gettingBigger && isset($pointWidths[$i + 1]) && $pointWidths[$i] < $pointWidths[$i + 1]) {
+                $gettingBigger = false;
+                $smallestWidthIndex = $i + 1;
+            }
 
-        $smallestWidthIndex = null;
-        for ($i = 0; $i < $pointWidthsCount; ++$i) {
-            if ($smallestWidthIndex === null || $pointWidths[$i] < $this->width) {
-                $this->width = $pointWidths[$i];
+            if (!$gettingBigger && $pointWidths[$i] < $pointWidths[$smallestWidthIndex]) {
                 $smallestWidthIndex = $i;
             }
-
-            if ($i >= $bigWidthClassifier->getBiggestWidthIndex()) {
-                break;
-            }
         }
 
-        if ($smallestWidthIndex === null) {
+        if ($smallestWidthIndex === 0) {
             throw new SideClassifierException('Couldn\'t determine smallest width of nop.');
         }
-        $this->smallestWidthIndex = $smallestWidthIndex;
 
-        $this->centerPoint = new Point(
-            $points[$smallestWidthIndex]->getX() + $this->width / 2,
-            $points[$smallestWidthIndex]->getY()
+        return new SmallWidthClassifier(
+            $directionClassifier->getDirection(),
+            $pointWidths[$smallestWidthIndex],
+            new Point(
+                $points[$smallestWidthIndex]->getX() + $pointWidths[$smallestWidthIndex] / 2,
+                $points[$smallestWidthIndex]->getY()
+            )
         );
     }
 
     /**
      * @param SmallWidthClassifier $classifier
-     *
-     * @throws SideClassifierException
      */
     public function compareOppositeSide(SideClassifierInterface $classifier): float
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $this->side->getClassifier(DirectionClassifier::class);
-        $direction = $directionClassifier->getDirection();
-
-        $insideClassifier = $direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = -$insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
         $yDiff = $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY();
@@ -86,28 +83,17 @@ class SmallWidthClassifier implements SideClassifierInterface
 
     /**
      * @param SmallWidthClassifier $classifier
-     *
-     * @throws SideClassifierException
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $this->side->getClassifier(DirectionClassifier::class);
-        $direction = $directionClassifier->getDirection();
-
-        $insideClassifier = $direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = $insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
         $yDiff = $insideClassifier->getCenterPoint()->getY() - $insideClassifier->getCenterPoint()->getY();
         $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
         return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);
-    }
-
-    public function getSmallestWidthIndex(): int
-    {
-        return $this->smallestWidthIndex;
     }
 
     public function getWidth(): float
@@ -123,8 +109,8 @@ class SmallWidthClassifier implements SideClassifierInterface
     public function jsonSerialize(): array
     {
         return [
+            'direction' => $this->direction,
             'width' => $this->width,
-            'smallestWidthIndex' => $this->smallestWidthIndex,
             'centerPoint' => $this->centerPoint->jsonSerialize(),
         ];
     }

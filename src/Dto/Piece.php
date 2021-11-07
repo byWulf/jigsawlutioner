@@ -47,12 +47,4 @@ class Piece implements JsonSerializable
             ),
         ];
     }
-
-    public static function fromArray(array $data): self
-    {
-        return new Piece(
-            array_map(fn (array $pointData): DerivativePoint => DerivativePoint::fromArray($pointData), $data['borderPoints']),
-            array_map(fn (array $sideData): Side => Side::fromArray($sideData), $data['sides']),
-        );
-    }
 }

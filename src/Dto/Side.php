@@ -93,20 +93,4 @@ class Side implements JsonSerializable
             'endPoint' => $this->endPoint->jsonSerialize(),
         ];
     }
-
-    public static function fromArray(array $data): self
-    {
-        $side = new Side(
-            array_map(fn (array $pointData): Point => Point::fromArray($pointData), $data['points']),
-            Point::fromArray($data['startPoint']),
-            Point::fromArray($data['endPoint'])
-        );
-
-        /** @var class-string<SideClassifierInterface> $classifierName */
-        foreach ($data['classifiers'] as $classifierName => $classifierData) {
-            $side->addClassifier(new $classifierName($side));
-        }
-
-        return $side;
-    }
 }
