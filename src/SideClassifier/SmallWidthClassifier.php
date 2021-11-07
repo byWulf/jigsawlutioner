@@ -8,7 +8,6 @@ use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Rubix\ML\Datasets\Unlabeled;
-use Rubix\ML\Estimator;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
 

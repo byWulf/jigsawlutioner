@@ -1,13 +1,14 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Tests\Service\SideMatcher;
 
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Service\SideMatcher\ByWulfMatcher;
 use PHPStan\Testing\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use Bywulf\Jigsawlutioner\Service\SideMatcher\ByWulfMatcher;
 
 class ByWulfMatcherTest extends TestCase
 {
@@ -38,15 +39,15 @@ class ByWulfMatcherTest extends TestCase
                 $topSide = $nopInformation[$y * 25 + $x + 2][0] ?? null;
                 $topOppositeSide = $y === 0 ? null : ($nopInformation[($y - 1) * 25 + $x + 2][2] ?? null);
 
-                $this->outputSides($topSide, $topOppositeSide, $x . '/' . $y . ' (top)');
-                $this->outputSides($leftSide, $leftOppositeSide, $x . '/' . $y . ' (left)');
-                $this->outputSides($bottomSide, $bottomOppositeSide, $x . '/' . $y . ' (bottom)');
-                $this->outputSides($rightSide, $rightOppositeSide, $x . '/' . $y . ' (right)');
+                $this->outputSideMatching($topSide, $topOppositeSide, $x . '/' . $y . ' (top)');
+                $this->outputSideMatching($leftSide, $leftOppositeSide, $x . '/' . $y . ' (left)');
+                $this->outputSideMatching($bottomSide, $bottomOppositeSide, $x . '/' . $y . ' (bottom)');
+                $this->outputSideMatching($rightSide, $rightOppositeSide, $x . '/' . $y . ' (right)');
             }
         }
     }
 
-    private function outputSides(?Side $side1, ?Side $side2, string $label): void
+    private function outputSideMatching(?Side $side1, ?Side $side2, string $label): void
     {
         if ($side1 === null || $side2 === null) {
             return;
@@ -75,15 +76,26 @@ class ByWulfMatcherTest extends TestCase
                 $topSide = $nopInformation[$y * 25 + $x + 2][0] ?? null;
                 $topOppositeSide = $y === 0 ? null : ($nopInformation[($y - 1) * 25 + $x + 2][2] ?? null);
 
-                $probabilities = $this->service->getMatchingProbabilities($rightSide, $allSides);
-                arsort($probabilities);
-                $targetIndex = array_search($rightOppositeSide, $allSides);
-                $position = array_search($targetIndex, array_keys($probabilities));
-
-
-                echo $x . '/' . $y . ' (right): ' . $position . PHP_EOL;
+                $this->outputSideMatchings($topSide, $topOppositeSide, $allSides, $x . '/' . $y . ' (top)');
+                $this->outputSideMatchings($leftSide, $leftOppositeSide, $allSides, $x . '/' . $y . ' (left)');
+                $this->outputSideMatchings($bottomSide, $bottomOppositeSide, $allSides, $x . '/' . $y . ' (bottom)');
+                $this->outputSideMatchings($rightSide, $rightOppositeSide, $allSides, $x . '/' . $y . ' (right)');
             }
         }
+    }
+
+    private function outputSideMatchings(?Side $side1, ?Side $side2, array $sides, string $label): void
+    {
+        if ($side1 === null || $side2 === null) {
+            return;
+        }
+
+        $probabilities = $this->service->getMatchingProbabilities($side1, $sides);
+        arsort($probabilities);
+        $targetIndex = array_search($side2, $sides);
+        $position = array_search($targetIndex, array_keys($probabilities));
+
+        echo $label . ': #' . ($position + 1) . ' (' . implode(', ', array_slice($probabilities, 0, 10)) . ($position > 9 ? ', ..., ' . $probabilities[$targetIndex] : '') . ')' . PHP_EOL;
     }
 
     /**

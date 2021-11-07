@@ -6,43 +6,47 @@ namespace Bywulf\Jigsawlutioner\Service\SideMatcher;
 
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Bywulf\Jigsawlutioner\Exception\SideMatcherException;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
 class ByWulfMatcher implements SideMatcherInterface
 {
     public function getMatchingProbability(Side $side1, Side $side2): float
     {
-        /** @var DirectionClassifier $direction1 */
-        $direction1 = $side1->getClassifier(DirectionClassifier::class);
-        /** @var DirectionClassifier $direction2 */
-        $direction2 = $side2->getClassifier(DirectionClassifier::class);
-
-        if ($direction1->getDirection() === DirectionClassifier::NOP_STRAIGHT || $direction2->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
-            return 0;
-        }
-
-        if ($direction1->getDirection() === $direction2->getDirection()) {
-            return 0;
-        }
-
-        $classifiers = [
-            BigWidthClassifier::class,
-            SmallWidthClassifier::class,
-        ];
-
         $sum = 0;
-        foreach ($classifiers as $classifier) {
+        /** @var class-string<SideClassifierInterface> $classifierClassName */
+        foreach (SideMatcherInterface::CLASSIFIER_CLASS_NAMES as $classifierClassName) {
             try {
-                $sum += $side1->getClassifier($classifier)->compareOppositeSide($side2->getClassifier($classifier));
+                $probability = $side1->getClassifier($classifierClassName)->compareOppositeSide($side2->getClassifier($classifierClassName));
+
+                if ($probability < 0.0 || $probability > 1.0) {
+                    throw new SideMatcherException('Probability must be between 0 and 1, got ' . $probability . ' from ' . $classifierClassName . '.');
+                }
+
+                $weight = $this->getWeightForClassifier($classifierClassName);
+                if ($weight === null) {
+                    if ($probability === 0.0) {
+                        return 0;
+                    }
+
+                    if ($probability < 1.0) {
+                        throw new SideMatcherException('"Take it or leave it" classifier ' . $classifierClassName . ' should only return 0 or 1, but returned ' . $probability . '.');
+                    }
+
+                    continue;
+                }
+
+                $sum += $probability * $weight;
             } catch (SideClassifierException) {
                 // One of the classifiers didn't exist. So no matching possible.
                 return 0;
             }
         }
 
-        return $sum / count($classifiers);
+        return $sum;
     }
 
     public function getMatchingProbabilities(Side $side, array $sides): array
@@ -53,5 +57,15 @@ class ByWulfMatcher implements SideMatcherInterface
         }
 
         return $probabilities;
+    }
+
+    private function getWeightForClassifier(string $classifierName): ?float
+    {
+        return match ($classifierName) {
+            DirectionClassifier::class => null,
+            SmallWidthClassifier::class => 1.0,
+            BigWidthClassifier::class => 1.0,
+            default => 1.0
+        };
     }
 }
