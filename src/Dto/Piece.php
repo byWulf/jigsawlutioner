@@ -34,6 +34,16 @@ class Piece implements JsonSerializable
         return $this->sides;
     }
 
+    /**
+     * @param Side[] $sides
+     */
+    public function setSides(array $sides): self
+    {
+        $this->sides = $sides;
+
+        return $this;
+    }
+
     public function jsonSerialize(): array
     {
         return [
