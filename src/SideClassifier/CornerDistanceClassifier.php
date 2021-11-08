@@ -23,7 +23,7 @@ class CornerDistanceClassifier implements SideClassifierInterface
      */
     public function compareOppositeSide(SideClassifierInterface $classifier): float
     {
-        return max(0, 1 - (abs($this->width - $classifier->getWidth()) / 20));
+        return max(0, 1 - (abs($this->width - $classifier->getWidth()) / 25));
     }
 
     /**
