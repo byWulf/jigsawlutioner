@@ -142,22 +142,7 @@ abstract class AbstractModelCreatorCommand extends Command
         $nopInformation = [];
 
         for ($i = 2; $i <= 501; ++$i) {
-            /** @var Piece $piece */
-            $piece = unserialize(
-                file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser'),
-                ['allowed_classes' => [
-                    DerivativePoint::class,
-                    Piece::class,
-                    Point::class,
-                    Side::class,
-                    SideMetadata::class,
-                    BigWidthClassifier::class,
-                    CornerDistanceClassifier::class,
-                    DepthClassifier::class,
-                    DirectionClassifier::class,
-                    SmallWidthClassifier::class,
-                ]]
-            );
+            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser'));
 
             if (count($piece->getSides()) !== 4) {
                 continue;
