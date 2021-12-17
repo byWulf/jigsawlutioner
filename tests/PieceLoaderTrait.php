@@ -16,7 +16,7 @@ trait PieceLoaderTrait
         $pieces = [];
         for ($i = 2; $i <= 501; ++$i) {
             /** @var Piece $piece */
-            $piece = unserialize(file_get_contents(__DIR__ . '/fixtures/pieces/piece' . $i . '_piece.ser'));
+            $piece = unserialize(file_get_contents(__DIR__ . '/../resources/Fixtures/Piece/piece' . $i . '_piece.ser'));
 
             if (count($piece->getSides()) !== 4) {
                 continue;

@@ -598,7 +598,7 @@ class PieceAnalyzerTest extends TestCase
         ];
 
         foreach ($corners as $pieceIndex => $cornerPoints) {
-            $image = imagecreatefromjpeg(__DIR__ . '/../fixtures/pieces/piece' . $pieceIndex . '.jpg');
+            $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceIndex . '.jpg');
 
             try {
                 $piece = $pieceAnalyzer->getPieceFromImage($image);
@@ -617,151 +617,6 @@ class PieceAnalyzerTest extends TestCase
         }
     }
 
-    public function testLearnNopMatching(): void
-    {
-        //$this->markTestSkipped('Only for manual execution');
-
-        $nopInformation = [];
-        for ($i = 2; $i <= 501; ++$i) {
-            //echo "piece " . $i . PHP_EOL;
-            $piece = unserialize(file_get_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.ser'));
-
-            if (count($piece->getSides()) !== 4) {
-                continue;
-            }
-
-            // Reorder sides so the top side is the first side
-            $sides = $piece->getSides();
-            while (
-                $sides[1]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                $sides[2]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                $sides[3]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY()
-            ) {
-                $side = array_splice($sides, 0, 1);
-                $sides[] = $side[0];
-                $sides = array_values($sides);
-                //echo " -> moving sides because first side is not the first side" . PHP_EOL;
-            }
-
-            foreach (array_values($sides) as $index => $side) {
-                $nopInformation[$i][$index] = $side;
-            }
-        }
-
-        $sideMatcher = new WeightedMatcher();
-
-        $datasets = [];
-        $labels = [];
-        for ($x = 0; $x < 25; ++$x) {
-            for ($y = 0; $y < 20; ++$y) {
-                $rightSide = $nopInformation[$y * 25 + $x + 2][3] ?? null;
-                $rightOppositeSide = $nopInformation[$y * 25 + $x + 3][1] ?? null;
-
-                $bottomSide = $nopInformation[$y * 25 + $x + 2][2] ?? null;
-                $bottomOppositeSide = $nopInformation[($y + 1) * 25 + $x + 2][0] ?? null;
-
-                $dataset = $this->getDataset($rightSide, $rightOppositeSide);
-                if ($dataset !== null && $x < 24) {
-                    $datasets[] = $dataset;
-                    $labels[] = 'yes';
-                    echo $x . '/' . $y . ' (right) (yes): ' . $sideMatcher->getMatchingProbability($rightSide, $rightOppositeSide) . PHP_EOL;
-                }
-
-                $dataset = $this->getDataset($bottomSide, $bottomOppositeSide);
-                if ($dataset !== null && $y < 20) {
-                    $datasets[] = $dataset;
-                    $labels[] = 'yes';
-                    echo $x . '/' . $y . ' (bottom) (yes): ' . $sideMatcher->getMatchingProbability($bottomSide, $bottomOppositeSide) . PHP_EOL;
-                }
-
-                $dataset = $this->findNonmatchingDataset($rightSide, $rightOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
-                if ($dataset) {
-                    $datasets[] = $dataset;
-                    $labels[] = 'no';
-                }
-
-                $dataset = $this->findNonmatchingDataset($bottomSide, $bottomOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
-                if ($dataset) {
-                    $datasets[] = $dataset;
-                    $labels[] = 'no';
-                }
-            }
-        }
-
-        return;
-        $labeledDataset = new Labeled($datasets, $labels);
-        list($training, $testing) = $labeledDataset->stratifiedSplit(0.8);
-
-        $estimator = new PersistentModel(
-            new ClassificationTree(PHP_INT_MAX, 5),
-            new Filesystem('smallNopMatcher.model')
-        );
-
-        echo 'Training...' . PHP_EOL;
-        $estimator->train($training);
-
-        echo 'Predicting...' . PHP_EOL;
-        $predictions = $estimator->proba($testing);
-
-        $difference = 0;
-        foreach ($predictions as $index => $prediction) {
-            $difference += 1 - $prediction[$testing->label($index)];
-            //echo $index . ': Prediction: ' . json_encode($prediction) . ' Label: ' . $testing->label($index) . PHP_EOL;
-        }
-
-        $score = 1 - ($difference / count($predictions));
-        echo 'Score is ' . $score . PHP_EOL;
-
-        $estimator->save();
-    }
-
-    private function findNonmatchingDataset(?Side $side1, ?Side $side2, ?array $piece): ?array
-    {
-        if ($side1 !== null && $side2 !== null && $piece !== null) {
-            for ($i = 0; $i < 4; ++$i) {
-                $otherSide = $piece[$i] ?? null;
-                if (
-                    $otherSide !== null &&
-                    $otherSide->getClassifier(DirectionClassifier::class) === $side2->getClassifier(DirectionClassifier::class)
-                ) {
-                    return $this->getDataset($side1, $otherSide);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function getDataset(?Side $side1, ?Side $side2): ?array
-    {
-        if ($side1 === null || $side1->getClassifier(DirectionClassifier::class) === DirectionClassifier::NOP_STRAIGHT) {
-            return null;
-        }
-        if ($side2 === null || $side2->getClassifier(DirectionClassifier::class) === DirectionClassifier::NOP_STRAIGHT) {
-            return null;
-        }
-        if ($side1->getClassifier(DirectionClassifier::class) === $side2->getClassifier(DirectionClassifier::class)) {
-            return null;
-        }
-
-        // Make the inside-side the first side
-        if ($side1->getClassifier(DirectionClassifier::class) !== DirectionClassifier::NOP_INSIDE) {
-            $sideTmp = $side1;
-            $side1 = $side2;
-            $side2 = $sideTmp;
-        }
-
-        return [
-            1,
-//            -$side1['classifiers'][BigWidthClassifier::class]['centerPoint']['x'] - $side2['classifiers'][BigWidthClassifier::class]['centerPoint']['x'],
-//            $side2['classifiers'][BigWidthClassifier::class]['centerPoint']['y'] + $side1['classifiers'][BigWidthClassifier::class]['centerPoint']['y'],
-//            $side1['classifiers'][BigWidthClassifier::class]['pointWidths'][$side1['classifiers'][BigWidthClassifier::class]['biggestWidthIndex']] - $side2['classifiers'][BigWidthClassifier::class]['pointWidths'][$side2['classifiers'][BigWidthClassifier::class]['biggestWidthIndex']],
-//            -$side1['classifiers'][SmallWidthClassifier::class]['centerPoint']['x'] - $side2['classifiers'][SmallWidthClassifier::class]['centerPoint']['x'],
-//            $side2['classifiers'][SmallWidthClassifier::class]['centerPoint']['y'] + $side1['classifiers'][SmallWidthClassifier::class]['centerPoint']['y'],
-//            $side1['classifiers'][SmallWidthClassifier::class]['width'] - $side2['classifiers'][SmallWidthClassifier::class]['width'],
-        ];
-    }
-
     public function testFull(): void
     {
         //$this->markTestSkipped('Only for manual execution');
@@ -777,7 +632,7 @@ class PieceAnalyzerTest extends TestCase
 
         //foreach ([2, 3, 4, 5, 27, 28, 29, 30] as $i) {
         for ($i = $start; $i <= $max; ++$i) {
-            $image = imagecreatefromjpeg(__DIR__ . '/../fixtures/pieces/piece' . $i . '.jpg');
+            $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '.jpg');
 
             try {
                 $piece = $pieceAnalyzer->getPieceFromImage($image);
@@ -841,15 +696,15 @@ class PieceAnalyzerTest extends TestCase
                     imagestring($image, 5, 175, 30 + $sideIndex * 100, $side->getClassifier(DirectionClassifier::class)->getDirection(), $black);
                 }
 
-                file_put_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.ser', serialize($piece));
-                file_put_contents(__DIR__ . '/../fixtures/pieces/piece' . $i . '_piece.json', json_encode($piece));
+                file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser', serialize($piece));
+                file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.json', json_encode($piece));
                 echo 'Piece ' . $i . ' parsed successfully.' . PHP_EOL;
             } catch (BorderParsingException $exception) {
                 echo 'Piece ' . $i . ' failed at BorderFinding: ' . $exception->getMessage() . PHP_EOL;
             } catch (SideParsingException $exception) {
                 echo 'Piece ' . $i . ' failed at SideFinding: ' . $exception->getMessage() . PHP_EOL;
             } finally {
-                imagepng($image, __DIR__ . '/../fixtures/pieces/piece' . $i . '_mask.png');
+                imagepng($image, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_mask.png');
             }
         }
     }
