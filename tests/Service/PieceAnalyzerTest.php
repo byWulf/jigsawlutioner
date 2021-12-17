@@ -19,6 +19,8 @@ use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use Bywulf\Jigsawlutioner\Service\SideFinder\SideFinderInterface;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use PHPUnit\Framework\ExpectationFailedException;
@@ -50,10 +52,10 @@ class PieceAnalyzerTest extends TestCase
         $borderFinder->findPieceBorder($image)->shouldBeCalledOnce()->willReturn($borderPoints);
 
         $sideFinder->getSides($borderPoints)->shouldBeCalledOnce()->willReturn([
-            new Side([new Point(0, 0)]),
-            new Side([new Point(1, 1)]),
-            new Side([new Point(2, 2)]),
-            new Side([new Point(3, 3)]),
+            new Side([new Point(0, 0)], new Point(0, 0), new Point(0, 0)),
+            new Side([new Point(1, 1)], new Point(1, 1), new Point(1, 1)),
+            new Side([new Point(2, 2)], new Point(2, 2), new Point(2, 2)),
+            new Side([new Point(3, 3)], new Point(3, 3), new Point(3, 3)),
         ]);
 
         $pathService->softenPolyline([new Point(0, 0)], 10, 100)->shouldBeCalled()->willReturn([new Point(0.5, 0.5)]);
@@ -76,10 +78,22 @@ class PieceAnalyzerTest extends TestCase
         $expectedPiece = new Piece(
             $borderPoints,
             [
-                new Side([new Point(-0.5, -0.5)]),
-                new Side([new Point(-1.5, -1.5)]),
-                new Side([new Point(-2.5, -2.5)]),
-                new Side([new Point(-3.5, -3.5)]),
+                (new Side([new Point(-0.5, -0.5)], new Point(0, 0), new Point(0, 0)))
+                    ->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE))
+                    ->addClassifier(new CornerDistanceClassifier(0))
+                    ->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, -0.5)),
+                (new Side([new Point(-1.5, -1.5)], new Point(1, 1), new Point(1, 1)))
+                    ->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE))
+                    ->addClassifier(new CornerDistanceClassifier(0))
+                    ->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, -1.5)),
+                (new Side([new Point(-2.5, -2.5)], new Point(2, 2), new Point(2, 2)))
+                    ->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE))
+                    ->addClassifier(new CornerDistanceClassifier(0))
+                    ->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, -2.5)),
+                (new Side([new Point(-3.5, -3.5)], new Point(3, 3), new Point(3, 3)))
+                    ->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE))
+                    ->addClassifier(new CornerDistanceClassifier(0))
+                    ->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, -3.5)),
             ]
         );
 
@@ -88,8 +102,6 @@ class PieceAnalyzerTest extends TestCase
 
     public function testCornersFromFixtures(): void
     {
-        $this->markTestSkipped('Only for manual execution');
-
         $borderFinder = new ByWulfBorderFinder();
         $sideFinder = new ByWulfSideFinder();
         $pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
@@ -98,8 +110,8 @@ class PieceAnalyzerTest extends TestCase
             '2' => [new Point(450, 300), new Point(169, 540), new Point(406, 810), new Point(674, 568)],
             '3' => [new Point(454, 244), new Point(256, 488), new Point(526, 722), new Point(739, 468)],
             '4' => [new Point(187, 368), new Point(429, 641), new Point(663, 439), new Point(416, 173)],
-            '5' => [new Point(195, 445), new Point(476, 682), new Point(678, 434), new Point(418, 198)],
-            '6' => [new Point(380, 183), new Point(202, 436), new Point(490, 644), new Point(667, 360)],
+            '5' => [new Point(417, 198), new Point(195, 445), new Point(476, 682), new Point(678, 434)],
+            '6' => [new Point(380, 183), new Point(202, 435), new Point(491, 644), new Point(667, 360)],
             '7' => [new Point(184, 466), new Point(430, 693), new Point(691, 451), new Point(449, 210)],
             '8' => [new Point(227, 397), new Point(451, 654), new Point(695, 450), new Point(470, 191)],
             '9' => [new Point(247, 397), new Point(496, 639), new Point(724, 418), new Point(499, 145)],
@@ -108,7 +120,7 @@ class PieceAnalyzerTest extends TestCase
             '12' => [new Point(187, 458), new Point(464, 704), new Point(668, 445), new Point(424, 194)],
             '13' => [new Point(411, 174), new Point(202, 368), new Point(422, 642), new Point(672, 420)],
             '14' => [new Point(204, 439), new Point(479, 669), new Point(683, 433), new Point(438, 188)],
-            '15' => [new Point(187, 443), new Point(432, 699), new Point(662, 449), new Point(425, 200)],
+            '15' => [new Point(187, 443), new Point(432, 699), new Point(663, 450), new Point(426, 200)],
             '16' => [new Point(382, 165), new Point(197, 460), new Point(489, 658), new Point(668, 338)],
             '17' => [new Point(433, 194), new Point(208, 380), new Point(428, 637), new Point(657, 427)],
             '18' => [new Point(208, 499), new Point(460, 711), new Point(698, 451), new Point(474, 226)],
@@ -122,7 +134,7 @@ class PieceAnalyzerTest extends TestCase
             '26' => [new Point(239, 461), new Point(453, 691), new Point(711, 460), new Point(495, 231)],
             '27' => [new Point(477, 228), new Point(216, 463), new Point(419, 688), new Point(675, 444)],
             '28' => [new Point(424, 180), new Point(253, 460), new Point(507, 610), new Point(675, 335)],
-            '29' => [new Point(444, 237), new Point(286, 499), new Point(541, 663), new Point(713, 376)],
+            '29' => [new Point(444, 237), new Point(286, 499), new Point(542, 663), new Point(713, 376)],
             '30' => [new Point(215, 385), new Point(318, 667), new Point(627, 577), new Point(516, 279)],
             '31' => [new Point(462, 219), new Point(255, 477), new Point(506, 677), new Point(685, 402)],
             '32' => [new Point(197, 421), new Point(347, 673), new Point(672, 509), new Point(513, 265)],
@@ -132,16 +144,16 @@ class PieceAnalyzerTest extends TestCase
             '36' => [new Point(189, 360), new Point(332, 620), new Point(610, 452), new Point(473, 199)],
             '37' => [new Point(412, 235), new Point(284, 534), new Point(551, 657), new Point(657, 356)],
             '38' => [new Point(369, 289), new Point(206, 581), new Point(449, 720), new Point(631, 436)],
-            '39' => [new Point(294, 339), new Point(375, 624), new Point(685, 523), new Point(588, 246)],
-            '40' => [new Point(392, 156), new Point(229, 448), new Point(481, 580), new Point(667, 291)], // TODO: Not yet the correct points
+            '39' => [new Point(294, 339), new Point(375, 624), new Point(685, 523), new Point(587, 245)],
+            '40' => [new Point(392, 156), new Point(229, 448), new Point(483, 579), new Point(667, 291)], // TODO: Not yet the correct points
             '41' => [new Point(210, 407), new Point(359, 675), new Point(677, 518), new Point(539, 246)],
             '42' => [new Point(402, 181), new Point(235, 441), new Point(489, 613), new Point(665, 362)],
             '43' => [new Point(529, 187), new Point(274, 428), new Point(491, 666), new Point(729, 404)],
             '44' => [new Point(380, 352), new Point(229, 624), new Point(499, 761), new Point(625, 486)],
             '45' => [new Point(162, 401), new Point(283, 658), new Point(573, 499), new Point(461, 272)],
             '46' => [new Point(437, 203), new Point(289, 491), new Point(502, 632), new Point(683, 343)],
-            '47' => [new Point(396, 251), new Point(208, 528), new Point(441, 688), new Point(672, 379)],
-            '48' => [new Point(244, 476), new Point(443, 716), new Point(673, 526), new Point(541, 307)],
+            '47' => [new Point(396, 251), new Point(208, 528), new Point(441, 688), new Point(673, 380)],
+            '48' => [new Point(244, 477), new Point(443, 716), new Point(673, 526), new Point(541, 307)],
             '49' => [new Point(363, 288), new Point(242, 575), new Point(478, 685), new Point(651, 394)],
             '50' => [new Point(236, 442), new Point(315, 739), new Point(632, 675), new Point(568, 372)],
             '51' => [new Point(355, 278), new Point(201, 584), new Point(489, 721), new Point(627, 407)],
@@ -171,30 +183,30 @@ class PieceAnalyzerTest extends TestCase
             '75' => [new Point(380, 270), new Point(280, 574), new Point(569, 674), new Point(681, 361)],
             '76' => [new Point(231, 512), new Point(415, 763), new Point(704, 581), new Point(506, 306)],
             '77' => [new Point(155, 390), new Point(253, 666), new Point(571, 517), new Point(477, 260)],
-            '78' => [new Point(338, 219), new Point(256, 524), new Point(521, 621), new Point(640, 333)],
-            '79' => [new Point(480, 246), new Point(149, 387), new Point(285, 681), new Point(623, 549)],
+            '78' => [new Point(338, 219), new Point(256, 524), new Point(522, 621), new Point(640, 333)],
+            '79' => [new Point(480, 246), new Point(149, 388), new Point(285, 681), new Point(623, 549)],
             '80' => [new Point(226, 496), new Point(519, 662), new Point(661, 366), new Point(414, 238)],
-            '81' => [new Point(329, 246), new Point(237, 564), new Point(519, 638), new Point(599, 347)],
+            '81' => [new Point(329, 246), new Point(237, 564), new Point(520, 637), new Point(599, 347)],
             '82' => [new Point(216, 434), new Point(346, 692), new Point(623, 512), new Point(479, 275)],
             '83' => [new Point(388, 267), new Point(293, 594), new Point(572, 680), new Point(669, 345)],
             '84' => [new Point(350, 252), new Point(210, 561), new Point(479, 682), new Point(589, 364)],
-            '85' => [new Point(417, 217), new Point(285, 491), new Point(520, 637), new Point(691, 368)],
+            '85' => [new Point(417, 217), new Point(285, 491), new Point(519, 637), new Point(691, 368)],
             '86' => [new Point(403, 240), new Point(262, 547), new Point(552, 663), new Point(700, 368)],
             '87' => [new Point(470, 278), new Point(246, 524), new Point(495, 739), new Point(715, 483)],
             '88' => [new Point(326, 238), new Point(213, 558), new Point(518, 654), new Point(614, 328)],
-            '89' => [new Point(163, 541), new Point(379, 768), new Point(628, 534), new Point(414, 307)],
+            '89' => [new Point(413, 307), new Point(163, 541), new Point(379, 768), new Point(628, 534)],
             '90' => [new Point(214, 590), new Point(525, 648), new Point(569, 334), new Point(291, 289)],
             '91' => [new Point(382, 292), new Point(209, 606), new Point(446, 762), new Point(620, 442)],
             '92' => [new Point(394, 244), new Point(306, 531), new Point(585, 610), new Point(681, 336)],
             '93' => [new Point(401, 291), new Point(154, 527), new Point(371, 742), new Point(607, 507)],
-            '94' => [new Point(486, 306), new Point(281, 514), new Point(497, 717), new Point(693, 485)],
-            '95' => [new Point(422, 198), new Point(314, 581), new Point(574, 672), new Point(675, 291)],
+            '94' => [new Point(486, 306), new Point(281, 512), new Point(497, 717), new Point(693, 485)],
+            '95' => [new Point(422, 198), new Point(314, 581), new Point(574, 672), new Point(674, 289)],
             '96' => [new Point(334, 253), new Point(250, 537), new Point(511, 630), new Point(620, 368)],
             '97' => [new Point(217, 556), new Point(414, 801), new Point(680, 566), new Point(503, 319)],
             '98' => [new Point(207, 504), new Point(404, 736), new Point(617, 492), new Point(396, 285)],
-            '99' => [new Point(362, 343), new Point(257, 656), new Point(541, 772), new Point(660, 450)],
+            '99' => [new Point(363, 343), new Point(257, 656), new Point(541, 772), new Point(660, 450)],
             '100' => [new Point(223, 555), new Point(465, 754), new Point(668, 505), new Point(448, 310)],
-            '101' => [new Point(486, 301), new Point(245, 537), new Point(457, 748), new Point(701, 498)],
+            '101' => [new Point(486, 301), new Point(245, 537), new Point(455, 748), new Point(701, 498)],
             '102' => [new Point(485, 286), new Point(216, 504), new Point(370, 731), new Point(654, 540)],
             '103' => [new Point(421, 392), new Point(189, 604), new Point(408, 822), new Point(663, 573)],
             '104' => [new Point(221, 394), new Point(387, 649), new Point(682, 500), new Point(552, 260)],
@@ -206,32 +218,32 @@ class PieceAnalyzerTest extends TestCase
             '110' => [new Point(221, 502), new Point(405, 756), new Point(679, 549), new Point(486, 322)],
             '111' => [],
             '112' => [new Point(279, 439), new Point(532, 546), new Point(660, 224), new Point(413, 131)],
-            '113' => [new Point(386, 230), new Point(212, 519), new Point(450, 643), new Point(610, 371)],
+            '113' => [new Point(386, 230), new Point(212, 518), new Point(450, 643), new Point(610, 371)],
             '114' => [new Point(483, 305), new Point(241, 540), new Point(423, 731), new Point(670, 483)],
             '115' => [new Point(373, 311), new Point(245, 599), new Point(483, 713), new Point(605, 423)],
             '116' => [new Point(469, 249), new Point(238, 525), new Point(430, 716), new Point(676, 459)],
             '117' => [new Point(258, 503), new Point(429, 746), new Point(687, 581), new Point(500, 334)],
             '118' => [new Point(242, 442), new Point(416, 698), new Point(695, 491), new Point(510, 253)],
-            '119' => [new Point(332, 264), new Point(231, 549), new Point(522, 650), new Point(618, 355)],
+            '119' => [new Point(332, 264), new Point(231, 549), new Point(521, 651), new Point(618, 355)],
             '120' => [new Point(474, 251), new Point(187, 518), new Point(394, 748), new Point(666, 532)],
             '121' => [new Point(421, 308), new Point(291, 559), new Point(595, 726), new Point(730, 427)],
             '122' => [new Point(242, 570), new Point(551, 713), new Point(692, 400), new Point(408, 264)],
             '123' => [new Point(281, 580), new Point(573, 692), new Point(681, 384), new Point(398, 279)],
             '124' => [new Point(448, 295), new Point(245, 566), new Point(492, 743), new Point(665, 497)],
             '125' => [new Point(219, 490), new Point(414, 716), new Point(659, 436), new Point(432, 253)],
-            '126' => [new Point(256, 638), new Point(534, 769), new Point(684, 470), new Point(426, 334)],
+            '126' => [new Point(256, 639), new Point(534, 769), new Point(684, 470), new Point(426, 334)],
             '127' => [new Point(470, 211), new Point(220, 447), new Point(413, 643), new Point(666, 416)],
             '128' => [new Point(317, 176), new Point(190, 500), new Point(472, 595), new Point(598, 267)],
-            '129' => [new Point(308, 233), new Point(197, 544), new Point(487, 636), new Point(594, 311)],
+            '129' => [new Point(308, 233), new Point(197, 544), new Point(487, 636), new Point(594, 312)],
             '130' => [new Point(235, 532), new Point(480, 717), new Point(670, 491), new Point(429, 286)],
             '131' => [new Point(388, 211), new Point(196, 466), new Point(455, 647), new Point(637, 375)],
             '132' => [new Point(405, 169), new Point(265, 469), new Point(543, 596), new Point(673, 295)],
             '133' => [new Point(417, 243), new Point(181, 490), new Point(402, 699), new Point(627, 441)],
             '134' => [new Point(430, 315), new Point(209, 554), new Point(418, 763), new Point(653, 518)],
-            '135' => [new Point(190, 478), new Point(411, 688), new Point(659, 430), new Point(427, 239)],
+            '135' => [new Point(190, 479), new Point(411, 688), new Point(659, 430), new Point(427, 239)],
             '136' => [new Point(150, 484), new Point(384, 669), new Point(601, 475), new Point(353, 245)],
             '137' => [new Point(455, 233), new Point(263, 522), new Point(538, 720), new Point(704, 392)],
-            '138' => [new Point(206, 493), new Point(414, 712), new Point(650, 519), new Point(445, 286)],
+            '138' => [new Point(206, 493), new Point(415, 712), new Point(650, 519), new Point(445, 286)],
             '139' => [new Point(419, 171), new Point(257, 474), new Point(540, 626), new Point(703, 330)],
             '140' => [new Point(204, 460), new Point(411, 708), new Point(662, 484), new Point(425, 244)],
             '141' => [new Point(353, 232), new Point(240, 564), new Point(563, 656), new Point(656, 350)],
@@ -266,7 +278,7 @@ class PieceAnalyzerTest extends TestCase
             '170' => [new Point(541, 244), new Point(281, 441), new Point(482, 676), new Point(733, 501)],
             '171' => [new Point(372, 257), new Point(222, 563), new Point(515, 707), new Point(642, 385)],
             '172' => [new Point(271, 561), new Point(545, 701), new Point(668, 407), new Point(409, 273)],
-            '173' => [new Point(378, 262), new Point(256, 549), new Point(542, 659), new Point(640, 340)],
+            '173' => [new Point(378, 262), new Point(256, 549), new Point(539, 660), new Point(640, 340)],
             '174' => [new Point(220, 482), new Point(420, 669), new Point(683, 427), new Point(486, 232)],
             '175' => [new Point(353, 248), new Point(214, 554), new Point(470, 684), new Point(645, 385)],
             '176' => [new Point(226, 573), new Point(487, 772), new Point(677, 525), new Point(424, 319)],
@@ -293,7 +305,7 @@ class PieceAnalyzerTest extends TestCase
             '197' => [new Point(421, 300), new Point(266, 573), new Point(495, 728), new Point(672, 440)],
             '198' => [new Point(252, 530), new Point(434, 756), new Point(682, 530), new Point(514, 324)],
             '199' => [new Point(358, 252), new Point(238, 586), new Point(498, 655), new Point(635, 347)],
-            '200' => [new Point(499, 337), new Point(245, 567), new Point(445, 781), new Point(701, 559)],
+            '200' => [new Point(245, 567), new Point(445, 781), new Point(701, 559), new Point(501, 337)],
             '201' => [new Point(553, 294), new Point(334, 507), new Point(521, 740), new Point(766, 516)],
             '202' => [new Point(451, 254), new Point(174, 448), new Point(358, 707), new Point(629, 503)],
             '203' => [new Point(542, 238), new Point(282, 498), new Point(501, 719), new Point(765, 468)],
@@ -302,10 +314,10 @@ class PieceAnalyzerTest extends TestCase
             '206' => [new Point(213, 448), new Point(415, 656), new Point(642, 428), new Point(433, 238)],
             '207' => [new Point(370, 211), new Point(236, 530), new Point(517, 613), new Point(628, 302)],
             '208' => [new Point(274, 515), new Point(450, 721), new Point(701, 498), new Point(522, 285)],
-            '209' => [new Point(365, 206), new Point(277, 497), new Point(536, 606), new Point(662, 293)],
+            '209' => [new Point(365, 206), new Point(277, 497), new Point(539, 605), new Point(662, 293)],
             '210' => [new Point(385, 216), new Point(198, 516), new Point(478, 655), new Point(626, 366)],
             '211' => [new Point(211, 438), new Point(374, 674), new Point(642, 484), new Point(480, 268)],
-            '212' => [new Point(391, 160), new Point(243, 450), new Point(485, 586), new Point(639, 290)],
+            '212' => [new Point(391, 160), new Point(243, 450), new Point(482, 587), new Point(639, 290)],
             '213' => [new Point(298, 174), new Point(183, 484), new Point(462, 544), new Point(605, 236)],
             '214' => [new Point(153, 477), new Point(382, 692), new Point(612, 458), new Point(396, 249)],
             '215' => [new Point(378, 197), new Point(238, 498), new Point(499, 649), new Point(661, 371)],
@@ -345,9 +357,9 @@ class PieceAnalyzerTest extends TestCase
             '249' => [new Point(409, 305), new Point(213, 555), new Point(435, 734), new Point(626, 480)],
             '250' => [new Point(457, 339), new Point(210, 548), new Point(392, 777), new Point(642, 559)],
             '251' => [new Point(461, 308), new Point(229, 536), new Point(429, 739), new Point(657, 505)],
-            '252' => [new Point(161, 452), new Point(364, 698), new Point(637, 481), new Point(420, 240)],
+            '252' => [new Point(161, 452), new Point(364, 698), new Point(636, 479), new Point(420, 240)],
             '253' => [],
-            '254' => [new Point(208, 395), new Point(398, 657), new Point(636, 453), new Point(462, 196)],
+            '254' => [new Point(461, 196), new Point(208, 395), new Point(398, 657), new Point(636, 453)],
             '255' => [new Point(234, 220), new Point(175, 569), new Point(491, 635), new Point(533, 269)],
             '256' => [new Point(361, 330), new Point(248, 651), new Point(541, 753), new Point(645, 463)],
             '257' => [new Point(225, 481), new Point(427, 721), new Point(660, 475), new Point(434, 278)],
@@ -360,7 +372,7 @@ class PieceAnalyzerTest extends TestCase
             '264' => [new Point(375, 235), new Point(269, 527), new Point(554, 619), new Point(634, 320)],
             '265' => [new Point(223, 471), new Point(383, 686), new Point(654, 489), new Point(487, 274)],
             '266' => [new Point(407, 207), new Point(252, 493), new Point(488, 633), new Point(665, 364)],
-            '267' => [new Point(167, 502), new Point(399, 687), new Point(633, 433), new Point(385, 238)],
+            '267' => [new Point(167, 502), new Point(397, 687), new Point(633, 433), new Point(385, 238)],
             '268' => [new Point(371, 281), new Point(176, 546), new Point(435, 732), new Point(604, 461)],
             '269' => [new Point(442, 316), new Point(191, 525), new Point(347, 777), new Point(634, 595)],
             '270' => [new Point(500, 310), new Point(194, 450), new Point(359, 742), new Point(652, 555)],
@@ -373,7 +385,7 @@ class PieceAnalyzerTest extends TestCase
             '277' => [new Point(458, 394), new Point(161, 576), new Point(344, 861), new Point(640, 663)],
             '278' => [new Point(490, 274), new Point(223, 459), new Point(411, 726), new Point(668, 523)],
             '279' => [new Point(429, 307), new Point(251, 564), new Point(490, 758), new Point(649, 465)],
-            '280' => [new Point(366, 241), new Point(265, 594), new Point(525, 669), new Point(630, 314)],
+            '280' => [new Point(366, 241), new Point(265, 594), new Point(527, 668), new Point(630, 314)],
             '281' => [new Point(197, 515), new Point(408, 688), new Point(627, 469), new Point(403, 291)],
             '282' => [new Point(317, 234), new Point(230, 559), new Point(518, 622), new Point(599, 329)],
             '283' => [new Point(250, 423), new Point(380, 691), new Point(675, 519), new Point(533, 269)],
@@ -419,12 +431,12 @@ class PieceAnalyzerTest extends TestCase
             '323' => [new Point(436, 241), new Point(229, 506), new Point(457, 683), new Point(656, 432)],
             '324' => [new Point(370, 328), new Point(233, 608), new Point(506, 725), new Point(627, 402)],
             '325' => [new Point(385, 271), new Point(278, 613), new Point(551, 682), new Point(666, 358)],
-            '326' => [new Point(480, 334), new Point(282, 551), new Point(484, 758), new Point(698, 561)],
+            '326' => [new Point(282, 551), new Point(484, 758), new Point(698, 561), new Point(481, 334)],
             '327' => [new Point(451, 200), new Point(214, 459), new Point(425, 653), new Point(655, 409)],
             '328' => [new Point(230, 437), new Point(386, 680), new Point(658, 491), new Point(485, 252)],
             '329' => [new Point(349, 193), new Point(205, 488), new Point(480, 624), new Point(622, 320)],
             '330' => [new Point(385, 193), new Point(223, 533), new Point(495, 666), new Point(635, 329)],
-            '331' => [new Point(247, 424), new Point(413, 662), new Point(650, 479), new Point(465, 263)],
+            '331' => [new Point(247, 424), new Point(413, 662), new Point(649, 483), new Point(465, 263)],
             '332' => [new Point(369, 236), new Point(242, 544), new Point(511, 645), new Point(643, 343)],
             '333' => [new Point(477, 303), new Point(226, 530), new Point(446, 736), new Point(687, 499)],
             '334' => [new Point(397, 279), new Point(181, 527), new Point(395, 720), new Point(615, 477)],
@@ -461,7 +473,7 @@ class PieceAnalyzerTest extends TestCase
             '365' => [new Point(211, 506), new Point(470, 695), new Point(630, 386), new Point(389, 231)],
             '366' => [new Point(277, 570), new Point(552, 673), new Point(662, 376), new Point(392, 271)],
             '367' => [new Point(379, 265), new Point(231, 573), new Point(495, 694), new Point(631, 385)],
-            '368' => [new Point(477, 259), new Point(277, 538), new Point(505, 701), new Point(706, 400)],
+            '368' => [new Point(477, 259), new Point(277, 538), new Point(505, 701), new Point(706, 402)],
             '369' => [new Point(223, 550), new Point(439, 722), new Point(647, 470), new Point(420, 311)],
             '370' => [new Point(249, 621), new Point(519, 693), new Point(621, 382), new Point(324, 300)],
             '371' => [new Point(364, 255), new Point(256, 596), new Point(556, 691), new Point(670, 376)],
@@ -472,7 +484,7 @@ class PieceAnalyzerTest extends TestCase
             '376' => [new Point(244, 487), new Point(454, 703), new Point(656, 517), new Point(432, 293)],
             '377' => [new Point(195, 420), new Point(365, 696), new Point(679, 499), new Point(488, 262)],
             '378' => [new Point(415, 160), new Point(236, 440), new Point(532, 563), new Point(695, 295)],
-            '379' => [new Point(195, 465), new Point(399, 711), new Point(645, 501), new Point(473, 279)],
+            '379' => [new Point(195, 465), new Point(399, 711), new Point(645, 501), new Point(470, 279)],
             '380' => [new Point(418, 228), new Point(264, 545), new Point(533, 665), new Point(688, 340)],
             '381' => [new Point(204, 549), new Point(456, 701), new Point(635, 462), new Point(370, 297)],
             '382' => [new Point(220, 483), new Point(404, 739), new Point(656, 517), new Point(471, 277)],
@@ -484,7 +496,7 @@ class PieceAnalyzerTest extends TestCase
             '388' => [new Point(365, 278), new Point(243, 584), new Point(515, 652), new Point(647, 366)],
             '389' => [new Point(338, 294), new Point(237, 595), new Point(527, 680), new Point(614, 370)],
             '390' => [new Point(242, 545), new Point(485, 711), new Point(639, 418), new Point(412, 249)],
-            '391' => [new Point(391, 236), new Point(298, 536), new Point(570, 628), new Point(661, 319)],
+            '391' => [new Point(391, 236), new Point(298, 536), new Point(570, 628), new Point(662, 321)],
             '392' => [new Point(184, 541), new Point(392, 742), new Point(630, 497), new Point(418, 299)],
             '393' => [new Point(421, 203), new Point(286, 534), new Point(564, 642), new Point(678, 319)],
             '394' => [new Point(425, 294), new Point(229, 549), new Point(460, 736), new Point(657, 465)],
@@ -509,7 +521,7 @@ class PieceAnalyzerTest extends TestCase
             '413' => [new Point(428, 278), new Point(189, 488), new Point(404, 710), new Point(654, 478)],
             '414' => [new Point(411, 219), new Point(270, 505), new Point(536, 638), new Point(658, 332)],
             '415' => [new Point(246, 511), new Point(467, 697), new Point(678, 447), new Point(433, 242)],
-            '416' => [new Point(350, 265), new Point(237, 564), new Point(542, 672), new Point(654, 372)],
+            '416' => [new Point(353, 263), new Point(237, 564), new Point(542, 672), new Point(654, 372)],
             '417' => [new Point(469, 299), new Point(201, 500), new Point(409, 756), new Point(656, 548)],
             '418' => [new Point(457, 273), new Point(218, 513), new Point(428, 742), new Point(662, 499)],
             '419' => [new Point(355, 203), new Point(215, 503), new Point(487, 637), new Point(614, 344)],
@@ -529,7 +541,7 @@ class PieceAnalyzerTest extends TestCase
             '433' => [new Point(503, 270), new Point(268, 498), new Point(488, 718), new Point(712, 471)],
             '434' => [new Point(236, 572), new Point(487, 710), new Point(617, 404), new Point(390, 286)],
             '435' => [new Point(389, 263), new Point(253, 582), new Point(489, 677), new Point(638, 367)],
-            '436' => [new Point(251, 526), new Point(397, 753), new Point(688, 598), new Point(523, 365)],
+            '436' => [new Point(251, 526), new Point(399, 753), new Point(688, 598), new Point(523, 365)],
             '437' => [new Point(385, 243), new Point(253, 568), new Point(531, 673), new Point(673, 357)],
             '438' => [new Point(389, 290), new Point(266, 607), new Point(571, 699), new Point(672, 402)],
             '439' => [new Point(240, 529), new Point(423, 781), new Point(679, 549), new Point(468, 296)],
@@ -549,7 +561,7 @@ class PieceAnalyzerTest extends TestCase
             '453' => [new Point(181, 534), new Point(413, 783), new Point(668, 499), new Point(446, 309)],
             '454' => [new Point(343, 278), new Point(197, 567), new Point(453, 699), new Point(608, 435)],
             '455' => [new Point(232, 552), new Point(444, 782), new Point(656, 536), new Point(413, 305)],
-            '456' => [new Point(209, 551), new Point(458, 785), new Point(687, 509), new Point(484, 335)],
+            '456' => [new Point(209, 549), new Point(458, 785), new Point(687, 510), new Point(484, 335)],
             '457' => [new Point(324, 303), new Point(262, 631), new Point(530, 689), new Point(601, 376)],
             '458' => [new Point(371, 337), new Point(279, 657), new Point(550, 753), new Point(663, 417)],
             '459' => [new Point(388, 248), new Point(208, 517), new Point(458, 692), new Point(648, 444)],
@@ -568,7 +580,7 @@ class PieceAnalyzerTest extends TestCase
             '472' => [new Point(356, 295), new Point(213, 624), new Point(505, 747), new Point(637, 423)],
             '473' => [new Point(305, 256), new Point(221, 562), new Point(521, 647), new Point(589, 324)],
             '474' => [new Point(317, 303), new Point(245, 627), new Point(526, 705), new Point(595, 346)],
-            '475' => [new Point(189, 509), new Point(357, 739), new Point(638, 571), new Point(489, 326)],
+            '475' => [new Point(188, 512), new Point(357, 740), new Point(638, 571), new Point(489, 326)],
             '476' => [new Point(353, 325), new Point(273, 598), new Point(552, 683), new Point(645, 404)],
             '477' => [new Point(151, 507), new Point(387, 752), new Point(648, 501), new Point(409, 308)],
             '478' => [new Point(239, 607), new Point(529, 711), new Point(680, 397), new Point(405, 270)],
@@ -578,9 +590,9 @@ class PieceAnalyzerTest extends TestCase
             '482' => [new Point(223, 527), new Point(461, 770), new Point(688, 551), new Point(445, 296)],
             '483' => [new Point(353, 266), new Point(252, 602), new Point(593, 702), new Point(685, 342)],
             '484' => [new Point(241, 464), new Point(485, 720), new Point(709, 507), new Point(467, 255)],
-            '485' => [new Point(371, 269), new Point(202, 567), new Point(513, 735), new Point(670, 437)],
+            '485' => [new Point(371, 269), new Point(202, 567), new Point(515, 734), new Point(670, 437)],
             '486' => [new Point(214, 539), new Point(424, 816), new Point(695, 593), new Point(468, 330)],
-            '487' => [new Point(459, 338), new Point(285, 618), new Point(595, 780), new Point(753, 496)],
+            '487' => [new Point(459, 338), new Point(285, 618), new Point(598, 780), new Point(753, 496)],
             '488' => [new Point(150, 489), new Point(355, 759), new Point(638, 539), new Point(413, 316)],
             '489' => [new Point(210, 523), new Point(398, 785), new Point(678, 627), new Point(505, 360)],
             '490' => [new Point(432, 275), new Point(240, 553), new Point(507, 732), new Point(702, 461)],
@@ -598,114 +610,28 @@ class PieceAnalyzerTest extends TestCase
         ];
 
         foreach ($corners as $pieceIndex => $cornerPoints) {
-            $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceIndex . '.jpg');
+            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceIndex . '_piece.ser'));
 
-            try {
-                $piece = $pieceAnalyzer->getPieceFromImage($image);
+            $foundCorners = array_filter($piece->getBorderPoints(), fn (Point $point): bool => $point instanceof DerivativePoint && $point->isUsedAsCorner());
+            $foundCorners = array_values(array_map(fn (DerivativePoint $point): Point => new Point($point->getX(), $point->getY()), $foundCorners));
 
-                $foundCorners = array_filter($piece->getBorderPoints(), fn (Point $point): bool => $point instanceof DerivativePoint && $point->isUsedAsCorner());
-                $foundCorners = array_values(array_map(fn (DerivativePoint $point): Point => new Point($point->getX(), $point->getY()), $foundCorners));
+            $tooMuchAberration = false;
+            foreach ($cornerPoints as $index => $cornerPoint) {
+                if (abs($cornerPoint->getX() - $foundCorners[$index]->getX()) > 1 || abs($cornerPoint->getY() - $foundCorners[$index]->getY()) > 1) {
+                    $tooMuchAberration = true;
+                    break;
+                }
+            }
 
+            if ($tooMuchAberration) {
                 $this->assertEquals(
-                    array_map(fn (Point $point): array => $point->jsonSerialize(), $cornerPoints),
-                    array_map(fn (Point $point): array => $point->jsonSerialize(), $foundCorners),
+                    array_map(fn(Point $point): array => $point->jsonSerialize(), $cornerPoints),
+                    array_map(fn(Point $point): array => $point->jsonSerialize(), $foundCorners),
                     'Piece #' . $pieceIndex
                 );
-            } catch (BorderParsingException|SideParsingException $exception) {
-                throw new ExpectationFailedException('Piece #' . $pieceIndex . ': ' . $exception->getMessage(), null, $exception);
             }
         }
-    }
 
-    public function testFull(): void
-    {
-        //$this->markTestSkipped('Only for manual execution');
-
-        $borderFinder = new ByWulfBorderFinder();
-        $sideFinder = new ByWulfSideFinder();
-        $pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
-
-        $start = 2;
-        $max = 501;
-
-        //$start = $max = 3;
-
-        //foreach ([2, 3, 4, 5, 27, 28, 29, 30] as $i) {
-        for ($i = $start; $i <= $max; ++$i) {
-            $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '.jpg');
-
-            try {
-                $piece = $pieceAnalyzer->getPieceFromImage($image);
-
-                // Found corners
-                $black = imagecolorallocate($image, 0, 0, 0);
-                foreach ($piece->getBorderPoints() as $point) {
-                    if ($point instanceof DerivativePoint && $point->isUsedAsCorner()) {
-                        for ($x = (int) $point->getX() - 10; $x < $point->getX() + 10; ++$x) {
-                            imagesetpixel($image, $x, (int) $point->getY(), $black);
-                        }
-                        for ($y = (int) $point->getY() - 10; $y < $point->getY() + 10; ++$y) {
-                            imagesetpixel($image, (int) $point->getX(), $y, $black);
-                        }
-                    }
-                }
-
-                // BorderPoints (red = anti-clockwise, green = clockwise)
-                foreach ($piece->getBorderPoints() as $point) {
-                    $color = imagecolorallocate($image, 255, 255, 255);
-                    if ($point instanceof DerivativePoint) {
-                        $diff = (int) min((abs($point->getDerivative()) / 90) * 255, 255);
-
-                        $color = imagecolorallocate(
-                            $image,
-                            255 - ($point->getDerivative() > 0 ? $diff : 0),
-                            255 - ($point->getDerivative() < 0 ? $diff : 0),
-                            255 - $diff
-                        );
-                        if ($point->isExtreme()) {
-                            $color = imagecolorallocate($image, 255, 255, 0);
-                        }
-                    }
-                    imagesetpixel($image, (int) $point->getX(), (int) $point->getY(), $color);
-                }
-
-                // Smoothed and normalized side points
-                foreach ($piece->getSides() as $sideIndex => $side) {
-                    foreach ($side->getPoints() as $point) {
-                        imagesetpixel($image, (int) ($point->getX() / 3) + 100, (int) ($point->getY() / 3) + 50 + $sideIndex * 100, imagecolorallocate($image, 50, 80, 255));
-                    }
-
-                    try {
-                        /** @var BigWidthClassifier $bigWidthClassifier */
-                        $bigWidthClassifier = $side->getClassifier(BigWidthClassifier::class);
-                        $centerPoint = $bigWidthClassifier->getCenterPoint();
-                        imagesetpixel($image, (int) ($centerPoint->getX() / 3) + 100, (int) ($centerPoint->getY() / 3) + 50 + $sideIndex * 100, imagecolorallocate($image, 0, 150, 150));
-                        imagestring($image, 1, 175, 50 + $sideIndex * 100, 'CX' . round($bigWidthClassifier->getCenterPoint()->getX(), 2) . ' CY' . round($bigWidthClassifier->getCenterPoint()->getY(), 2) . ' W' . round($bigWidthClassifier->getWidth(), 2), imagecolorallocate($image, 0, 150, 150));
-                    } catch (SideClassifierException) {
-                    }
-
-                    try {
-                        /** @var SmallWidthClassifier $smallWidthClassifier */
-                        $smallWidthClassifier = $side->getClassifier(SmallWidthClassifier::class);
-                        $centerPoint = $smallWidthClassifier->getCenterPoint();
-                        imagesetpixel($image, (int) ($centerPoint->getX() / 3) + 100, (int) ($centerPoint->getY() / 3) + 50 + $sideIndex * 100, imagecolorallocate($image, 150, 150, 0));
-                        imagestring($image, 1, 175, 60 + $sideIndex * 100, 'CX' . round($smallWidthClassifier->getCenterPoint()->getX(), 2) . ' CY' . round($smallWidthClassifier->getCenterPoint()->getY(), 2) . ' W' . round($smallWidthClassifier->getWidth(), 2), imagecolorallocate($image, 150, 150, 0));
-                    } catch (SideClassifierException) {
-                    }
-
-                    imagestring($image, 5, 175, 30 + $sideIndex * 100, $side->getClassifier(DirectionClassifier::class)->getDirection(), $black);
-                }
-
-                file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser', serialize($piece));
-                file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.json', json_encode($piece));
-                echo 'Piece ' . $i . ' parsed successfully.' . PHP_EOL;
-            } catch (BorderParsingException $exception) {
-                echo 'Piece ' . $i . ' failed at BorderFinding: ' . $exception->getMessage() . PHP_EOL;
-            } catch (SideParsingException $exception) {
-                echo 'Piece ' . $i . ' failed at SideFinding: ' . $exception->getMessage() . PHP_EOL;
-            } finally {
-                imagepng($image, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_mask.png');
-            }
-        }
+        $this->assertTrue(true);
     }
 }

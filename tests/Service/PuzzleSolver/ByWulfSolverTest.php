@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bywulf\Jigsawlutioner\Tests\Service\SideFinder;
+namespace Bywulf\Jigsawlutioner\Tests\Service\PuzzleSolver;
 
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;

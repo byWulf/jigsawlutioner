@@ -62,8 +62,8 @@ class ByWulfSideFinderTest extends TestCase
             }
         }
 
-        for ($i = 0; $i < count($borderPoints); ++$i) {
-            $this->assertEquals(($i + 1) % 30 === 0, $borderPoints[$i]->isExtreme());
+        foreach ($borderPoints as $i => $point) {
+            $this->assertEquals(($i + 1) % 30 === 0, $point->isExtreme());
         }
     }
 }

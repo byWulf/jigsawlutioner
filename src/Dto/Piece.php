@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
+use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use JsonSerializable;
 
 class Piece implements JsonSerializable
@@ -56,5 +61,24 @@ class Piece implements JsonSerializable
                 $this->sides
             ),
         ];
+    }
+
+    public static function fromSerialized(string $serializedContent): self
+    {
+        return unserialize(
+            $serializedContent,
+            ['allowed_classes' => [
+                DerivativePoint::class,
+                Piece::class,
+                Point::class,
+                Side::class,
+                SideMetadata::class,
+                BigWidthClassifier::class,
+                CornerDistanceClassifier::class,
+                DepthClassifier::class,
+                DirectionClassifier::class,
+                SmallWidthClassifier::class,
+            ]]
+        );
     }
 }
