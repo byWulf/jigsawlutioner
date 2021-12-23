@@ -7,6 +7,8 @@ namespace Bywulf\Jigsawlutioner\Tests\Service\SideMatcher;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
+use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use Bywulf\Jigsawlutioner\Tests\PieceLoaderTrait;
 use PHPStan\Testing\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -52,9 +54,11 @@ class WeightedMatcherTest extends TestCase
             }
         }
 
-        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 3.6840)' . PHP_EOL;
+        echo 'BigWidthClassifier: ' . BigWidthClassifier::getAverageTime() . PHP_EOL;
+        echo 'SmallWidthClassifier: ' . SmallWidthClassifier::getAverageTime() . PHP_EOL;
+        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 2.778)' . PHP_EOL;
 
-        $this->assertLessThanOrEqual(3.7, $matchingPositionsSum / $countMatchings);
+        $this->assertLessThanOrEqual(2.8, $matchingPositionsSum / $countMatchings);
     }
 
     /**
