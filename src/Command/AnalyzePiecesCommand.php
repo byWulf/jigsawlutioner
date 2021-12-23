@@ -14,6 +14,7 @@ use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -32,19 +33,30 @@ class AnalyzePiecesCommand extends Command
         $sideFinder = new ByWulfSideFinder();
         $pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
 
+        $progress = new ProgressBar($output);
+        $progress->setFormat(' %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%');
+
         if (count($input->getArgument('pieceNumber')) > 0) {
+            $progress->start(count($input->getArgument('pieceNumber')));
+
             foreach ($input->getArgument('pieceNumber') as $pieceNumber) {
-                $output->writeln('Analyzing #' . (int) $pieceNumber);
                 $this->analyzePiece((int) $pieceNumber, $pieceAnalyzer);
+
+                $progress->advance();
             }
         } else {
+            $progress->start(500);
+
             for ($pieceNumber = 2; $pieceNumber <= 501; ++$pieceNumber) {
-                $output->writeln('Analyzing #' . $pieceNumber);
                 $this->analyzePiece($pieceNumber, $pieceAnalyzer);
+
+                $progress->advance();
             }
         }
 
-        $output->writeln('Done.');
+        $progress->finish();
+
+        $output->writeln(PHP_EOL . PHP_EOL . 'Done.');
 
         return self::SUCCESS;
     }
@@ -116,7 +128,6 @@ class AnalyzePiecesCommand extends Command
 
             file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.ser', serialize($piece));
             file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.json', json_encode($piece));
-            echo 'Piece ' . $pieceNumber . ' parsed successfully.' . PHP_EOL;
         } catch (BorderParsingException $exception) {
             echo 'Piece ' . $pieceNumber . ' failed at BorderFinding: ' . $exception->getMessage() . PHP_EOL;
         } catch (SideParsingException $exception) {
