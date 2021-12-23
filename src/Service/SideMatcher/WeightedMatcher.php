@@ -16,6 +16,13 @@ use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
 class WeightedMatcher implements SideMatcherInterface
 {
+    /**
+     * @param Side[] $sides
+     *
+     * @throws SideMatcherException
+     *
+     * @return float[] Number between 0 and 1 for each given $sides
+     */
     public function getMatchingProbabilities(Side $side, array $sides): array
     {
         $probabilities = [];
@@ -26,17 +33,21 @@ class WeightedMatcher implements SideMatcherInterface
         return $probabilities;
     }
 
+    /**
+     * @throws SideMatcherException
+     *
+     * @return float Number between 0 and 1
+     */
     private function getMatchingProbability(Side $side1, Side $side2): float
     {
+        $weightSum = 0;
         $sum = 0;
         /** @var class-string<SideClassifierInterface> $classifierClassName */
         foreach (SideMatcherInterface::CLASSIFIER_CLASS_NAMES as $classifierClassName) {
             try {
                 $probability = $side1->getClassifier($classifierClassName)->compareOppositeSide($side2->getClassifier($classifierClassName));
 
-                if ($probability < 0.0 || $probability > 1.0) {
-                    throw new SideMatcherException('Probability must be between 0 and 1, got ' . $probability . ' from ' . $classifierClassName . '.');
-                }
+                $probability = (float) min(1, max(0, $probability));
 
                 $weight = $this->getWeightForClassifier($classifierClassName);
                 if ($weight === null) {
@@ -52,13 +63,14 @@ class WeightedMatcher implements SideMatcherInterface
                 }
 
                 $sum += $probability * $weight;
+                $weightSum += $weight;
             } catch (SideClassifierException) {
                 // One of the classifiers didn't exist. So no matching possible.
                 return 0;
             }
         }
 
-        return $sum;
+        return $sum / $weightSum;
     }
 
     private function getWeightForClassifier(string $classifierName): ?float
@@ -69,7 +81,7 @@ class WeightedMatcher implements SideMatcherInterface
             BigWidthClassifier::class => 1.0,
             CornerDistanceClassifier::class => 1.5,
             DepthClassifier::class => 1.5,
-            default => 1.0
+            default => 0.0
         };
     }
 }

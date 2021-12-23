@@ -3,10 +3,9 @@
 namespace Bywulf\Jigsawlutioner\Command;
 
 use Bywulf\Jigsawlutioner\Dto\Side;
-use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
-use Rubix\ML\Classifiers\ClassificationTree;
 use Rubix\ML\Learner;
+use Rubix\ML\Regressors\RegressionTree;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -29,15 +28,11 @@ class CreateSmallNopMatcherModelCommandCommand extends AbstractModelCreatorComma
         /** @var SmallWidthClassifier $outsideClassifier */
         $outsideClassifier = $outsideSide->getClassifier(SmallWidthClassifier::class);
 
-        return [
-            -$insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX(),
-            $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY(),
-            $insideClassifier->getWidth() - $outsideClassifier->getWidth(),
-        ];
+        return $insideClassifier->getPredictionData($outsideClassifier);
     }
 
     protected function createLearner(): Learner
     {
-        return new ClassificationTree(PHP_INT_MAX, 5);
+        return new RegressionTree(20, 2, 1e-3, 10, null);
     }
 }

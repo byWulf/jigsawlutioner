@@ -5,20 +5,21 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
-use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use JsonSerializable;
+use Bywulf\Jigsawlutioner\Util\TimeTrackerTrait;
 use Rubix\ML\Datasets\Unlabeled;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
 
 class BigWidthClassifier implements SideClassifierInterface
 {
+    use TimeTrackerTrait;
+
     private static ?PersistentModel $estimator = null;
 
     public function __construct(
-        private string $direction,
+        private int $direction,
         private float $width,
         private Point $centerPoint
     ) {
@@ -35,7 +36,7 @@ class BigWidthClassifier implements SideClassifierInterface
         $points = $metadata->getSide()->getPoints();
 
         $pointWidths = $metadata->getPointWidths();
-        for ($i = $metadata->getDeepestIndex(); $i >= 0; $i--) {
+        for ($i = $metadata->getDeepestIndex(); $i >= 0; --$i) {
             // Search for the first width, that gets smaller than the width before
             if (isset($pointWidths[$i + 1]) && $pointWidths[$i] < $pointWidths[$i + 1]) {
                 return new BigWidthClassifier(
@@ -52,23 +53,34 @@ class BigWidthClassifier implements SideClassifierInterface
         throw new SideClassifierException('Couldn\'t determine biggest width of nop.');
     }
 
-    /**
-     * @param BigWidthClassifier $classifier
-     */
-    public function compareOppositeSide(SideClassifierInterface $classifier): float
+    public function getPredictionData(BigWidthClassifier $comparisonClassifier): array
     {
-        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $comparisonClassifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $comparisonClassifier;
 
         $xDiff = -$insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
         $yDiff = $outsideClassifier->getCenterPoint()->getY() + $insideClassifier->getCenterPoint()->getY();
         $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
+        return [$xDiff, $yDiff, $widthDiff];
+    }
+
+    /**
+     * @param BigWidthClassifier $classifier
+     */
+    public function compareOppositeSide(SideClassifierInterface $classifier): float
+    {
         if (self::$estimator === null) {
             self::$estimator = PersistentModel::load(new Filesystem(__DIR__ . '/../../resources/Model/bigNopMatcher.model'));
         }
 
-        return self::$estimator->proba(Unlabeled::quick([[$xDiff, $yDiff, $widthDiff]]))[0]['yes'] ?? 0;
+        $probability = $this->withTimeTracking(function () use ($classifier) {
+            $data = $this->getPredictionData($classifier);
+
+            return self::$estimator->predict(Unlabeled::quick([$data]))[0];
+        });
+
+        return $probability;
     }
 
     /**

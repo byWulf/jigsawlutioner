@@ -2,18 +2,10 @@
 
 namespace Bywulf\Jigsawlutioner\Command;
 
-use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
-use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
-use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
-use Rubix\ML\Classifiers\ClassificationTree;
 use Rubix\ML\Datasets\Labeled;
 use Rubix\ML\Learner;
 use Rubix\ML\PersistentModel;
@@ -42,25 +34,25 @@ abstract class AbstractModelCreatorCommand extends Command
                 $dataset = $this->getDataset($rightSide, $rightOppositeSide);
                 if ($dataset !== null && $x < 24) {
                     $datasets[] = $dataset;
-                    $labels[] = 'yes';
+                    $labels[] = 1;
                 }
 
                 $dataset = $this->getDataset($bottomSide, $bottomOppositeSide);
                 if ($dataset !== null && $y < 19) {
                     $datasets[] = $dataset;
-                    $labels[] = 'yes';
+                    $labels[] = 1;
                 }
 
                 $dataset = $this->findNonmatchingDataset($rightSide, $rightOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
                 if ($dataset) {
                     $datasets[] = $dataset;
-                    $labels[] = 'no';
+                    $labels[] = 0;
                 }
 
                 $dataset = $this->findNonmatchingDataset($bottomSide, $bottomOppositeSide, $nopInformation[$y * 25 + $x + 4] ?? null);
                 if ($dataset) {
                     $datasets[] = $dataset;
-                    $labels[] = 'no';
+                    $labels[] = 0;
                 }
             }
         }
@@ -178,11 +170,11 @@ abstract class AbstractModelCreatorCommand extends Command
         $estimator->train($training);
 
         $output->writeln('Predicting...');
-        $predictions = $estimator->proba($testing);
+        $predictions = $estimator->predict($testing);
 
         $difference = 0;
         foreach ($predictions as $index => $prediction) {
-            $difference += 1 - $prediction[$testing->label($index)];
+            $difference += abs($testing->label($index) - $prediction);
         }
 
         $score = 1 - ($difference / count($predictions));

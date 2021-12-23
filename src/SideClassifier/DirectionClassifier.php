@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
-use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
-use Bywulf\Jigsawlutioner\Service\PointService;
-use JsonSerializable;
 
 class DirectionClassifier implements SideClassifierInterface
 {
-    public const NOP_STRAIGHT = 'straight';
-    public const NOP_INSIDE = 'inside';
-    public const NOP_OUTSIDE = 'outside';
+    public const NOP_STRAIGHT = 0;
+    public const NOP_INSIDE = -1;
+    public const NOP_OUTSIDE = 1;
 
     public function __construct(
-        private string $direction
+        private int $direction
     ) {
     }
 
@@ -29,9 +26,14 @@ class DirectionClassifier implements SideClassifierInterface
         return new DirectionClassifier($metadata->getDepth() < 0 ? self::NOP_INSIDE : self::NOP_OUTSIDE);
     }
 
-    public function getDirection(): string
+    public function getDirection(): int
     {
         return $this->direction;
+    }
+
+    public function getOppositeDirection(): int
+    {
+        return -$this->direction;
     }
 
     /**
@@ -54,7 +56,7 @@ class DirectionClassifier implements SideClassifierInterface
         return $this->direction === $classifier->getDirection() ? 1 : 0;
     }
 
-    public function jsonSerialize(): string
+    public function jsonSerialize(): int
     {
         return $this->direction;
     }

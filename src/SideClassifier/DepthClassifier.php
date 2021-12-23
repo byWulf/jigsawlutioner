@@ -10,7 +10,7 @@ use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 class DepthClassifier implements SideClassifierInterface
 {
     public function __construct(
-        private string $direction,
+        private int $direction,
         private float $depth
     ) {
     }
