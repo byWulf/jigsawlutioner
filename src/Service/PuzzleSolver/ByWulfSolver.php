@@ -8,7 +8,9 @@ use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Dto\Solution;
+use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ByWulfSolver implements PuzzleSolverInterface
 {
@@ -19,9 +21,16 @@ class ByWulfSolver implements PuzzleSolverInterface
         3 => ['x' => 1, 'y' => 0],
     ];
 
+    private Solution $solution;
+
+    private array $pieces;
+
+    private array $matchingMap;
+
     public function __construct(
         private SideMatcherInterface $sideMatcher
     ) {
+        $this->cache = new FilesystemAdapter(directory: __DIR__ . '/../../../resources/cache');
     }
 
     /**
@@ -29,80 +38,172 @@ class ByWulfSolver implements PuzzleSolverInterface
      */
     public function findSolution(array $pieces): Solution
     {
-        $groups = [];
-        $currentGroup = new Group();
-        $debugGroup = [];
+        $this->solution = new Solution();
+        $this->pieces = $pieces;
+        $this->missingPieces = $pieces;
+        $this->matchingMap = $this->cache->get('matchingMap1', fn () => $this->getMatchingMap($pieces));
 
-        $matchingMap = $this->getMatchingMap($pieces);
+        while ($this->addNextPlacement());
 
-        foreach ($matchingMap as $pieceSide => $probabilities) {
-            echo $pieceSide . ': ' . reset($probabilities) . PHP_EOL;
+        $this->outputSolution();
+
+        return $this->solution;
+    }
+
+    private function addNextPlacement(): bool
+    {
+        $nextKey = $this->getMostFittableSide($this->pieces, $this->matchingMap);
+        // If nothing more can be placed, we add all non-assigned pieces as single groups and end the solution creation
+        if ($nextKey === null) {
+            foreach ($this->pieces as $piece) {
+                foreach ($this->solution->getGroups() as $group) {
+                    if ($group->getPlacementByPiece($piece) !== null) {
+                        continue 2;
+                    }
+                }
+
+                $group = new Group();
+                $group->addPlacement(new Placement(0, 0, $piece, 0));
+                $this->solution->addGroup($group);
+            }
+
+            return false;
+        }
+        $nextPieceIndex = $this->getPieceIndexFromKey($nextKey);
+
+        $matchingKey = array_key_first($this->matchingMap[$nextKey]);
+        $matchingPieceIndex = $this->getPieceIndexFromKey($matchingKey);
+
+        $groups = $this->getGroups([$nextPieceIndex, $matchingPieceIndex]);
+        if (count($groups) === 0) {
+            $group = new Group();
+            $this->solution->addGroup($group);
+            $group->addPlacement(new Placement(0, 0, $this->pieces[$nextPieceIndex], 0));
+
+            $this->addPlacementToGroup($group, $nextKey, $matchingKey);
+        } elseif (count($groups) === 1) {
+            $this->addPlacementToGroup(reset($groups), $nextKey, $matchingKey);
+        } elseif (count($groups) === 2) {
+            $this->mergeGroups($groups[$nextPieceIndex], $groups[$matchingPieceIndex], $nextKey, $matchingKey);
+        } else {
+            throw new PuzzleSolverException('Expected 0 to 2 groups, got ' . count($groups) . '.');
         }
 
-        $nextPieceIndex = $this->getMostFittablePieceIndex($pieces, $matchingMap);
-        if ($nextPieceIndex === null) {
-            return new Solution($groups);
+        unset($this->matchingMap[$nextKey], $this->matchingMap[$matchingKey]);
+
+        return true;
+    }
+
+    private function addPlacementToGroup(Group $group, string $key1, string $key2): void
+    {
+        $placement1 = $group->getPlacementByPiece($this->pieces[$this->getPieceIndexFromKey($key1)]);
+        $placement2 = $group->getPlacementByPiece($this->pieces[$this->getPieceIndexFromKey($key2)]);
+
+        if ($placement1 !== null && $placement2 === null) {
+            $existingPlacement = $placement1;
+            $existingSideIndex = $this->getSideIndexFromKey($key1);
+
+            $newPiece = $this->pieces[$this->getPieceIndexFromKey($key2)];
+            $newSideIndex = $this->getSideIndexFromKey($key2);
+        } elseif ($placement2 !== null && $placement1 === null) {
+            $existingPlacement = $placement2;
+            $existingSideIndex = $this->getSideIndexFromKey($key2);
+
+            $newPiece = $this->pieces[$this->getPieceIndexFromKey($key1)];
+            $newSideIndex = $this->getSideIndexFromKey($key1);
+        } else {
+            throw new PuzzleSolverException('Trying to place a piece to an existing group, but something strange happened in the data.');
         }
 
-        $currentX = 0;
-        $currentY = 0;
-        $currentDirection = 0;
-        $currentGroup->addPlacement(new Placement($currentX, $currentY, $pieces[$nextPieceIndex], $currentDirection));
-        $debugGroup[] = ['x' => $currentX, 'y' => $currentY, 'topDirection' => $currentDirection, 'pieceIndex' => $nextPieceIndex];
+        $group->addPlacement(new Placement(
+            $existingPlacement->getX() + self::DIRECTION_OFFSETS[($existingSideIndex - $existingPlacement->getTopSideIndex() + 4) % 4]['x'],
+            $existingPlacement->getY() + self::DIRECTION_OFFSETS[($existingSideIndex - $existingPlacement->getTopSideIndex() + 4) % 4]['y'],
+            $newPiece,
+            (($existingSideIndex + 2 - $existingPlacement->getTopSideIndex() + $newSideIndex) + 4) % 4
+        ));
+    }
 
-        $bestSideIndex = 0;
-        $bestRating = 0;
-        $matchingPieceIndex = null;
-        $matchingSideIndex = null;
-        foreach ($pieces[$nextPieceIndex]->getSides() as $sideIndex => $side) {
-            $firstKey = array_key_first($matchingMap[$this->getKey($nextPieceIndex, $sideIndex)]);
-            if ($matchingMap[$this->getKey($nextPieceIndex, $sideIndex)][$firstKey] > $bestRating) {
-                $bestRating = $matchingMap[$this->getKey($nextPieceIndex, $sideIndex)][$firstKey];
-                $bestSideIndex = $sideIndex;
-                list($matchingPieceIndex, $matchingSideIndex) = $this->getIndexes($firstKey);
+    private function mergeGroups(Group $group1, Group $group2, string $key1, string $key2): void
+    {
+        // If its the same groups, we cannot merge them
+        if ($group1 === $group2) {
+            return;
+        }
+
+        $piece1 = $this->pieces[$this->getPieceIndexFromKey($key1)];
+        $sideIndex1 = $this->getSideIndexFromKey($key1);
+        $placement1 = $group1->getPlacementByPiece($piece1);
+
+        if ($placement1 === null) {
+            throw new PuzzleSolverException('Something went wrong.');
+        }
+
+        $piece2 = $this->pieces[$this->getPieceIndexFromKey($key2)];
+        $sideIndex2 = $this->getSideIndexFromKey($key2);
+
+
+        // First clone the second group to manipulate the clone for testing the fittment
+        $group2Copy = clone $group2;
+        $placement2 = $group2Copy->getPlacementByPiece($piece2);
+
+        if ($placement2 === null) {
+            throw new PuzzleSolverException('Something went wrong.');
+        }
+
+        $neededRotations = $placement1->getTopSideIndex() - $sideIndex1 -$placement2->getTopSideIndex() + $sideIndex2 + 2;
+        $group2Copy->rotate($neededRotations);
+
+        $targetX = $placement1->getX() + self::DIRECTION_OFFSETS[($sideIndex1 - $placement1->getTopSideIndex() + 4) % 4]['x'];
+        $targetY = $placement1->getY() + self::DIRECTION_OFFSETS[($sideIndex1 - $placement1->getTopSideIndex() + 4) % 4]['y'];
+        $group2Copy->move($targetX - $placement2->getX(), $targetY - $placement2->getY());
+
+        //Check that no position is occupied multiple times
+        foreach ($group1->getPlacements() as $placement) {
+            if ($group2Copy->getPlacementByPosition($placement->getX(), $placement->getY())) {
+                return;
             }
         }
+        //TODO: Chekc that all connecting sides are matching by probability > 0.5
+        //TODO: Check that is becomes a rectangle and not a tetris block
 
-        $currentX += self::DIRECTION_OFFSETS[$bestSideIndex]['x'];
-        $currentY += self::DIRECTION_OFFSETS[$bestSideIndex]['y'];
-        $currentDirection = (($bestSideIndex + 2 - $currentDirection + $matchingSideIndex) + 4) % 4;
-        $currentGroup->addPlacement(new Placement($currentX, $currentY, $pieces[$matchingPieceIndex], $currentDirection));
-        $debugGroup[] = ['x' => $currentX, 'y' => $currentY, 'topDirection' => $currentDirection, 'pieceIndex' => $matchingPieceIndex];
-
-        // TODO: From all free sides of the group, get the one with the best fitting. If multiple sides are neighbours to this piece, all sides must be the best matches
-
-        var_export($debugGroup);
+        foreach ($group2Copy->getPlacements() as $placement) {
+            $group1->addPlacement($placement);
+        }
+        $this->solution->removeGroup($group2);
     }
 
     /**
-     * @param Piece[] $pieces
+     * @param Piece[]   $pieces
      * @param float[][] $matchingMap
      */
-    private function getMostFittablePieceIndex(array $pieces, array $matchingMap): int|string|null
+    private function getMostFittableSide(array $pieces, array $matchingMap): ?string
     {
         if (count($pieces) === 0) {
             return null;
         }
 
         $bestRating = 0;
-        $bestPieceIndex = null;
-        foreach ($pieces as $pieceIndex => $piece) {
-            $rating = 0;
-            foreach ($piece->getSides() as $sideIndex => $side) {
-                $rating += reset($matchingMap[$this->getKey($pieceIndex, $sideIndex)]);
-            }
-
-            if ($rating > $bestRating) {
-                $bestRating = $rating;
-                $bestPieceIndex = $pieceIndex;
+        $bestKey = null;
+        foreach ($matchingMap as $key => $probabilities) {
+            list($bestProbability, $secondProbability) = array_slice(array_values($matchingMap[$key]), 0, 2);
+            if ($bestProbability > 0.5 && $bestProbability - $secondProbability > $bestRating) {
+                $bestRating = $bestProbability - $secondProbability;
+                $bestKey = $key;
             }
         }
 
-        return $bestPieceIndex;
+        if ($bestKey === null) {
+            return null;
+        }
+
+        echo 'bestKey: ' . $bestKey . ' / matchingKey: ' . array_key_first($matchingMap[$bestKey]) . ' (probability difference: ' . $bestRating . ')' . PHP_EOL;
+
+        return $bestKey;
     }
 
     /**
      * @param Piece[] $pieces
+     *
      * @return float[][]
      */
     private function getMatchingMap(array $pieces): array
@@ -132,12 +233,45 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $pieceIndex . '_' . $sideIndex;
     }
 
-    /**
-     * @return array<string|int>
-     */
-    private function getIndexes(string $key): array
+    private function getPieceIndexFromKey(string $key): int
     {
-        $parts = explode('_', $key);
-        return [$parts[0], (int) $parts[1]];
+        return (int) explode('_', $key)[0];
+    }
+
+    private function getSideIndexFromKey(string $key): int
+    {
+        return (int) explode('_', $key)[1];
+    }
+
+    /**
+     * @param int[] $pieceIndexes
+     * @return array<int, Group> Keys are the requested piece indexes
+     */
+    private function getGroups(array $pieceIndexes): array
+    {
+        $foundGroups = [];
+        foreach ($this->solution->getGroups() as $groupIndex => $group) {
+            foreach ($group->getPlacements() as $placement) {
+                foreach ($pieceIndexes as $pieceIndex) {
+                    if ($placement->getPiece() === $this->pieces[$pieceIndex]) {
+                        $foundGroups[$pieceIndex] = $group;
+                    }
+                }
+            }
+        }
+
+        return $foundGroups;
+    }
+
+    private function outputSolution(): void
+    {
+        foreach ($this->solution->getGroups() as $index => $group) {
+            echo 'Group #' . $index . ':' . PHP_EOL;
+            foreach ($group->getPlacements() as $placement) {
+                $pieceIndex = array_search($placement->getPiece(), $this->pieces, true);
+                echo "\t" . 'x: ' . $placement->getX() . ', y: ' . $placement->getY() . ', top side: ' . $placement->getTopSideIndex() . ', pieceIndex: ' . $pieceIndex . PHP_EOL;
+            }
+            echo PHP_EOL;
+        }
     }
 }

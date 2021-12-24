@@ -19,9 +19,21 @@ class Placement
         return $this->x;
     }
 
+    public function setX(int $x): Placement
+    {
+        $this->x = $x;
+        return $this;
+    }
+
     public function getY(): int
     {
         return $this->y;
+    }
+
+    public function setY(int $y): Placement
+    {
+        $this->y = $y;
+        return $this;
     }
 
     public function getPiece(): Piece
@@ -32,5 +44,11 @@ class Placement
     public function getTopSideIndex(): int
     {
         return $this->topSideIndex;
+    }
+
+    public function setTopSideIndex(int $topSideIndex): Placement
+    {
+        $this->topSideIndex = $topSideIndex;
+        return $this;
     }
 }

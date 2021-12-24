@@ -11,7 +11,7 @@ trait PieceLoaderTrait
     /**
      * @return Piece[]
      */
-    private function getPieces(): array
+    private function getPieces(bool $reorderSides = true): array
     {
         $pieces = [];
         for ($i = 2; $i <= 501; ++$i) {
@@ -23,18 +23,21 @@ trait PieceLoaderTrait
             }
 
             // Reorder sides so the top side is the first side
-            $sides = $piece->getSides();
-            while (
-                $sides[1]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                $sides[2]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                $sides[3]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY()
-            ) {
-                $side = array_splice($sides, 0, 1);
-                $sides[] = $side[0];
-                $sides = array_values($sides);
-            }
+            if ($reorderSides) {
+                $sides = $piece->getSides();
 
-            $piece->setSides(array_values($sides));
+                while (
+                    $sides[1]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
+                    $sides[2]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
+                    $sides[3]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY()
+                ) {
+                    $side = array_splice($sides, 0, 1);
+                    $sides[] = $side[0];
+                    $sides = array_values($sides);
+                }
+
+                $piece->setSides(array_values($sides));
+            }
 
             $pieces[$i] = $piece;
         }
