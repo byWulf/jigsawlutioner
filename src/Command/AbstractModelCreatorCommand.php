@@ -62,6 +62,7 @@ abstract class AbstractModelCreatorCommand extends Command
 
     /**
      * @param Piece $piece
+     *
      * @return Side[]
      */
     public function getReorderedSides(Piece $piece): array
@@ -154,6 +155,7 @@ abstract class AbstractModelCreatorCommand extends Command
     /**
      * @param array $datasets
      * @param array $labels
+     *
      * @return void
      */
     private function trainModel(OutputInterface $output, array $datasets, array $labels, string $modelFilename): void

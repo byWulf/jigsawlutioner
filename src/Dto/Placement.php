@@ -22,6 +22,7 @@ class Placement
     public function setX(int $x): Placement
     {
         $this->x = $x;
+
         return $this;
     }
 
@@ -33,6 +34,7 @@ class Placement
     public function setY(int $y): Placement
     {
         $this->y = $y;
+
         return $this;
     }
 
@@ -49,6 +51,7 @@ class Placement
     public function setTopSideIndex(int $topSideIndex): Placement
     {
         $this->topSideIndex = $topSideIndex;
+
         return $this;
     }
 }

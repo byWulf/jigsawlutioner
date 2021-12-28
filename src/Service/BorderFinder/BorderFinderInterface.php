@@ -15,5 +15,5 @@ interface BorderFinderInterface
      *
      * @return Point[]
      */
-    public function findPieceBorder(GdImage $image): array;
+    public function findPieceBorder(GdImage $image, ?GdImage $transparentImage): array;
 }

@@ -43,7 +43,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->missingPieces = $pieces;
         $this->matchingMap = $this->cache->get('matchingMap1', fn () => $this->getMatchingMap($pieces));
 
-        while ($this->addNextPlacement());
+        while ($this->addNextPlacement()) {
+        }
 
         $this->outputSolution();
 
@@ -141,7 +142,6 @@ class ByWulfSolver implements PuzzleSolverInterface
         $piece2 = $this->pieces[$this->getPieceIndexFromKey($key2)];
         $sideIndex2 = $this->getSideIndexFromKey($key2);
 
-
         // First clone the second group to manipulate the clone for testing the fittment
         $group2Copy = clone $group2;
         $placement2 = $group2Copy->getPlacementByPiece($piece2);
@@ -150,7 +150,7 @@ class ByWulfSolver implements PuzzleSolverInterface
             throw new PuzzleSolverException('Something went wrong.');
         }
 
-        $neededRotations = $placement1->getTopSideIndex() - $sideIndex1 -$placement2->getTopSideIndex() + $sideIndex2 + 2;
+        $neededRotations = $placement1->getTopSideIndex() - $sideIndex1 - $placement2->getTopSideIndex() + $sideIndex2 + 2;
         $group2Copy->rotate($neededRotations);
 
         $targetX = $placement1->getX() + self::DIRECTION_OFFSETS[($sideIndex1 - $placement1->getTopSideIndex() + 4) % 4]['x'];
@@ -245,6 +245,7 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     /**
      * @param int[] $pieceIndexes
+     *
      * @return array<int, Group> Keys are the requested piece indexes
      */
     private function getGroups(array $pieceIndexes): array

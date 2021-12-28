@@ -10,10 +10,10 @@ class SideMetadata
      * @param array<int, float> $pointWidths
      */
     public function __construct(
-        private Side  $side,
+        private Side $side,
         private float $sideWidth,
         private float $depth,
-        private int   $deepestIndex,
+        private int $deepestIndex,
         private array $pointWidths
     ) {
     }

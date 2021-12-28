@@ -61,11 +61,13 @@ class AnalyzePiecesCommand extends Command
         return self::SUCCESS;
     }
 
-    private function analyzePiece(int $pieceNumber, PieceAnalyzer $pieceAnalyzer): void {
+    private function analyzePiece(int $pieceNumber, PieceAnalyzer $pieceAnalyzer): void
+    {
         $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '.jpg');
+        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '.jpg');
 
         try {
-            $piece = $pieceAnalyzer->getPieceFromImage($image);
+            $piece = $pieceAnalyzer->getPieceFromImage($image, $transparentImage);
 
             // Found corners
             $black = imagecolorallocate($image, 0, 0, 0);
@@ -134,6 +136,7 @@ class AnalyzePiecesCommand extends Command
             echo 'Piece ' . $pieceNumber . ' failed at SideFinding: ' . $exception->getMessage() . PHP_EOL;
         } finally {
             imagepng($image, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_mask.png');
+            imagepng($transparentImage, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_transparent.png');
         }
     }
 }

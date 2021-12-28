@@ -74,7 +74,7 @@ class WeightedMatcherTest extends TestCase
     }
 
     /**
-     * @param Side[]     $sides
+     * @param Side[] $sides
      */
     private function outputSideMatchings(?Side $side1, ?Side $side2, array $sides, string $label, int &$countMatchings, int &$matchingPositionsSum): void
     {

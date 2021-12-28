@@ -54,7 +54,7 @@ class Group
             $clockwiseRotations += 4;
         }
 
-        for ($i = 0; $i < $clockwiseRotations; $i++) {
+        for ($i = 0; $i < $clockwiseRotations; ++$i) {
             foreach ($this->placements as $placement) {
                 $placement->setTopSideIndex(($placement->getTopSideIndex() + 1) % 4);
                 $oldX = $placement->getX();

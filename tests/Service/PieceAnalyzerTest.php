@@ -8,30 +8,19 @@ use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
-use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
-use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Bywulf\Jigsawlutioner\Exception\SideParsingException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\BorderFinderInterface;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 use Bywulf\Jigsawlutioner\Service\PathService;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
 use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use Bywulf\Jigsawlutioner\Service\SideFinder\SideFinderInterface;
-use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
-use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
-use PHPUnit\Framework\ExpectationFailedException;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
 use ReflectionClass;
-use Rubix\ML\Classifiers\ClassificationTree;
-use Rubix\ML\Datasets\Labeled;
-use Rubix\ML\PersistentModel;
-use Rubix\ML\Persisters\Filesystem;
 
 class PieceAnalyzerTest extends TestCase
 {
@@ -619,14 +608,15 @@ class PieceAnalyzerTest extends TestCase
             foreach ($cornerPoints as $index => $cornerPoint) {
                 if (abs($cornerPoint->getX() - $foundCorners[$index]->getX()) > 1 || abs($cornerPoint->getY() - $foundCorners[$index]->getY()) > 1) {
                     $tooMuchAberration = true;
+
                     break;
                 }
             }
 
             if ($tooMuchAberration) {
                 $this->assertEquals(
-                    array_map(fn(Point $point): array => $point->jsonSerialize(), $cornerPoints),
-                    array_map(fn(Point $point): array => $point->jsonSerialize(), $foundCorners),
+                    array_map(fn (Point $point): array => $point->jsonSerialize(), $cornerPoints),
+                    array_map(fn (Point $point): array => $point->jsonSerialize(), $foundCorners),
                     'Piece #' . $pieceIndex
                 );
             }

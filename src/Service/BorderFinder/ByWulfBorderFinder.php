@@ -29,7 +29,8 @@ class ByWulfBorderFinder implements BorderFinderInterface
      * @return Point[]
      */
     public function findPieceBorder(
-        GdImage $image
+        GdImage $image,
+        ?GdImage $transparentImage
     ): array {
         $objectColor = $this->allocateColor($image, 0, 0, 0);
         $biggestObjectColor = $this->allocateColor($image, 50, 50, 50);
@@ -68,6 +69,10 @@ class ByWulfBorderFinder implements BorderFinderInterface
         $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
 
         $pixelMap->applyToImage();
+
+        if ($transparentImage !== null) {
+            $this->createTransparentImage($transparentImage, $pixelMap, $biggestObjectColor);
+        }
 
         return $points;
     }
@@ -330,5 +335,21 @@ class ByWulfBorderFinder implements BorderFinderInterface
         }
 
         throw new BorderParsingException('No area found');
+    }
+
+    private function createTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
+    {
+        $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
+        if ($transparentColor === false) {
+            throw new BorderParsingException('Color could not be created.');
+        }
+
+        for ($y = 0; $y < imagesy($transparentImage); $y++) {
+            for ($x = 0; $x < imagesx($transparentImage); $x++) {
+                if ($pixelMap->getColor($x, $y) !== $opaqueColor) {
+                    imagesetpixel($transparentImage, $x, $y, $transparentColor);
+                }
+            }
+        }
     }
 }
