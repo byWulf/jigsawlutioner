@@ -10,6 +10,8 @@ use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
+use DateTimeImmutable;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ByWulfSolver implements PuzzleSolverInterface
@@ -28,7 +30,8 @@ class ByWulfSolver implements PuzzleSolverInterface
     private array $matchingMap;
 
     public function __construct(
-        private SideMatcherInterface $sideMatcher
+        private SideMatcherInterface $sideMatcher,
+        private ?LoggerInterface $logger = null
     ) {
         $this->cache = new FilesystemAdapter(directory: __DIR__ . '/../../../resources/cache');
     }
@@ -41,12 +44,22 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->solution = new Solution();
         $this->pieces = $pieces;
         $this->missingPieces = $pieces;
-        $this->matchingMap = $this->cache->get('matchingMap1', fn () => $this->getMatchingMap($pieces));
 
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');
+        $this->matchingMap = $this->getMatchingMap($pieces);
+        //$this->matchingMap = $this->cache->get('matchingMap1', fn () => $this->getMatchingMap($pieces));
+
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution...');
+
+        // Loop as long as placements can be made
         while ($this->addNextPlacement()) {
+            $placements = array_sum(array_map(fn(Group $group): int => count($group->getPlacements()), $this->solution->getGroups()));
+            $groups = count($this->solution->getGroups());
+
+            $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $placements . ' pieces in ' . $groups . ' groups.');
         }
 
-        $this->outputSolution();
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution.');
 
         return $this->solution;
     }
@@ -196,8 +209,6 @@ class ByWulfSolver implements PuzzleSolverInterface
             return null;
         }
 
-        echo 'bestKey: ' . $bestKey . ' / matchingKey: ' . array_key_first($matchingMap[$bestKey]) . ' (probability difference: ' . $bestRating . ')' . PHP_EOL;
-
         return $bestKey;
     }
 
@@ -262,17 +273,5 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
 
         return $foundGroups;
-    }
-
-    private function outputSolution(): void
-    {
-        foreach ($this->solution->getGroups() as $index => $group) {
-            echo 'Group #' . $index . ':' . PHP_EOL;
-            foreach ($group->getPlacements() as $placement) {
-                $pieceIndex = array_search($placement->getPiece(), $this->pieces, true);
-                echo "\t" . 'x: ' . $placement->getX() . ', y: ' . $placement->getY() . ', top side: ' . $placement->getTopSideIndex() . ', pieceIndex: ' . $pieceIndex . PHP_EOL;
-            }
-            echo PHP_EOL;
-        }
     }
 }

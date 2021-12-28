@@ -65,6 +65,7 @@ class PieceAnalyzerTest extends TestCase
         $reflectionProperty->setValue($pieceAnalyzer, $pathService->reveal());
 
         $expectedPiece = new Piece(
+            1,
             $borderPoints,
             [
                 (new Side([new Point(-0.5, -0.5)], new Point(0, 0), new Point(0, 0)))
@@ -86,7 +87,7 @@ class PieceAnalyzerTest extends TestCase
             ]
         );
 
-        $this->assertEquals($expectedPiece, $pieceAnalyzer->getPieceFromImage($image));
+        $this->assertEquals($expectedPiece, $pieceAnalyzer->getPieceFromImage(1, $image));
     }
 
     public function testCornersFromFixtures(): void

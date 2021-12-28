@@ -6,6 +6,7 @@ use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Rubix\ML\Datasets\Labeled;
 use Rubix\ML\Learner;
 use Rubix\ML\PersistentModel;
@@ -15,6 +16,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class AbstractModelCreatorCommand extends Command
 {
+    use PieceLoaderTrait;
+
     public function createModel(OutputInterface $output, string $modelFilename): void
     {
         $output->writeln('Loading nop information...');
@@ -58,28 +61,6 @@ abstract class AbstractModelCreatorCommand extends Command
         }
 
         $this->trainModel($output, $datasets, $labels, $modelFilename);
-    }
-
-    /**
-     * @param Piece $piece
-     *
-     * @return Side[]
-     */
-    public function getReorderedSides(Piece $piece): array
-    {
-        $sides = $piece->getSides();
-
-        while (
-            $sides[1]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-            $sides[2]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-            $sides[3]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY()
-        ) {
-            $side = array_splice($sides, 0, 1);
-            $sides[] = $side[0];
-            $sides = array_values($sides);
-        }
-
-        return $sides;
     }
 
     private function findNonmatchingDataset(?Side $side1, ?Side $side2, ?array $piece): ?array
@@ -134,18 +115,9 @@ abstract class AbstractModelCreatorCommand extends Command
     {
         $nopInformation = [];
 
-        for ($i = 2; $i <= 501; ++$i) {
-            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser'));
-
-            if (count($piece->getSides()) !== 4) {
-                continue;
-            }
-
-            // Reorder sides so the top side is the first side
-            $sides = $this->getReorderedSides($piece);
-
-            foreach (array_values($sides) as $index => $side) {
-                $nopInformation[$i][$index] = $side;
+        foreach ($this->getPieces(true) as $pieceIndex => $piece) {
+            foreach ($piece->getSides() as $sideIndex => $side) {
+                $nopInformation[$pieceIndex][$sideIndex] = $side;
             }
         }
 

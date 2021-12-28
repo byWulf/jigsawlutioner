@@ -36,7 +36,7 @@ class PieceAnalyzer
      * @throws BorderParsingException
      * @throws SideParsingException
      */
-    public function getPieceFromImage(GdImage $image, ?GdImage $transparentImage = null): Piece
+    public function getPieceFromImage(int $pieceIndex, GdImage $image, ?GdImage $transparentImage = null): Piece
     {
         $borderPoints = $this->borderFinder->findPieceBorder($image, $transparentImage);
 
@@ -61,7 +61,7 @@ class PieceAnalyzer
             }
         }
 
-        return new Piece($borderPoints, $sides);
+        return new Piece($pieceIndex, $borderPoints, $sides);
     }
 
     private function createSideMetadata(Side $side): SideMetadata

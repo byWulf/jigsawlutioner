@@ -18,9 +18,15 @@ class Piece implements JsonSerializable
      * @param Side[]            $sides
      */
     public function __construct(
+        private int $index,
         private array $borderPoints,
         private array $sides
     ) {
+    }
+
+    public function getIndex(): int
+    {
+        return $this->index;
     }
 
     /**
@@ -52,6 +58,7 @@ class Piece implements JsonSerializable
     public function jsonSerialize(): array
     {
         return [
+            'index' => $this->index,
             'borderPoints' => array_map(
                 fn (DerivativePoint $point): array => $point->jsonSerialize(),
                 $this->borderPoints

@@ -344,6 +344,8 @@ class ByWulfBorderFinder implements BorderFinderInterface
             throw new BorderParsingException('Color could not be created.');
         }
 
+        imagecolortransparent($transparentImage, $transparentColor);
+
         for ($y = 0; $y < imagesy($transparentImage); $y++) {
             for ($x = 0; $x < imagesx($transparentImage); $x++) {
                 if ($pixelMap->getColor($x, $y) !== $opaqueColor) {

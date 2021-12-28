@@ -6,7 +6,7 @@ namespace Bywulf\Jigsawlutioner\Tests\Service\PuzzleSolver;
 
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
-use Bywulf\Jigsawlutioner\Tests\PieceLoaderTrait;
+use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 

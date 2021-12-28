@@ -38,4 +38,15 @@ class Solution
 
         return $this;
     }
+
+    public function outputSolution(): void
+    {
+        foreach ($this->groups as $index => $group) {
+            echo 'Group #' . $index . ':' . PHP_EOL;
+            foreach ($group->getPlacements() as $placement) {
+                echo "\t" . 'x: ' . $placement->getX() . ', y: ' . $placement->getY() . ', top side: ' . $placement->getTopSideIndex() . ', pieceIndex: ' . $placement->getPiece()->getIndex() . PHP_EOL;
+            }
+            echo PHP_EOL;
+        }
+    }
 }

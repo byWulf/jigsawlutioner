@@ -67,7 +67,7 @@ class AnalyzePiecesCommand extends Command
         $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '.jpg');
 
         try {
-            $piece = $pieceAnalyzer->getPieceFromImage($image, $transparentImage);
+            $piece = $pieceAnalyzer->getPieceFromImage($pieceNumber, $image, $transparentImage);
 
             // Found corners
             $black = imagecolorallocate($image, 0, 0, 0);

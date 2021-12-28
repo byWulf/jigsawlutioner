@@ -9,7 +9,7 @@ use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
-use Bywulf\Jigsawlutioner\Tests\PieceLoaderTrait;
+use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use PHPStan\Testing\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 
