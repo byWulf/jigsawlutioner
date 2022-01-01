@@ -61,7 +61,7 @@ class PieceAnalyzer
             }
         }
 
-        return new Piece($pieceIndex, $borderPoints, $sides);
+        return new Piece($pieceIndex, $borderPoints, $sides, imagesx($image), imagesy($image));
     }
 
     private function createSideMetadata(Side $side): SideMetadata

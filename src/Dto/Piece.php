@@ -20,7 +20,9 @@ class Piece implements JsonSerializable
     public function __construct(
         private int $index,
         private array $borderPoints,
-        private array $sides
+        private array $sides,
+        private int $imageWidth,
+        private int $imageHeight
     ) {
     }
 
@@ -45,12 +47,42 @@ class Piece implements JsonSerializable
         return $this->sides;
     }
 
+    public function getSide(int $sideIndex): Side
+    {
+        while ($sideIndex < 0) {
+            $sideIndex += 4;
+        }
+
+        return $this->sides[$sideIndex % 4];
+    }
+
     /**
      * @param Side[] $sides
      */
     public function setSides(array $sides): self
     {
         $this->sides = $sides;
+
+        return $this;
+    }
+
+    public function getImageWidth(): int
+    {
+        return $this->imageWidth;
+    }
+
+    public function getImageHeight(): int
+    {
+        return $this->imageHeight;
+    }
+
+    public function reduceData(): self
+    {
+        $this->borderPoints = [];
+
+        foreach ($this->sides as $side) {
+            $side->setPoints([]);
+        }
 
         return $this;
     }
@@ -67,6 +99,8 @@ class Piece implements JsonSerializable
                 fn (Side $side): array => $side->jsonSerialize(),
                 $this->sides
             ),
+            'imageWidth' => $this->imageWidth,
+            'imageHeight' => $this->imageHeight,
         ];
     }
 

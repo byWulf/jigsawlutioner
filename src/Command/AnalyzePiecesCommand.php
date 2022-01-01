@@ -128,6 +128,8 @@ class AnalyzePiecesCommand extends Command
                 imagestring($image, 5, 175, 30 + $sideIndex * 100, $side->getClassifier(DirectionClassifier::class)->getDirection(), $black);
             }
 
+            $piece->reduceData();
+
             file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.ser', serialize($piece));
             file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.json', json_encode($piece));
         } catch (BorderParsingException $exception) {
