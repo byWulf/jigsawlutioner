@@ -61,6 +61,7 @@ class SolutionOutputter
             }
 
             $pieces = [];
+            $pieceIndexes = [];
             foreach ($group->getPlacements() as $placement) {
                 $piece = $placement->getPiece();
 
@@ -102,6 +103,7 @@ class SolutionOutputter
                         $placement->getY()
                     )
                 ];
+                $pieceIndexes[] = $placement->getPiece()->getIndex();
             }
             $groups[] = [
                 'containerStyle' => [
@@ -111,6 +113,7 @@ class SolutionOutputter
                 'solutionStyle' => [
                 ],
                 'pieces' => $pieces,
+                'pieceIndexes' => $pieceIndexes,
             ];
         }
 
@@ -142,7 +145,7 @@ class SolutionOutputter
                     <body>
                         {% for group in groups %}
                             <div class="solution-container" style="{% for name, value in group.containerStyle %}{{ name }}: {{ value }};{% endfor %}">
-                                <div class="solution" style="{% for name, value in group.solutionStyle %}{{ name }}: {{ value }};{% endfor %}">
+                                <div class="solution" style="{% for name, value in group.solutionStyle %}{{ name }}: {{ value }};{% endfor %}" data-piece-indexes="{{ group.pieceIndexes|join(',') }}">
                                     {% for piece in group.pieces %}
                                         <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}">
                                     {% endfor %}
