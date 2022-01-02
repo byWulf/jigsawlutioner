@@ -10,6 +10,7 @@ use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
+use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
 use DateTimeImmutable;
@@ -63,21 +64,23 @@ class ByWulfSolver implements PuzzleSolverInterface
 
             $this->matchingMap = $originalMatchingMap;
 
-            // Loop as long as placements can be made
-            while ($this->addNextPlacement($minProbability)) {
-                $placements = array_sum(array_map(fn(Group $group): int => count($group->getPlacements()), $this->solution->getGroups()));
-                $groups = count($this->solution->getGroups());
-
-                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $placements . ' pieces in ' . $groups . ' groups.');
+            // Loop as long as new pieces can be added
+            while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability)) {
+                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
+                //(new SolutionOutputter())->outputAsText($this->solution);
             }
 
-            // TODO: After new pieces were added, try merging groups separately
+            // Aftet that, look which groups can be merged the best
+            while ($this->addNextPlacement([$this, 'getMostFittableGroupSide'], $minProbability)) {
+                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Reduced groups into ' . count($this->solution->getGroups()) . ' groups.');
+                //(new SolutionOutputter())->outputAsText($this->solution);
+            }
         }
 
         $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution.');
 
         foreach ($this->pieces as $piece) {
-            if ($this->solution->hasPiece($piece)) {
+            if ($this->solution->getGroupByPiece($piece)) {
                 continue;
             }
 
@@ -93,9 +96,9 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $this->solution;
     }
 
-    private function addNextPlacement(float $minProbability): bool
+    private function addNextPlacement(callable $nextKeyGetter, float $minProbability): bool
     {
-        $nextKey = $this->getMostFittableSide($this->pieces, $minProbability);
+        $nextKey = $nextKeyGetter($minProbability);
         if ($nextKey === null) {
             return false;
         }
@@ -165,9 +168,23 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private function mergeGroups(Group $group1, Group $group2, string $key1, string $key2, float $minProbability): void
     {
+        $group2Copy = $this->getRepositionedGroup($group1, $group2, $key1, $key2, $minProbability);
+        if (!$group2Copy) {
+            return;
+        }
+
+        foreach ($group2Copy->getPlacements() as $placement) {
+            $group1->addPlacement($placement);
+        }
+
+        $this->solution->removeGroup($group2);
+    }
+
+    private function getRepositionedGroup(Group $group1, Group $group2, string $key1, string $key2, float $minProbability, array &$probabilities = []): ?Group
+    {
         // If its the same groups, we cannot merge them
         if ($group1 === $group2) {
-            return;
+            return null;
         }
 
         $piece1 = $this->pieces[$this->getPieceIndexFromKey($key1)];
@@ -208,11 +225,13 @@ class ByWulfSolver implements PuzzleSolverInterface
                 }
 
                 $checkKey1 = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $sideOffset);
-                $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $placement->getTopSideIndex() + $sideOffset + 2);
+                $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $connectingPlacement->getTopSideIndex() + $sideOffset + 2);
 
-                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability) {
-                    return;
+                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.5) {
+                    return null;
                 }
+
+                $probabilities[] = $this->matchingMap[$checkKey1][$checkKey2] ?? 0;
             }
         }
 
@@ -220,33 +239,30 @@ class ByWulfSolver implements PuzzleSolverInterface
             $group1->addPlacement($placement);
         }
 
-        if ($this->isGroupValid($group1)) {
-            $this->solution->removeGroup($group2);
+        $isGroupValid = $this->isGroupValid($group1);
 
-            return;
-        }
-
-        // Because group is not valid now, we reset it and do nothing
         foreach ($group2Copy->getPlacements() as $placement) {
             $group1->removePlacement($placement);
         }
+
+        return $isGroupValid ? $group2Copy : null;
     }
 
     /**
      * @param Piece[]   $pieces
      */
-    private function getMostFittableSide(array $pieces, float $minProbability): ?string
+    private function getMostFittableSide(float $minProbability): ?string
     {
-        if (count($pieces) === 0) {
+        if (count($this->pieces) === 0) {
             return null;
         }
 
         $bestRating = 0;
         $bestKey = null;
         foreach ($this->matchingMap as $key => $probabilities) {
-//            if ($this->solution->hasPiece($this->pieces[$this->getPieceIndexFromKey($key)])) {
-//                continue;
-//            }
+            if ($this->solution->getGroupByPiece($this->pieces[$this->getPieceIndexFromKey($key)])) {
+                continue;
+            }
 
             list($bestProbability, $secondProbability) = array_slice(array_values($this->matchingMap[$key]), 0, 2);
             $rating = ($bestProbability - $secondProbability) * ($bestProbability ** 3);
@@ -256,8 +272,44 @@ class ByWulfSolver implements PuzzleSolverInterface
             }
         }
 
-        if ($bestKey === null) {
-            return null;
+        return $bestKey;
+    }
+
+    private function getMostFittableGroupSide(float $minProbability): ?string
+    {
+        $bestRating = 0;
+        $bestKey = null;
+        foreach (array_keys($this->matchingMap) as $key) {
+            $group1 = $this->solution->getGroupByPiece($this->pieces[$this->getPieceIndexFromKey($key)]);
+            if (!$group1) {
+                continue;
+            }
+
+            $matchingKey = array_key_first($this->matchingMap[$key]);
+            $group2 = $this->solution->getGroupByPiece($this->pieces[$this->getPieceIndexFromKey($matchingKey)]);
+            if (!$group2) {
+                continue;
+            }
+
+            if ($this->matchingMap[$key][$matchingKey] < $minProbability) {
+                continue;
+            }
+
+            $probabilities = [];
+            $group2Copy = $this->getRepositionedGroup($group1, $group2, $key, $matchingKey, $minProbability, $probabilities);
+            if ($group2Copy === null) {
+                continue;
+            }
+
+            if (min($probabilities) < $minProbability) {
+                continue;
+            }
+
+            $rating = array_sum($probabilities);
+            if ($rating > $bestRating) {
+                $bestRating = $rating;
+                $bestKey = $key;
+            }
         }
 
         return $bestKey;

@@ -49,14 +49,19 @@ class Solution
         return $this;
     }
 
-    public function hasPiece(Piece $piece): bool
+    public function getGroupByPiece(Piece $piece): ?Group
     {
         foreach ($this->groups as $group) {
             if ($group->getPlacementByPiece($piece) !== null) {
-                return true;
+                return $group;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    public function getPieceCount(): int
+    {
+        return array_sum(array_map(fn(Group $group): int => count($group->getPlacements()), $this->getGroups()));
     }
 }
