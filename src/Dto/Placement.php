@@ -8,24 +8,12 @@ use Bywulf\Jigsawlutioner\Service\PointService;
 
 class Placement
 {
-    private float $width;
-    private float $height;
-
     public function __construct(
         private int $x,
         private int $y,
         private Piece $piece,
         private int $topSideIndex
     ) {
-        $pointService = new PointService();
-
-        $topSide = $piece->getSide($topSideIndex);
-        $leftSide = $piece->getSide($topSideIndex + 1);
-        $bottomSide = $piece->getSide($topSideIndex + 2);
-        $rightSide = $piece->getSide($topSideIndex + 3);
-
-        $this->width = ($pointService->getDistanceBetweenPoints($topSide->getStartPoint(), $topSide->getEndPoint()) + $pointService->getDistanceBetweenPoints($bottomSide->getStartPoint(), $bottomSide->getEndPoint())) / 2;
-        $this->height = ($pointService->getDistanceBetweenPoints($leftSide->getStartPoint(), $leftSide->getEndPoint()) + $pointService->getDistanceBetweenPoints($rightSide->getStartPoint(), $rightSide->getEndPoint())) / 2;
     }
 
     public function getX(): int
@@ -71,11 +59,21 @@ class Placement
 
     public function getWidth(): float
     {
-        return $this->width;
+        $pointService = new PointService();
+
+        $topSide = $this->piece->getSide($this->topSideIndex);
+        $bottomSide = $this->piece->getSide($this->topSideIndex + 2);
+
+        return ($pointService->getDistanceBetweenPoints($topSide->getStartPoint(), $topSide->getEndPoint()) + $pointService->getDistanceBetweenPoints($bottomSide->getStartPoint(), $bottomSide->getEndPoint())) / 2;
     }
 
     public function getHeight(): float
     {
-        return $this->height;
+        $pointService = new PointService();
+
+        $leftSide = $this->piece->getSide($this->topSideIndex + 1);
+        $rightSide = $this->piece->getSide($this->topSideIndex + 3);
+
+        return ($pointService->getDistanceBetweenPoints($leftSide->getStartPoint(), $leftSide->getEndPoint()) + $pointService->getDistanceBetweenPoints($rightSide->getStartPoint(), $rightSide->getEndPoint())) / 2;
     }
 }
