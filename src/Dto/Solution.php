@@ -22,6 +22,16 @@ class Solution
         return $this->groups;
     }
 
+    /**
+     * @param Group[] $groups
+     */
+    public function setGroups(array $groups): self
+    {
+        $this->groups = $groups;
+
+        return $this;
+    }
+
     public function addGroup(Group $group): Solution
     {
         $this->groups[] = $group;
@@ -39,14 +49,14 @@ class Solution
         return $this;
     }
 
-    public function outputSolution(): void
+    public function hasPiece(Piece $piece): bool
     {
-        foreach ($this->groups as $index => $group) {
-            echo 'Group #' . $index . ':' . PHP_EOL;
-            foreach ($group->getPlacements() as $placement) {
-                echo "\t" . 'x: ' . $placement->getX() . ', y: ' . $placement->getY() . ', top side: ' . $placement->getTopSideIndex() . ', pieceIndex: ' . $placement->getPiece()->getIndex() . PHP_EOL;
+        foreach ($this->groups as $group) {
+            if ($group->getPlacementByPiece($piece) !== null) {
+                return true;
             }
-            echo PHP_EOL;
         }
+
+        return false;
     }
 }

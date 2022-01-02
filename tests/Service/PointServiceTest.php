@@ -47,4 +47,27 @@ class PointServiceTest extends TestCase
             // TODO
         ];
     }
+
+    /**
+     * @dataProvider getAverageRotationDataSets
+     */
+    public function testGetAverageRotation(Point $topLeftPoint, Point $bottomLeftPoint, Point $bottomRightPoint, Point $topRightPoint, float $expectedRotation) : void
+    {
+        $this->assertEquals($expectedRotation, $this->pointService->getAverageRotation($topLeftPoint, $bottomLeftPoint, $bottomRightPoint, $topRightPoint));
+    }
+
+    public function getAverageRotationDataSets(): array
+    {
+        return [
+            [new Point(-1, -1), new Point(-1, 1), new Point(1, 1), new Point(1, -1), 0],
+            [new Point(-1, 1), new Point(1, 1), new Point(1, -1), new Point(-1, -1), -90],
+            [new Point(1, 1), new Point(1, -1), new Point(-1, -1), new Point(-1, 1), 180],
+            [new Point(1, -1), new Point(-1, -1), new Point(-1, 1), new Point(1, 1), 90],
+            [new Point(-1, -1), new Point(-1, 1), new Point(1, 1), new Point(1, -1), 0],
+            [new Point(5, 0), new Point(5, 3), new Point(7, 3), new Point(7, 0), 0],
+            [new Point(-2, -2), new Point(-1, 1), new Point(1, 1), new Point(2, -2), 0],
+            [new Point(-1, -2), new Point(-1, 0), new Point(2, 2), new Point(2, -4), 0],
+            [new Point(-2, 4), new Point(1, 7), new Point(4, 4), new Point(1, 1), -45],
+        ];
+    }
 }

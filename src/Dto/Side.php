@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Dto;
 
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
 use JsonSerializable;
 
@@ -76,6 +77,14 @@ class Side implements JsonSerializable
     public function getEndPoint(): Point
     {
         return $this->endPoint;
+    }
+
+    public function getDirection(): int
+    {
+        /** @var DirectionClassifier $directionClassifier */
+        $directionClassifier = $this->getClassifier(DirectionClassifier::class);
+
+        return $directionClassifier->getDirection();
     }
 
     public function jsonSerialize(): array

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Command;
 
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
-use Bywulf\Jigsawlutioner\Service\PuzzleSolver\PuzzleSolverInterface;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
+use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -25,9 +25,20 @@ class SolvePuzzleCommand extends Command
             new WeightedMatcher(),
             new ConsoleLogger($output)
         );
-        $solution = $solver->findSolution($this->getPieces(false));
+        $solutionOutputter = new SolutionOutputter();
 
-        $solution->outputSolution();
+        $pieces = $this->getPieces(false);
+        //$pieces = array_filter($pieces, fn (Piece $piece): bool => in_array($piece->getIndex(), [305, 280, 255, 304, 279, 254, 302, 303, 278, 327, 12]));
+
+        $solution = $solver->findSolution($pieces);
+
+        $solutionOutputter->outputAsText($solution);
+
+        (new SolutionOutputter())->outputAsHtml(
+            $solution,
+            __DIR__ . '/../../resources/Fixtures/Piece/solution.html',
+            __DIR__ . '/../../resources/Fixtures/Piece/piece%s_transparent.png'
+        );
 
         return Command::SUCCESS;
     }

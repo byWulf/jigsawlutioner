@@ -26,6 +26,16 @@ class Group
         return $this;
     }
 
+    public function removePlacement(Placement $placement): self
+    {
+        $index = array_search($placement, $this->placements, true);
+        if ($index !== false) {
+            unset($this->placements[$index]);
+        }
+
+        return $this;
+    }
+
     public function getPlacementByPiece(Piece $piece): ?Placement
     {
         foreach ($this->placements as $placement) {
@@ -81,5 +91,30 @@ class Group
         foreach ($this->placements as $index => $placement) {
             $this->placements[$index] = clone $placement;
         }
+    }
+
+    public function getWidth(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+        return
+            max(array_map(fn (Placement $placement): int => $placement->getX(), $this->placements)) -
+            min(array_map(fn (Placement $placement): int => $placement->getX(), $this->placements)) +
+            1
+        ;
+    }
+
+    public function getHeight(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+
+        return
+            max(array_map(fn (Placement $placement): int => $placement->getY(), $this->placements)) -
+            min(array_map(fn (Placement $placement): int => $placement->getY(), $this->placements)) +
+            1
+        ;
     }
 }

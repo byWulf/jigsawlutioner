@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
+use InvalidArgumentException;
 
 class PointService
 {
@@ -57,5 +58,51 @@ class PointService
         }
 
         return $rotation;
+    }
+
+    /**
+     * @param Point[] $points
+     * @return Point
+     */
+    public function getAveragePoint(array $points): Point
+    {
+        if (count($points) === 0) {
+            throw new InvalidArgumentException('You have to provide at least one point to get their average.');
+        }
+
+        $xSum = 0;
+        $ySum = 0;
+        foreach ($points as $point) {
+            $xSum += $point->getX();
+            $ySum += $point->getY();
+        }
+
+        return new Point(
+            $xSum / count($points),
+            $ySum / count($points)
+        );
+    }
+
+    public function getAverageRotation(Point $topLeftPoint, Point $bottomLeftPoint, Point $bottomRightPoint, Point $topRightPoint): float
+    {
+        $topRotation = $this->getRotation($topLeftPoint, $topRightPoint);
+        $bottomRotation = $this->justifyRotation($topRotation, $this->getRotation($bottomLeftPoint, $bottomRightPoint));
+        $leftRotation = $this->justifyRotation($topRotation, $this->getRotation($topLeftPoint, $bottomLeftPoint) - 90);
+        $rightRotation = $this->justifyRotation($topRotation, $this->getRotation($topRightPoint, $bottomRightPoint) - 90);
+
+        return $this->normalizeRotation(($topRotation + $bottomRotation + $leftRotation + $rightRotation) / 4);
+    }
+
+    private function justifyRotation(float $baseRotation, float $rotationToJustify): float
+    {
+        while (abs($rotationToJustify - $baseRotation) > abs($rotationToJustify - $baseRotation - 180)) {
+            $rotationToJustify -= 180;
+        }
+
+        while (abs($rotationToJustify - $baseRotation) > abs($rotationToJustify - $baseRotation + 180)) {
+            $rotationToJustify += 180;
+        }
+
+        return $rotationToJustify;
     }
 }
