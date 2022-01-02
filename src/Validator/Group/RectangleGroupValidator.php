@@ -49,30 +49,30 @@ class RectangleGroupValidator extends ConstraintValidator
         foreach ($value->getPlacements() as $placement) {
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
-                $limits['minYBorder'] = min($limits['minYBorder'] ?? $placement->getY(), $placement->getY());
+                $limits['minYBorder'] = max($limits['minYBorder'] ?? $placement->getY(), $placement->getY());
             } else {
                 $limits['minYNop'] = min($limits['minYNop'] ?? $placement->getY(), $placement->getY());
             }
 
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex() + 1)->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
-                $limits['minXBorder'] = min($limits['minXBorder'] ?? $placement->getY(), $placement->getY());
+                $limits['minXBorder'] = max($limits['minXBorder'] ?? $placement->getX(), $placement->getX());
             } else {
-                $limits['minXNop'] = min($limits['minXNop'] ?? $placement->getY(), $placement->getY());
+                $limits['minXNop'] = min($limits['minXNop'] ?? $placement->getX(), $placement->getX());
             }
 
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex() + 2)->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
-                $limits['maxYBorder'] = max($limits['maxYBorder'] ?? $placement->getY(), $placement->getY());
+                $limits['maxYBorder'] = min($limits['maxYBorder'] ?? $placement->getY(), $placement->getY());
             } else {
                 $limits['maxYNop'] = max($limits['maxYNop'] ?? $placement->getY(), $placement->getY());
             }
 
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex() + 3)->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
-                $limits['maxXBorder'] = max($limits['maxXBorder'] ?? $placement->getY(), $placement->getY());
+                $limits['maxXBorder'] = min($limits['maxXBorder'] ?? $placement->getX(), $placement->getX());
             } else {
-                $limits['maxXNop'] = max($limits['maxXNop'] ?? $placement->getY(), $placement->getY());
+                $limits['maxXNop'] = max($limits['maxXNop'] ?? $placement->getX(), $placement->getX());
             }
         }
 
