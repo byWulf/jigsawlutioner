@@ -30,7 +30,7 @@ class ByWulfBorderFinder implements BorderFinderInterface
      */
     public function findPieceBorder(
         GdImage $image,
-        ?GdImage $transparentImage
+        ?GdImage $transparentImage = null
     ): array {
         $objectColor = $this->allocateColor($image, 0, 0, 0);
         $biggestObjectColor = $this->allocateColor($image, 50, 50, 50);

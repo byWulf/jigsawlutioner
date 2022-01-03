@@ -27,7 +27,7 @@ class WeightedMatcherTest extends TestCase
 
     public function testGetMatchingProbabilities(): void
     {
-        $pieces = $this->getPieces();
+        $pieces = $this->getPieces('cats');
 
         $allSides = array_merge(...array_map(fn (Piece $piece): array => $piece->getSides(), $pieces));
 

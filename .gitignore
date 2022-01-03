@@ -6,3 +6,6 @@ node_modules/
 .php-cs-fixer.cache
 
 resources/cache/*
+
+resources/Fixtures/Set/*/piece*_*
+resources/Fixtures/Set/*/solution.html

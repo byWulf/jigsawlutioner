@@ -600,7 +600,7 @@ class PieceAnalyzerTest extends TestCase
         ];
 
         foreach ($corners as $pieceIndex => $cornerPoints) {
-            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceIndex . '_piece.ser'));
+            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/cats/piece' . $pieceIndex . '_piece.ser'));
 
             $foundCorners = array_filter($piece->getBorderPoints(), fn (Point $point): bool => $point instanceof DerivativePoint && $point->isUsedAsCorner());
             $foundCorners = array_values(array_map(fn (DerivativePoint $point): Point => new Point($point->getX(), $point->getY()), $foundCorners));

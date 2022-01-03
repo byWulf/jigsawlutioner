@@ -26,6 +26,6 @@ class ByWulfSolverTest extends TestCase
 
     public function testGetSidesSimple(): void
     {
-        $this->solver->findSolution($this->getPieces(false));
+        $this->solver->findSolution($this->getPieces('cats', false));
     }
 }

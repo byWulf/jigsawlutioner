@@ -24,6 +24,7 @@ class AnalyzePiecesCommand extends Command
 {
     protected function configure()
     {
+        $this->addArgument('set', InputArgument::REQUIRED, 'Name of set folder');
         $this->addArgument('pieceNumber', InputArgument::IS_ARRAY, 'Piece number if you only want to analyze one piece. If omitted all pieces will be analyzed.');
     }
 
@@ -36,19 +37,23 @@ class AnalyzePiecesCommand extends Command
         $progress = new ProgressBar($output);
         $progress->setFormat(' %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%');
 
+        $setName = $input->getArgument('set');
+
         if (count($input->getArgument('pieceNumber')) > 0) {
             $progress->start(count($input->getArgument('pieceNumber')));
 
             foreach ($input->getArgument('pieceNumber') as $pieceNumber) {
-                $this->analyzePiece((int) $pieceNumber, $pieceAnalyzer);
+                $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer);
 
                 $progress->advance();
             }
         } else {
-            $progress->start(500);
+            $meta = json_decode(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/meta.json'), true);
 
-            for ($pieceNumber = 2; $pieceNumber <= 501; ++$pieceNumber) {
-                $this->analyzePiece($pieceNumber, $pieceAnalyzer);
+            $progress->start($meta['max'] - $meta['min'] + 1);
+
+            for ($pieceNumber = $meta['min']; $pieceNumber <= $meta['max']; ++$pieceNumber) {
+                $this->analyzePiece($setName, $pieceNumber, $pieceAnalyzer);
 
                 $progress->advance();
             }
@@ -61,10 +66,10 @@ class AnalyzePiecesCommand extends Command
         return self::SUCCESS;
     }
 
-    private function analyzePiece(int $pieceNumber, PieceAnalyzer $pieceAnalyzer): void
+    private function analyzePiece(string $setName, int $pieceNumber, PieceAnalyzer $pieceAnalyzer): void
     {
-        $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '.jpg');
-        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '.jpg');
+        $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
+        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
 
         try {
             $piece = $pieceAnalyzer->getPieceFromImage($pieceNumber, $image, $transparentImage);
@@ -130,15 +135,15 @@ class AnalyzePiecesCommand extends Command
 
             $piece->reduceData();
 
-            file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.ser', serialize($piece));
-            file_put_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_piece.json', json_encode($piece));
+            file_put_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_piece.ser', serialize($piece));
+            file_put_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_piece.json', json_encode($piece));
         } catch (BorderParsingException $exception) {
             echo 'Piece ' . $pieceNumber . ' failed at BorderFinding: ' . $exception->getMessage() . PHP_EOL;
         } catch (SideParsingException $exception) {
             echo 'Piece ' . $pieceNumber . ' failed at SideFinding: ' . $exception->getMessage() . PHP_EOL;
         } finally {
-            imagepng($image, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_mask.png');
-            imagepng($transparentImage, __DIR__ . '/../../resources/Fixtures/Piece/piece' . $pieceNumber . '_transparent.png');
+            imagepng($image, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_mask.png');
+            imagepng($transparentImage, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_transparent.png');
         }
     }
 }

@@ -11,6 +11,7 @@ use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Logger\ConsoleLogger;
@@ -23,6 +24,7 @@ class SolvePuzzleCommand extends Command
 
     protected function configure()
     {
+        $this->addArgument('set', InputArgument::REQUIRED, 'Name of set folder');
         $this->addOption('force', 'f', InputOption::VALUE_NONE, 'Force rebuilding the matchingMap and not loading it from cache.');
     }
 
@@ -34,17 +36,19 @@ class SolvePuzzleCommand extends Command
         );
         $solutionOutputter = new SolutionOutputter();
 
-        $pieces = $this->getPieces(false);
+        $setName = $input->getArgument('set');
+
+        $pieces = $this->getPieces($setName, false);
         //$pieces = array_filter($pieces, fn (Piece $piece): bool => in_array($piece->getIndex(), [149,124,382,438,463,464,489,487,486,488]));
 
         $solution = $solver->findSolution($pieces, !$input->getOption('force'));
 
         //$solutionOutputter->outputAsText($solution);
 
-        (new SolutionOutputter())->outputAsHtml(
+        $solutionOutputter->outputAsHtml(
             $solution,
-            __DIR__ . '/../../resources/Fixtures/Piece/solution.html',
-            __DIR__ . '/../../resources/Fixtures/Piece/piece%s_transparent.png'
+            __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/solution.html',
+            __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece%s_transparent.png'
         );
 
         return Command::SUCCESS;

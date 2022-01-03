@@ -11,12 +11,12 @@ trait PieceLoaderTrait
     /**
      * @return Piece[]
      */
-    private function getPieces(bool $reorderSides = true): array
+    private function getPieces(string $setName, bool $reorderSides = true): array
     {
         $pieces = [];
         for ($i = 2; $i <= 501; ++$i) {
             /** @var Piece $piece */
-            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Piece/piece' . $i . '_piece.ser'));
+            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $i . '_piece.ser'));
 
             if (count($piece->getSides()) !== 4) {
                 continue;

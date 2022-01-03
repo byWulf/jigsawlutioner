@@ -23,7 +23,7 @@ class ByWulfBorderFinderTest extends TestCase
      */
     public function testFindPieceBorder(): void
     {
-        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/Piece/piece1_test.jpg');
+        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece1_test.jpg');
 
         $points = [];
         for ($y = 256; $y < 256 + 251; ++$y) {
@@ -47,7 +47,7 @@ class ByWulfBorderFinderTest extends TestCase
      */
     public function testFindPieceBorderReal(): void
     {
-        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/Piece/piece2.jpg');
+        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2.jpg');
 
         $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image));
     }
@@ -57,7 +57,7 @@ class ByWulfBorderFinderTest extends TestCase
      */
     public function testFindPieceBorderWithThinLineOnBorder(): void
     {
-        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/Piece/piece2modified.jpg');
+        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2modified.jpg');
 
         $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image));
     }
@@ -69,7 +69,7 @@ class ByWulfBorderFinderTest extends TestCase
     {
         $this->expectExceptionMessage('Piece is cut off');
 
-        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/Piece/piece2modified_cutoff.jpg');
+        $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2modified_cutoff.jpg');
 
         $this->borderFinder->findPieceBorder(image: $image);
     }
