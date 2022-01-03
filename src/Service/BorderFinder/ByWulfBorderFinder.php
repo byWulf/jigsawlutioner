@@ -47,7 +47,10 @@ class ByWulfBorderFinder implements BorderFinderInterface
         $this->transformImageToMonochrome($pixelMap, $this->threshold, $objectColor, $backgroundColor);
 
         // Identify the surrounding area and make it light gray
-        $this->fillColorArea($pixelMap, 0, 0, $surroundingColor);
+        $this->fillColorArea($pixelMap, 0, 0, $backgroundColor, $surroundingColor);
+        $this->fillColorArea($pixelMap, 0, $pixelMap->getHeight() - 1, $backgroundColor, $surroundingColor);
+        $this->fillColorArea($pixelMap, $pixelMap->getWidth() - 1, $pixelMap->getHeight() - 1, $backgroundColor, $surroundingColor);
+        $this->fillColorArea($pixelMap, $pixelMap->getWidth() - 1, 0, $backgroundColor, $surroundingColor);
 
         // Fill everything with black except the surrounding area around the piece
         $this->replaceColor($pixelMap, $backgroundColor, $objectColor);
@@ -105,9 +108,11 @@ class ByWulfBorderFinder implements BorderFinderInterface
         }
     }
 
-    private function fillColorArea(PixelMap $pixelMap, int $x, int $y, int $newColor): void
+    private function fillColorArea(PixelMap $pixelMap, int $x, int $y, int $oldColor, int $newColor): void
     {
-        $pixelMap->scanFill($x, $y, $newColor);
+        if ($pixelMap->getColor($x, $y) === $oldColor) {
+            $pixelMap->scanFill($x, $y, $newColor);
+        }
     }
 
     private function replaceColor(PixelMap $pixelMap, int $colorToBeReplaced, int $newColor): void
