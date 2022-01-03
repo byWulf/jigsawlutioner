@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Command;
 
+use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
 use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
@@ -11,6 +12,7 @@ use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -18,6 +20,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 class SolvePuzzleCommand extends Command
 {
     use PieceLoaderTrait;
+
+    protected function configure()
+    {
+        $this->addOption('force', 'f', InputOption::VALUE_NONE, 'Force rebuilding the matchingMap and not loading it from cache.');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -28,11 +35,11 @@ class SolvePuzzleCommand extends Command
         $solutionOutputter = new SolutionOutputter();
 
         $pieces = $this->getPieces(false);
-        //$pieces = array_filter($pieces, fn (Piece $piece): bool => in_array($piece->getIndex(), [305, 280, 255, 304, 279, 254, 302, 303, 278, 327, 12]));
+        //$pieces = array_filter($pieces, fn (Piece $piece): bool => in_array($piece->getIndex(), [149,124,382,438,463,464,489,487,486,488]));
 
-        $solution = $solver->findSolution($pieces);
+        $solution = $solver->findSolution($pieces, !$input->getOption('force'));
 
-        $solutionOutputter->outputAsText($solution);
+        //$solutionOutputter->outputAsText($solution);
 
         (new SolutionOutputter())->outputAsHtml(
             $solution,

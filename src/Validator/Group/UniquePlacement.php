@@ -8,5 +8,5 @@ use Symfony\Component\Validator\Constraint;
 
 class UniquePlacement extends Constraint
 {
-
+    public int $maxAllowedDoubles = 0;
 }

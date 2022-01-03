@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Validator\Group;
 
 use Bywulf\Jigsawlutioner\Dto\Group;
+use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
@@ -30,7 +31,7 @@ class RectangleGroupValidator extends ConstraintValidator
             ($limits['minXNop'] !== null && $limits['minXBorder'] !== null && $limits['minXNop'] <= $limits['minXBorder']) ||
             ($limits['maxXNop'] !== null && $limits['maxXBorder'] !== null && $limits['maxXNop'] >= $limits['maxXBorder'])
         ) {
-            $this->context->buildViolation('no rectangle')->addViolation();
+            throw new GroupInvalidException('No rectangle.');
         }
     }
 
@@ -47,6 +48,12 @@ class RectangleGroupValidator extends ConstraintValidator
             'maxXNop' => null,
         ];
         foreach ($value->getPlacements() as $placement) {
+            if (
+                $value->getFirstPlacementByPosition($placement->getX(), $placement->getY()) === $placement &&
+                count($value->getPlacementsByPosition($placement->getX(), $placement->getY())) > 1
+            ) {
+                continue;
+            }
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
                 $limits['minYBorder'] = max($limits['minYBorder'] ?? $placement->getY(), $placement->getY());

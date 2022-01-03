@@ -8,6 +8,7 @@ use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Dto\Solution;
+use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
@@ -38,6 +39,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private ValidatorInterface $validator;
 
+    private bool $debug = false;
+
     public function __construct(
         private SideMatcherInterface $sideMatcher,
         private ?LoggerInterface $logger = null
@@ -49,17 +52,23 @@ class ByWulfSolver implements PuzzleSolverInterface
     /**
      * @param Piece[] $pieces
      */
-    public function findSolution(array $pieces): Solution
+    public function findSolution(array $pieces, bool $useCache = true): Solution
     {
         $this->solution = new Solution();
         $this->pieces = $pieces;
         $this->missingPieces = $pieces;
 
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');
-        $originalMatchingMap = $this->getMatchingMap($pieces);
-        //$originalMatchingMap = $this->cache->get('matchingMap20', fn () => $this->getMatchingMap($pieces));
+        if (!$useCache) {
+            $this->cache->delete('matchingMap');
+            $this->cache->commit();
+        }
 
-        foreach ([0.8, 0.5, 0.25] as $minProbability) {
+        $originalMatchingMap = $this->cache->get('matchingMap', function() {
+            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');;
+            return $this->getMatchingMap();
+        });
+
+        foreach ([0.25, 0.1, 0.01] as $minProbability) {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . $minProbability . '...');
 
             $this->matchingMap = $originalMatchingMap;
@@ -68,6 +77,10 @@ class ByWulfSolver implements PuzzleSolverInterface
             while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability)) {
                 $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
                 //(new SolutionOutputter())->outputAsText($this->solution);
+            }
+
+            if ($minProbability === 0.01) {
+                $this->debug = true;
             }
 
             // Aftet that, look which groups can be merged the best
@@ -98,7 +111,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private function addNextPlacement(callable $nextKeyGetter, float $minProbability): bool
     {
-        $nextKey = $nextKeyGetter($minProbability);
+        $context = null;
+        $nextKey = $nextKeyGetter($minProbability, $context);
         if ($nextKey === null) {
             return false;
         }
@@ -118,7 +132,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         } elseif (count($groups) === 1) {
             $this->addPlacementToGroup(reset($groups), $nextKey, $matchingKey);
         } elseif (count($groups) === 2) {
-            $this->mergeGroups($groups[$nextPieceIndex], $groups[$matchingPieceIndex], $nextKey, $matchingKey, $minProbability);
+            $this->mergeGroups($groups[$nextPieceIndex], $groups[$matchingPieceIndex], $nextKey, $matchingKey, $minProbability, $context);
         } else {
             throw new PuzzleSolverException('Expected 0 to 2 groups, got ' . count($groups) . '.');
         }
@@ -158,7 +172,7 @@ class ByWulfSolver implements PuzzleSolverInterface
 
         $group->addPlacement($placement);
 
-        if ($this->isGroupValid($group)) {
+        if ($this->isGroupValid($group, 0)) {
             return;
         }
 
@@ -166,14 +180,27 @@ class ByWulfSolver implements PuzzleSolverInterface
         $group->removePlacement($placement);
     }
 
-    private function mergeGroups(Group $group1, Group $group2, string $key1, string $key2, float $minProbability): void
+    private function mergeGroups(Group $group1, Group $group2, string $key1, string $key2, float $minProbability, mixed $context): void
     {
+        if ($context['placementToRemove'] ?? null) {
+            $group1->removePlacement($context['placementToRemove']);
+        }
+
         $group2Copy = $this->getRepositionedGroup($group1, $group2, $key1, $key2, $minProbability);
         if (!$group2Copy) {
+            if ($context['placementToRemove'] ?? null) {
+                $group1->addPlacement($context['placementToRemove']);
+            }
+
             return;
         }
 
         foreach ($group2Copy->getPlacements() as $placement) {
+            $existingPlacement = $group1->getFirstPlacementByPosition($placement->getX(), $placement->getY());
+            if ($existingPlacement) {
+                $group1->removePlacement($existingPlacement);
+            }
+
             $group1->addPlacement($placement);
         }
 
@@ -214,9 +241,18 @@ class ByWulfSolver implements PuzzleSolverInterface
         $group2Copy->move($targetX - $placement2->getX(), $targetY - $placement2->getY());
 
         //Check that the connecting sides have a matching probability of > 0.5
-        foreach ($group1->getPlacements() as $placement) {
+        $unmatchingSides = 0;
+        foreach ($group2Copy->getPlacements() as $placement) {
             for ($sideOffset = 0; $sideOffset < 4; $sideOffset++) {
-                $connectingPlacement = $group2Copy->getPlacementByPosition(
+                $ownNeighbour = $group2Copy->getFirstPlacementByPosition(
+                    $placement->getX() + self::DIRECTION_OFFSETS[$sideOffset]['x'],
+                    $placement->getY() + self::DIRECTION_OFFSETS[$sideOffset]['y']
+                );
+                if ($ownNeighbour) {
+                    continue;
+                }
+
+                $connectingPlacement = $group1->getFirstPlacementByPosition(
                     $placement->getX() + self::DIRECTION_OFFSETS[$sideOffset]['x'],
                     $placement->getY() + self::DIRECTION_OFFSETS[$sideOffset]['y']
                 );
@@ -228,18 +264,25 @@ class ByWulfSolver implements PuzzleSolverInterface
                 $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $connectingPlacement->getTopSideIndex() + $sideOffset + 2);
 
                 if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.5) {
-                    return null;
+                    $unmatchingSides++;
                 }
 
                 $probabilities[] = $this->matchingMap[$checkKey1][$checkKey2] ?? 0;
             }
+        }
+        if ($unmatchingSides > count($probabilities) * 0.1) {
+            return null;
+        }
+
+        if (count($probabilities) === 0) {
+            return null;
         }
 
         foreach ($group2Copy->getPlacements() as $placement) {
             $group1->addPlacement($placement);
         }
 
-        $isGroupValid = $this->isGroupValid($group1);
+        $isGroupValid = $this->isGroupValid($group1, (int) round(count($group2Copy->getPlacements()) * 0.1));
 
         foreach ($group2Copy->getPlacements() as $placement) {
             $group1->removePlacement($placement);
@@ -275,10 +318,11 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $bestKey;
     }
 
-    private function getMostFittableGroupSide(float $minProbability): ?string
+    private function getMostFittableGroupSide(float $minProbability, mixed &$context): ?string
     {
         $bestRating = 0;
         $bestKey = null;
+        $placementToRemove = null;
         foreach (array_keys($this->matchingMap) as $key) {
             $group1 = $this->solution->getGroupByPiece($this->pieces[$this->getPieceIndexFromKey($key)]);
             if (!$group1) {
@@ -297,20 +341,16 @@ class ByWulfSolver implements PuzzleSolverInterface
 
             $probabilities = [];
             $group2Copy = $this->getRepositionedGroup($group1, $group2, $key, $matchingKey, $minProbability, $probabilities);
-            if ($group2Copy === null) {
-                continue;
-            }
-
-            if (min($probabilities) < $minProbability) {
-                continue;
-            }
-
-            $rating = array_sum($probabilities);
-            if ($rating > $bestRating) {
-                $bestRating = $rating;
+            if ($group2Copy !== null && min($probabilities) >= $minProbability && array_sum($probabilities) > $bestRating) {
+                $bestRating = array_sum($probabilities);
                 $bestKey = $key;
+                $placementToRemove = null;
             }
         }
+
+        $context = [
+            'placementToRemove' => $placementToRemove,
+        ];
 
         return $bestKey;
     }
@@ -320,18 +360,18 @@ class ByWulfSolver implements PuzzleSolverInterface
      *
      * @return float[][]
      */
-    private function getMatchingMap(array $pieces): array
+    private function getMatchingMap(): array
     {
         $matchingMap = [];
 
         $allSides = [];
-        foreach ($pieces as $pieceIndex => $piece) {
+        foreach ($this->pieces as $pieceIndex => $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
                 $allSides[$this->getKey($pieceIndex, $sideIndex)] = $side;
             }
         }
 
-        foreach ($pieces as $pieceIndex => $piece) {
+        foreach ($this->pieces as $pieceIndex => $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
                 $probabilities = $this->sideMatcher->getMatchingProbabilities($side, $allSides);
                 arsort($probabilities);
@@ -383,13 +423,17 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $foundGroups;
     }
 
-    private function isGroupValid(Group $group): bool
+    private function isGroupValid(Group $group, int $maxAllowedDoubles): bool
     {
-        $violations = $this->validator->validate($group, [
-            new RectangleGroup(),
-            new UniquePlacement(),
-        ]);
+        try {
+            $this->validator->validate($group, [
+                new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
+                new RectangleGroup(),
+            ]);
 
-        return count($violations) === 0;
+            return true;
+        } catch (GroupInvalidException) {
+            return false;
+        }
     }
 }

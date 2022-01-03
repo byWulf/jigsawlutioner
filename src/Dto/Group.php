@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use InvalidArgumentException;
+
 class Group
 {
     /**
@@ -47,7 +50,7 @@ class Group
         return null;
     }
 
-    public function getPlacementByPosition(int $x, int $y): ?Placement
+    public function getFirstPlacementByPosition(int $x, int $y): ?Placement
     {
         foreach ($this->placements as $placement) {
             if ($placement->getX() === $x && $placement->getY() === $y) {
@@ -56,6 +59,11 @@ class Group
         }
 
         return null;
+    }
+
+    public function getPlacementsByPosition(int $x, int $y): array
+    {
+        return array_filter($this->placements, fn (Placement $placement): bool => $placement->getX() === $x && $placement->getY() === $y);
     }
 
     public function rotate(int $clockwiseRotations): self
@@ -116,5 +124,38 @@ class Group
             min(array_map(fn (Placement $placement): int => $placement->getY(), $this->placements)) +
             1
         ;
+    }
+
+    public function hasOpenSide(Placement $placement): bool
+    {
+        if (
+            $this->getFirstPlacementByPosition($placement->getX(), $placement->getY() - 1) === null &&
+            $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection() !== DirectionClassifier::NOP_STRAIGHT
+        ) {
+            return true;
+        }
+
+        if (
+            $this->getFirstPlacementByPosition($placement->getX() - 1, $placement->getY()) === null &&
+            $placement->getPiece()->getSide($placement->getTopSideIndex() + 1)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
+        ) {
+            return true;
+        }
+
+        if (
+            $this->getFirstPlacementByPosition($placement->getX(), $placement->getY() + 1) === null &&
+            $placement->getPiece()->getSide($placement->getTopSideIndex() + 2)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
+        ) {
+            return true;
+        }
+
+        if (
+            $this->getFirstPlacementByPosition($placement->getX() + 1, $placement->getY()) === null &&
+            $placement->getPiece()->getSide($placement->getTopSideIndex() + 3)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
+        ) {
+            return true;
+        }
+
+        return false;
     }
 }
