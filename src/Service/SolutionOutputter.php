@@ -95,6 +95,12 @@ class SolutionOutputter
                         'margin-top' => -($piece->getImageHeight() / 2 * $resizeFactor) . 'px',
                         'transform' => 'rotate(' . $rotation . 'deg) translateX(' . ((($piece->getImageWidth() / 2) - $center->getX()) * $resizeFactor) . 'px) translateY(' . ((($piece->getImageHeight() / 2) - $center->getY()) * $resizeFactor) . 'px)',
                     ],
+                    'overlayStyle' => [
+                        'left' => (($left - $placement->getWidth() / 2) * $resizeFactor) . 'px',
+                        'top' => (($top - $placement->getHeight() / 2) * $resizeFactor) . 'px',
+                        'width' => ($placement->getWidth() * $resizeFactor) . 'px',
+                        'height' => ($placement->getHeight() * $resizeFactor) . 'px',
+                    ],
                     'title' => sprintf(
                         'Piece #%s, TopSide: %s, X: %s, Y: %s',
                         $placement->getPiece()->getIndex(),
@@ -139,6 +145,15 @@ class SolutionOutputter
                             
                             .solution .piece {
                                 position: absolute;
+                                z-index: 1;
+                            }
+                            
+                            .solution .piece-overlay {
+                                position: absolute;
+                                z-index: 5;
+                            }
+                            .solution .piece-overlay:hover {
+                                background-color: rgba(255, 255, 255, 0.2);
                             }
                         </style>
                     </head>
@@ -147,7 +162,8 @@ class SolutionOutputter
                             <div class="solution-container" style="{% for name, value in group.containerStyle %}{{ name }}: {{ value }};{% endfor %}">
                                 <div class="solution" style="{% for name, value in group.solutionStyle %}{{ name }}: {{ value }};{% endfor %}" data-piece-indexes="{{ group.pieceIndexes|join(',') }}">
                                     {% for piece in group.pieces %}
-                                        <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}">
+                                        <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}">
+                                        <div class="piece-overlay" style="{% for name, value in piece.overlayStyle %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}"></div>
                                     {% endfor %}
                                 </div>
                             </div>
