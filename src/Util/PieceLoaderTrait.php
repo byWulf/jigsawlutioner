@@ -13,8 +13,14 @@ trait PieceLoaderTrait
      */
     private function getPieces(string $setName, bool $reorderSides = true): array
     {
+        $meta = json_decode(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/meta.json'), true);
+
         $pieces = [];
-        for ($i = 2; $i <= 501; ++$i) {
+        for ($i = $meta['min']; $i <= $meta['max']; ++$i) {
+            if (!is_file(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $i . '_piece.ser')) {
+                continue;
+            }
+
             /** @var Piece $piece */
             $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $i . '_piece.ser'));
 
