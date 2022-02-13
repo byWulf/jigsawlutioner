@@ -51,11 +51,14 @@ class SolvePuzzleCommand extends Command
 
         //$solutionOutputter->outputAsText($solution);
 
+        $htmlFile = __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/solution.html';
         $solutionOutputter->outputAsHtml(
             $solution,
-            __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/solution.html',
+            $htmlFile,
             __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece%s_transparent.png'
         );
+
+        $output->writeln('Solution can be viewed at file://' . $htmlFile);
 
         return Command::SUCCESS;
     }

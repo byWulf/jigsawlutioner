@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service\BorderFinder;
 
+use Bywulf\Jigsawlutioner\Dto\Context\BorderFinderContextInterface;
+use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\PixelMap;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Exception\PixelMapException;
+use Bywulf\Jigsawlutioner\Service\PointService;
 use GdImage;
+use InvalidArgumentException;
 
 class ByWulfBorderFinder implements BorderFinderInterface
 {
@@ -17,10 +21,12 @@ class ByWulfBorderFinder implements BorderFinderInterface
     private const DIRECTION_RIGHT = 2;
     private const DIRECTION_DOWN = 1;
 
+    private PointService $pointService;
+
     public function __construct(
-        private float $threshold = 0.95,
         private float $reduction = 0.002
     ) {
+        $this->pointService = new PointService();
     }
 
     /**
@@ -30,10 +36,15 @@ class ByWulfBorderFinder implements BorderFinderInterface
      */
     public function findPieceBorder(
         GdImage $image,
-        ?GdImage $transparentImage = null
+        BorderFinderContextInterface $context
     ): array {
+        if (!$context instanceof ByWulfBorderFinderContext) {
+            throw new InvalidArgumentException('Expected context of type ' . ByWulfBorderFinderContext::class . ', got ' . $context::class);
+        }
+
         $objectColor = $this->allocateColor($image, 0, 0, 0);
         $biggestObjectColor = $this->allocateColor($image, 50, 50, 50);
+        $biggestObjectColor2 = $this->allocateColor($image, 51, 51, 51);
         $backgroundColor = $this->allocateColor($image, 255, 255, 255);
         $surroundingColor = $this->allocateColor($image, 200, 200, 200);
 
@@ -44,13 +55,14 @@ class ByWulfBorderFinder implements BorderFinderInterface
         }
 
         // Make the image black and white to find the borders
-        $this->transformImageToMonochrome($pixelMap, $this->threshold, $objectColor, $backgroundColor);
+        $this->transformImageToMonochrome($pixelMap, $context->getThreshold(), $objectColor, $backgroundColor);
 
         // Identify the surrounding area and make it light gray
         $this->fillColorArea($pixelMap, 0, 0, $backgroundColor, $surroundingColor);
         $this->fillColorArea($pixelMap, 0, $pixelMap->getHeight() - 1, $backgroundColor, $surroundingColor);
         $this->fillColorArea($pixelMap, $pixelMap->getWidth() - 1, $pixelMap->getHeight() - 1, $backgroundColor, $surroundingColor);
         $this->fillColorArea($pixelMap, $pixelMap->getWidth() - 1, 0, $backgroundColor, $surroundingColor);
+
 
         // Fill everything with black except the surrounding area around the piece
         $this->replaceColor($pixelMap, $backgroundColor, $objectColor);
@@ -69,13 +81,32 @@ class ByWulfBorderFinder implements BorderFinderInterface
             throw new BorderParsingException('Piece is cut off');
         }
 
+        if ($context->getTransparentImage() !== null) {
+            $this->createTransparentImage($context->getTransparentImage(), $pixelMap, $biggestObjectColor);
+        }
+
+        // Add aprox. 2 pixels of the piece border again so the form of the piece is not off
         $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
+
+        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 1.5);
 
         $pixelMap->applyToImage();
 
-        if ($transparentImage !== null) {
-            $this->createTransparentImage($transparentImage, $pixelMap, $biggestObjectColor);
-        }
+        imagefilledpolygon(
+            $pixelMap->getImage(),
+            array_merge(...array_map(fn(Point $point): array => [round($point->getX()), round($point->getY())], $points)),
+            $biggestObjectColor
+        );
+
+        $pixelMap = PixelMap::createFromImage($pixelMap->getImage());
+
+        // Cut every thin lines (black pixels with at least 6 white pixels around it)
+        $this->replaceThinPixels($pixelMap, $biggestObjectColor, $this->allocateColor($image, 140, 140, 200));
+
+        // Remove every black area, which is not the biggest
+        $this->replaceSmallerColorAreas($pixelMap, $biggestObjectColor, $biggestObjectColor2, $this->allocateColor($image, 140, 140, 140));
+
+        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor2);
 
         return $points;
     }
@@ -358,5 +389,27 @@ class ByWulfBorderFinder implements BorderFinderInterface
                 }
             }
         }
+    }
+
+    /**
+     * @param Point[] $points
+     * @param float $reduction
+     * @return Point[]
+     */
+    private function extendPointsArea(array $points, float $reduction): array
+    {
+        $adjustedPoints = [];
+
+        $count = count($points);
+        foreach ($points as $index => $point) {
+            $pointBefore = $points[($index - 10 + $count) % $count];
+            $pointAfter = $points[($index + 10) % $count];
+
+            $verticalRotation = $this->pointService->getRotation($pointBefore, $pointAfter) + 90;
+
+            $adjustedPoints[] = $this->pointService->movePoint($point, $verticalRotation, $reduction);
+        }
+
+        return $adjustedPoints;
     }
 }

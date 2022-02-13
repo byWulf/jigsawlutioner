@@ -8,6 +8,8 @@ use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use PHPStan\Testing\TestCase;
@@ -20,6 +22,9 @@ class WeightedMatcherTest extends TestCase
 
     private WeightedMatcher $service;
 
+    private $diffSum = 0;
+    private $diffCount = 0;
+
     public function setUp(): void
     {
         $this->service = new WeightedMatcher();
@@ -27,7 +32,7 @@ class WeightedMatcherTest extends TestCase
 
     public function testGetMatchingProbabilities(): void
     {
-        $pieces = $this->getPieces('cats');
+        $pieces = $this->getPieces('cats_ordered');
 
         $allSides = array_merge(...array_map(fn (Piece $piece): array => $piece->getSides(), $pieces));
 
@@ -58,6 +63,8 @@ class WeightedMatcherTest extends TestCase
         echo 'SmallWidthClassifier: ' . SmallWidthClassifier::getAverageTime() . PHP_EOL;
         echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 2.778)' . PHP_EOL;
 
+        echo 'DepthDiff: ' . ($this->diffSum / $this->diffCount) . PHP_EOL;
+
         $this->assertLessThanOrEqual(2.8, $matchingPositionsSum / $countMatchings);
     }
 
@@ -82,7 +89,10 @@ class WeightedMatcherTest extends TestCase
             return;
         }
 
-        $probabilities = $this->service->getMatchingProbabilities($side1, $sides);
+        $this->diffCount++;
+        $this->diffSum += $side1->getClassifier(DepthClassifier::class)->getDepth() + $side2->getClassifier(DepthClassifier::class)->getDepth();
+
+            $probabilities = $this->service->getMatchingProbabilities($side1, $sides);
         arsort($probabilities);
         $targetIndex = array_search($side2, $sides);
         $position = array_search($targetIndex, array_keys($probabilities));

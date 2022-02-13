@@ -105,4 +105,14 @@ class PointService
 
         return $rotationToJustify;
     }
+
+    public function movePoint(Point $point, float $directionDegree, float $length): Point
+    {
+        $adjustedPoint = clone $point;
+
+        $adjustedPoint->setX($adjustedPoint->getX() + cos(deg2rad($directionDegree)) * $length);
+        $adjustedPoint->setY($adjustedPoint->getY() + sin(deg2rad($directionDegree)) * $length);
+
+        return $adjustedPoint;
+    }
 }

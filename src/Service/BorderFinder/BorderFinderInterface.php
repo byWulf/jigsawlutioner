@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service\BorderFinder;
 
+use Bywulf\Jigsawlutioner\Dto\Context\BorderFinderContextInterface;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use GdImage;
@@ -15,5 +16,5 @@ interface BorderFinderInterface
      *
      * @return Point[]
      */
-    public function findPieceBorder(GdImage $image, ?GdImage $transparentImage): array;
+    public function findPieceBorder(GdImage $image, BorderFinderContextInterface $context): array;
 }

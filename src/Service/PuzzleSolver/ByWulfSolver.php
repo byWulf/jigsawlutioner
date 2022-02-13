@@ -15,6 +15,7 @@ use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
 use DateTimeImmutable;
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Validator\Validation;
@@ -52,43 +53,57 @@ class ByWulfSolver implements PuzzleSolverInterface
     /**
      * @param Piece[] $pieces
      */
-    public function findSolution(array $pieces, bool $useCache = true): Solution
+    public function findSolution(array $pieces, string $cacheName = null, bool $useCache = true): Solution
     {
         $this->solution = new Solution();
         $this->pieces = $pieces;
         $this->missingPieces = $pieces;
 
+        if ($cacheName === null) {
+            throw new InvalidArgumentException('$cacheName has to be given.');
+        }
+
         if (!$useCache) {
-            $this->cache->delete('matchingMap');
+            $this->cache->delete('matchingMap_' . $cacheName);
             $this->cache->commit();
         }
 
-        $originalMatchingMap = $this->cache->get('matchingMap', function() {
+        $originalMatchingMap = $this->cache->get('matchingMap_' . $cacheName, function() {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');;
             return $this->getMatchingMap();
         });
 
-        foreach ([0.25, 0.1, 0.01] as $minProbability) {
-            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . $minProbability . '...');
+        foreach ([[0.8, 0.5], [0.6, 0.25], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
+            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . implode('/', $minProbability) . '...');
 
             $this->matchingMap = $originalMatchingMap;
 
             // Loop as long as new pieces can be added
-            while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability)) {
+            while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability[0], $minProbability[1])) {
                 $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
                 //(new SolutionOutputter())->outputAsText($this->solution);
             }
 
-            if ($minProbability === 0.01) {
-                $this->debug = true;
-            }
-
             // Aftet that, look which groups can be merged the best
-            while ($this->addNextPlacement([$this, 'getMostFittableGroupSide'], $minProbability)) {
+            while ($this->addNextPlacement([$this, 'getMostFittableGroupSide'], $minProbability[0], $minProbability[1])) {
                 $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Reduced groups into ' . count($this->solution->getGroups()) . ' groups.');
                 //(new SolutionOutputter())->outputAsText($this->solution);
             }
         }
+
+//        $this->matchingMap = $originalMatchingMap;
+//        file_put_contents('C:\Users\michael.wolf\AppData\Roaming\JetBrains\PhpStorm2021.3\scratches\scratch_6.txt', '');
+//        foreach ($this->matchingMap as $key => $map) {
+//            file_put_contents(
+//                'C:\Users\michael.wolf\AppData\Roaming\JetBrains\PhpStorm2021.3\scratches\scratch_6.txt',
+//                '#' . $key . ': ' . implode(', ', array_map(fn(string $key, float $prob) => $key . '->' . round($prob,2), array_keys($map), $map)) . PHP_EOL,
+//                FILE_APPEND
+//            );
+//        }
+//        while ($this->addNextPlacement([$this, 'getMostFittableSide'], 0.75, 0.2)) {
+//            $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
+//            //(new SolutionOutputter())->outputAsText($this->solution);
+//        }
 
         $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution.');
 
@@ -109,10 +124,10 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $this->solution;
     }
 
-    private function addNextPlacement(callable $nextKeyGetter, float $minProbability): bool
+    private function addNextPlacement(callable $nextKeyGetter, float $minProbability, float $minDifference): bool
     {
         $context = null;
-        $nextKey = $nextKeyGetter($minProbability, $context);
+        $nextKey = $nextKeyGetter($minProbability, $minDifference, $context);
         if ($nextKey === null) {
             return false;
         }
@@ -294,7 +309,7 @@ class ByWulfSolver implements PuzzleSolverInterface
     /**
      * @param Piece[]   $pieces
      */
-    private function getMostFittableSide(float $minProbability): ?string
+    private function getMostFittableSide(float $minProbability, float $minDifference): ?string
     {
         if (count($this->pieces) === 0) {
             return null;
@@ -309,7 +324,7 @@ class ByWulfSolver implements PuzzleSolverInterface
 
             list($bestProbability, $secondProbability) = array_slice(array_values($this->matchingMap[$key]), 0, 2);
             $rating = ($bestProbability - $secondProbability) * ($bestProbability ** 3);
-            if ($bestProbability >= $minProbability && $rating > $bestRating) {
+            if ($bestProbability >= $minProbability && ($bestProbability - $secondProbability) >= $minDifference && $rating > $bestRating) {
                 $bestRating = $rating;
                 $bestKey = $key;
             }
@@ -318,7 +333,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $bestKey;
     }
 
-    private function getMostFittableGroupSide(float $minProbability, mixed &$context): ?string
+    private function getMostFittableGroupSide(float $minProbability, float $minDifference, mixed &$context): ?string
     {
         $bestRating = 0;
         $bestKey = null;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Tests\Service\BorderFinder;
 
+use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
@@ -39,7 +40,7 @@ class ByWulfBorderFinderTest extends TestCase
             $points[] = new Point($x, 256);
         }
 
-        $this->assertEquals($points, $this->borderFinder->findPieceBorder(image: $image));
+        $this->assertEquals($points, $this->borderFinder->findPieceBorder(image: $image, context: new ByWulfBorderFinderContext(0.95)));
     }
 
     /**
@@ -49,7 +50,7 @@ class ByWulfBorderFinderTest extends TestCase
     {
         $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2.jpg');
 
-        $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image));
+        $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image, context: new ByWulfBorderFinderContext(0.95)));
     }
 
     /**
@@ -59,7 +60,7 @@ class ByWulfBorderFinderTest extends TestCase
     {
         $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2modified.jpg');
 
-        $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image));
+        $this->assertNotEmpty($this->borderFinder->findPieceBorder(image: $image, context: new ByWulfBorderFinderContext(0.95)));
     }
 
     /**
@@ -71,6 +72,6 @@ class ByWulfBorderFinderTest extends TestCase
 
         $image = imagecreatefromjpeg(__DIR__ . '/../../../resources/Fixtures/piece2modified_cutoff.jpg');
 
-        $this->borderFinder->findPieceBorder(image: $image);
+        $this->borderFinder->findPieceBorder(image: $image, context: new ByWulfBorderFinderContext(0.95));
     }
 }

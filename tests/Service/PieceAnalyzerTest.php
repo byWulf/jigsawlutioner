@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Tests\Service;
 
+use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Point;
@@ -37,8 +38,10 @@ class PieceAnalyzerTest extends TestCase
 
         $image = imagecreate(100, 100);
 
+        $context = new ByWulfBorderFinderContext(0.95);
+
         $borderPoints = [new Point(0, 1), new Point(1, 2), new Point(2, 3)];
-        $borderFinder->findPieceBorder($image)->shouldBeCalledOnce()->willReturn($borderPoints);
+        $borderFinder->findPieceBorder($image, $context)->shouldBeCalledOnce()->willReturn($borderPoints);
 
         $sideFinder->getSides($borderPoints)->shouldBeCalledOnce()->willReturn([
             new Side([new Point(0, 0)], new Point(0, 0), new Point(0, 0)),
@@ -87,7 +90,7 @@ class PieceAnalyzerTest extends TestCase
             ]
         );
 
-        $this->assertEquals($expectedPiece, $pieceAnalyzer->getPieceFromImage(1, $image));
+        $this->assertEquals($expectedPiece, $pieceAnalyzer->getPieceFromImage(1, $image, $context));
     }
 
     public function testCornersFromFixtures(): void
@@ -600,7 +603,7 @@ class PieceAnalyzerTest extends TestCase
         ];
 
         foreach ($corners as $pieceIndex => $cornerPoints) {
-            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/cats/piece' . $pieceIndex . '_piece.ser'));
+            $piece = Piece::fromSerialized(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/cats_ordered/piece' . $pieceIndex . '_piece.ser'));
 
             $foundCorners = array_filter($piece->getBorderPoints(), fn (Point $point): bool => $point instanceof DerivativePoint && $point->isUsedAsCorner());
             $foundCorners = array_values(array_map(fn (DerivativePoint $point): Point => new Point($point->getX(), $point->getY()), $foundCorners));

@@ -34,7 +34,7 @@ class DepthClassifier implements SideClassifierInterface
         $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
         $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
-        return max(0, 1 - (abs($outsideClassifier->getDepth() + $insideClassifier->getDepth() - 1.5) / 12));
+        return max(0, 1 - (abs($outsideClassifier->getDepth() + $insideClassifier->getDepth() - 2.5) / 12));
     }
 
     /**

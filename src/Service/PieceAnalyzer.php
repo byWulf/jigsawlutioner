@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service;
 
+use Bywulf\Jigsawlutioner\Dto\Context\BorderFinderContextInterface;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
-use Bywulf\Jigsawlutioner\Dto\PixelMap;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
@@ -36,9 +36,9 @@ class PieceAnalyzer
      * @throws BorderParsingException
      * @throws SideParsingException
      */
-    public function getPieceFromImage(int $pieceIndex, GdImage $image, ?GdImage $transparentImage = null): Piece
+    public function getPieceFromImage(int $pieceIndex, GdImage $image, BorderFinderContextInterface $context): Piece
     {
-        $borderPoints = $this->borderFinder->findPieceBorder($image, $transparentImage);
+        $borderPoints = $this->borderFinder->findPieceBorder($image, $context);
 
         /** @var DerivativePoint[] $borderPoints */
         $sides = $this->sideFinder->getSides($borderPoints);
