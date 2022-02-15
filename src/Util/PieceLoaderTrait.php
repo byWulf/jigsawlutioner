@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Util;
 
 use Bywulf\Jigsawlutioner\Dto\Piece;
+use InvalidArgumentException;
 
 trait PieceLoaderTrait
 {
@@ -30,12 +31,20 @@ trait PieceLoaderTrait
 
             // Reorder sides so the top side is the first side
             if ($reorderSides) {
+                $targetTopSide = match ($meta['topLeftCorner']) {
+                    'top' => 1,
+                    'left' => 2,
+                    'bottom' => 3,
+                    'right' => 0,
+                    default => throw new InvalidArgumentException('topLeftCorner from meta.json invalid'),
+                };
+
                 $sides = $piece->getSides();
 
                 while (
-                    $sides[1]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                    $sides[2]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY() ||
-                    $sides[3]->getStartPoint()->getY() < $sides[0]->getStartPoint()->getY()
+                    $sides[($targetTopSide + 1) % 4]->getStartPoint()->getY() < $sides[$targetTopSide]->getStartPoint()->getY() ||
+                    $sides[($targetTopSide + 2) % 4]->getStartPoint()->getY() < $sides[$targetTopSide]->getStartPoint()->getY() ||
+                    $sides[($targetTopSide + 3) % 4]->getStartPoint()->getY() < $sides[$targetTopSide]->getStartPoint()->getY()
                 ) {
                     $side = array_splice($sides, 0, 1);
                     $sides[] = $side[0];
