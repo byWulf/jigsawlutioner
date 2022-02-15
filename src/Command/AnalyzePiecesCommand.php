@@ -46,7 +46,7 @@ class AnalyzePiecesCommand extends Command
             $progress->start(count($input->getArgument('pieceNumber')));
 
             foreach ($input->getArgument('pieceNumber') as $pieceNumber) {
-                $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer, $meta['threshold']);
+                $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
 
                 $progress->advance();
             }
@@ -54,7 +54,7 @@ class AnalyzePiecesCommand extends Command
             $progress->start($meta['max'] - $meta['min'] + 1);
 
             for ($pieceNumber = $meta['min']; $pieceNumber <= $meta['max']; ++$pieceNumber) {
-                $this->analyzePiece($setName, $pieceNumber, $pieceAnalyzer, $meta['threshold']);
+                $this->analyzePiece($setName, $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
 
                 $progress->advance();
             }
@@ -67,10 +67,10 @@ class AnalyzePiecesCommand extends Command
         return self::SUCCESS;
     }
 
-    private function analyzePiece(string $setName, int $pieceNumber, PieceAnalyzer $pieceAnalyzer, float $threshold): void
+    private function analyzePiece(string $setName, int $pieceNumber, PieceAnalyzer $pieceAnalyzer, float $threshold, bool $hasSeparateColorImages): void
     {
         $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
-        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
+        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . ($hasSeparateColorImages ? '_color' : '') . '.jpg');
 
         try {
             $piece = $pieceAnalyzer->getPieceFromImage($pieceNumber, $image, new ByWulfBorderFinderContext(
