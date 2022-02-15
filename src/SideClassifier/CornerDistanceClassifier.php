@@ -6,7 +6,7 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 
-class CornerDistanceClassifier implements SideClassifierInterface
+class CornerDistanceClassifier extends ModelBasedClassifier
 {
     public function __construct(
         private float $width
@@ -18,12 +18,17 @@ class CornerDistanceClassifier implements SideClassifierInterface
         return new CornerDistanceClassifier($metadata->getSideWidth());
     }
 
-    /**
-     * @param CornerDistanceClassifier $classifier
-     */
-    public function compareOppositeSide(SideClassifierInterface $classifier): float
+    public static function getModelPath(): string
     {
-        return max(0, 1 - (abs($this->width - $classifier->getWidth()) / 25));
+        return __DIR__ . '/../../resources/Model/cornerDistance.model';
+    }
+
+    /**
+     * @param CornerDistanceClassifier $comparisonClassifier
+     */
+    public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
+    {
+        return [$this->getWidth(), $comparisonClassifier->getWidth()];
     }
 
     /**

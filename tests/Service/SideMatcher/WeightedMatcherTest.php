@@ -6,11 +6,8 @@ namespace Bywulf\Jigsawlutioner\Tests\Service\SideMatcher;
 
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
-use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use PHPStan\Testing\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -20,10 +17,7 @@ class WeightedMatcherTest extends TestCase
     use ProphecyTrait;
     use PieceLoaderTrait;
 
-    private WeightedMatcher $service;
-
-    private $diffSum = 0;
-    private $diffCount = 0;
+    private SideMatcherInterface $service;
 
     public function setUp(): void
     {
@@ -32,7 +26,7 @@ class WeightedMatcherTest extends TestCase
 
     public function testGetMatchingProbabilities(): void
     {
-        $pieces = $this->getPieces('cats_ordered');
+        $pieces = $this->getPieces('newcam_test_ordered');
 
         $allSides = array_merge(...array_map(fn (Piece $piece): array => $piece->getSides(), $pieces));
 
@@ -59,11 +53,11 @@ class WeightedMatcherTest extends TestCase
             }
         }
 
-        echo 'BigWidthClassifier: ' . BigWidthClassifier::getAverageTime() . PHP_EOL;
-        echo 'SmallWidthClassifier: ' . SmallWidthClassifier::getAverageTime() . PHP_EOL;
-        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 2.778)' . PHP_EOL;
+        foreach (SideMatcherInterface::CLASSIFIER_CLASS_NAMES as $className) {
+            echo $className . ': ' . $className::getAverageTime() . PHP_EOL;
+        }
 
-        echo 'DepthDiff: ' . ($this->diffSum / $this->diffCount) . PHP_EOL;
+        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 2.778)' . PHP_EOL;
 
         $this->assertLessThanOrEqual(2.8, $matchingPositionsSum / $countMatchings);
     }
@@ -89,12 +83,10 @@ class WeightedMatcherTest extends TestCase
             return;
         }
 
-        $this->diffCount++;
-        $this->diffSum += $side1->getClassifier(DepthClassifier::class)->getDepth() + $side2->getClassifier(DepthClassifier::class)->getDepth();
-
-            $probabilities = $this->service->getMatchingProbabilities($side1, $sides);
-        arsort($probabilities);
         $targetIndex = array_search($side2, $sides);
+
+            $probabilities = $this->service->getMatchingProbabilities($side1, $sides, $targetIndex);
+        arsort($probabilities);
         $position = array_search($targetIndex, array_keys($probabilities));
 
         ++$countMatchings;

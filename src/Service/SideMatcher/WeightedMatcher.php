@@ -16,6 +16,13 @@ use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
 class WeightedMatcher implements SideMatcherInterface
 {
+    private array $weights = [
+        BigWidthClassifier::class => 0.95893780825214,
+        CornerDistanceClassifier::class => 0.84754176512042,
+        DepthClassifier::class => 0.81363284548269,
+        SmallWidthClassifier::class => 0.94909504955181,
+    ];
+
     /**
      * @param Side[] $sides
      *
@@ -70,18 +77,20 @@ class WeightedMatcher implements SideMatcherInterface
             }
         }
 
-        return $sum / $weightSum;
+        return $weightSum > 0 ? $sum / $weightSum : 0;
+    }
+
+    public function setWeights(array $weights): void
+    {
+        $this->weights = $weights;
     }
 
     private function getWeightForClassifier(string $classifierName): ?float
     {
-        return match ($classifierName) {
-            DirectionClassifier::class => null,
-            SmallWidthClassifier::class => 1.0,
-            BigWidthClassifier::class => 1.0,
-            CornerDistanceClassifier::class => 1.5,
-            DepthClassifier::class => 1.5,
-            default => 0.0
-        };
+        if ($classifierName === DirectionClassifier::class) {
+            return null;
+        }
+
+        return $this->weights[$classifierName] ?? 0;
     }
 }

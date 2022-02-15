@@ -7,17 +7,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Bywulf\Jigsawlutioner\Util\TimeTrackerTrait;
-use Rubix\ML\Datasets\Unlabeled;
-use Rubix\ML\PersistentModel;
-use Rubix\ML\Persisters\Filesystem;
 
-class SmallWidthClassifier implements SideClassifierInterface
+class SmallWidthClassifier extends ModelBasedClassifier
 {
-    use TimeTrackerTrait;
-
-    private static ?PersistentModel $estimator = null;
-
     public function __construct(
         private int $direction,
         private float $width,
@@ -63,7 +55,15 @@ class SmallWidthClassifier implements SideClassifierInterface
         );
     }
 
-    public function getPredictionData(SmallWidthClassifier $comparisonClassifier): array
+    public static function getModelPath(): string
+    {
+        return __DIR__ . '/../../resources/Model/smallNop.model';
+    }
+
+    /**
+     * @param SmallWidthClassifier $comparisonClassifier
+     */
+    public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
     {
         $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $comparisonClassifier;
         $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $comparisonClassifier;
@@ -73,24 +73,6 @@ class SmallWidthClassifier implements SideClassifierInterface
         $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
         return [$xDiff, $yDiff, $widthDiff];
-    }
-
-    /**
-     * @param SmallWidthClassifier $classifier
-     */
-    public function compareOppositeSide(SideClassifierInterface $classifier): float
-    {
-        if (self::$estimator === null) {
-            self::$estimator = PersistentModel::load(new Filesystem(__DIR__ . '/../../resources/Model/bigNopMatcher.model'));
-        }
-
-        $probability = $this->withTimeTracking(function () use ($classifier) {
-            $data = $this->getPredictionData($classifier);
-
-            return self::$estimator->predict(Unlabeled::quick([$data]))[0];
-        });
-
-        return $probability;
     }
 
     /**

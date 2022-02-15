@@ -2,23 +2,24 @@
 
 namespace Bywulf\Jigsawlutioner\Command;
 
-use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\ModelBasedClassifier;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Rubix\ML\Datasets\Labeled;
 use Rubix\ML\Learner;
 use Rubix\ML\PersistentModel;
 use Rubix\ML\Persisters\Filesystem;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class AbstractModelCreatorCommand extends Command
 {
     use PieceLoaderTrait;
 
-    public function createModel(OutputInterface $output, string $modelFilename): void
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln('Loading nop information...');
         $nopInformation = $this->getNopInformation();
@@ -60,7 +61,9 @@ abstract class AbstractModelCreatorCommand extends Command
             }
         }
 
-        $this->trainModel($output, $datasets, $labels, $modelFilename);
+        $this->trainModel($output, $datasets, $labels);
+
+        return self::SUCCESS;
     }
 
     private function findNonmatchingDataset(?Side $side1, ?Side $side2, ?array $piece): ?array
@@ -106,7 +109,26 @@ abstract class AbstractModelCreatorCommand extends Command
         }
     }
 
-    abstract protected function getData(Side $insideSide, Side $outsideSide): array;
+    /**
+     * @throws SideClassifierException
+     */
+    protected function getData(Side $side1, Side $side2): array
+    {
+        /** @var ModelBasedClassifier $insideClassifier */
+        $insideClassifier = $side1->getClassifier($this->getClassifierClassName());
+        $outsideClassifier = $side2->getClassifier($this->getClassifierClassName());
+        return $insideClassifier->getPredictionData($outsideClassifier);
+    }
+
+    /**
+     * @return class-string<ModelBasedClassifier>|null
+     */
+    abstract protected function getClassifierClassName(): ?string;
+
+    protected function getModelPath(): string
+    {
+        return $this->getClassifierClassName()::getModelPath();
+    }
 
     /**
      * @return Side[][]
@@ -115,7 +137,7 @@ abstract class AbstractModelCreatorCommand extends Command
     {
         $nopInformation = [];
 
-        foreach ($this->getPieces('cats_ordered', true) as $pieceIndex => $piece) {
+        foreach ($this->getPieces('newcam_test_ordered', true) as $pieceIndex => $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
                 $nopInformation[$pieceIndex][$sideIndex] = $side;
             }
@@ -130,14 +152,14 @@ abstract class AbstractModelCreatorCommand extends Command
      *
      * @return void
      */
-    private function trainModel(OutputInterface $output, array $datasets, array $labels, string $modelFilename): void
+    private function trainModel(OutputInterface $output, array $datasets, array $labels): void
     {
         $labeledDataset = new Labeled($datasets, $labels);
         list($training, $testing) = $labeledDataset->stratifiedSplit(0.8);
 
         $estimator = new PersistentModel(
             $this->createLearner(),
-            new Filesystem(__DIR__ . '/../../resources/Model/' . $modelFilename)
+            new Filesystem($this->getModelPath())
         );
 
         $output->writeln('Training...');

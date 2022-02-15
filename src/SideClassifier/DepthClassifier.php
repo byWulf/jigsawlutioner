@@ -7,7 +7,7 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 
-class DepthClassifier implements SideClassifierInterface
+class DepthClassifier extends ModelBasedClassifier
 {
     public function __construct(
         private int $direction,
@@ -26,15 +26,20 @@ class DepthClassifier implements SideClassifierInterface
         return new DepthClassifier($directionClassifier->getDirection(), $metadata->getDepth());
     }
 
-    /**
-     * @param DepthClassifier $classifier
-     */
-    public function compareOppositeSide(SideClassifierInterface $classifier): float
+    public static function getModelPath(): string
     {
-        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        return __DIR__ . '/../../resources/Model/depth.model';
+    }
 
-        return max(0, 1 - (abs($outsideClassifier->getDepth() + $insideClassifier->getDepth() - 2.5) / 12));
+    /**
+     * @param DepthClassifier $comparisonClassifier
+     */
+    public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
+    {
+        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $comparisonClassifier;
+        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $comparisonClassifier;
+
+        return [$insideClassifier->getDepth(), $outsideClassifier->getDepth()];
     }
 
     /**

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
+use Bywulf\Jigsawlutioner\Util\TimeTrackerTrait;
 
 class DirectionClassifier implements SideClassifierInterface
 {
+    use TimeTrackerTrait;
+
     public const NOP_STRAIGHT = 0;
     public const NOP_INSIDE = -1;
     public const NOP_OUTSIDE = 1;

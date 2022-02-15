@@ -8,9 +8,12 @@ use Symfony\Component\Console\Application;
 
 $application = new Application();
 
-$application->add(new Command\CreateSmallNopMatcherModelCommandCommand());
-$application->add(new Command\CreateBigNopMatcherModelCommandCommand());
+$application->add(new Command\CreateSmallNopModelCommandCommand());
+$application->add(new Command\CreateBigNopModelCommandCommand());
+$application->add(new Command\CreateCornerDistanceModelCommandCommand());
+$application->add(new Command\CreateDepthModelCommandCommand());
 $application->add(new Command\AnalyzePiecesCommand());
 $application->add(new Command\SolvePuzzleCommand());
+$application->add(new Command\FindWeightsForMatcherCommand());
 
 $application->run();
