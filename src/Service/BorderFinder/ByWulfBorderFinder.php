@@ -85,28 +85,29 @@ class ByWulfBorderFinder implements BorderFinderInterface
             $this->createTransparentImage($context->getTransparentImage(), $pixelMap, $biggestObjectColor);
         }
 
-        // Add aprox. 2 pixels of the piece border again so the form of the piece is not off
-        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
-
-        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 1.5);
+//        // Add aprox. 2 pixels of the piece border again so the form of the piece is not off
+//        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
+//
+//        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 1.5);
+//
+//        $pixelMap->applyToImage();
+//
+//        imagefilledpolygon(
+//            $pixelMap->getImage(),
+//            array_merge(...array_map(fn(Point $point): array => [round($point->getX()), round($point->getY())], $points)),
+//            $biggestObjectColor
+//        );
+//
+//        $pixelMap = PixelMap::createFromImage($pixelMap->getImage());
+//
+//        // Cut every thin lines (black pixels with at least 6 white pixels around it)
+//        $this->replaceThinPixels($pixelMap, $biggestObjectColor, $this->allocateColor($image, 140, 140, 200));
+//
+//        // Remove every black area, which is not the biggest
+//        $this->replaceSmallerColorAreas($pixelMap, $biggestObjectColor, $biggestObjectColor2, $this->allocateColor($image, 140, 140, 140));
 
         $pixelMap->applyToImage();
-
-        imagefilledpolygon(
-            $pixelMap->getImage(),
-            array_merge(...array_map(fn(Point $point): array => [round($point->getX()), round($point->getY())], $points)),
-            $biggestObjectColor
-        );
-
-        $pixelMap = PixelMap::createFromImage($pixelMap->getImage());
-
-        // Cut every thin lines (black pixels with at least 6 white pixels around it)
-        $this->replaceThinPixels($pixelMap, $biggestObjectColor, $this->allocateColor($image, 140, 140, 200));
-
-        // Remove every black area, which is not the biggest
-        $this->replaceSmallerColorAreas($pixelMap, $biggestObjectColor, $biggestObjectColor2, $this->allocateColor($image, 140, 140, 140));
-
-        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor2);
+        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
 
         return $points;
     }
