@@ -68,12 +68,12 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->cache->commit();
         }
 
-        $originalMatchingMap = $this->cache->get('matchingMap_' . $cacheName, function() {
+        $originalMatchingMap = $this->cache->get(sha1(__CLASS__ . '::matchingMap_' . $cacheName), function() {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');;
             return $this->getMatchingMap();
         });
 
-        foreach ([[0.8, 0.5], [0.6, 0.25], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
+        foreach ([[0.6, 0.6], [0.7, 0.5], [0.8, 0.4], [0.9, 0.3], [0.5, 0.2], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . implode('/', $minProbability) . '...');
 
             $this->matchingMap = $originalMatchingMap;
@@ -278,7 +278,7 @@ class ByWulfSolver implements PuzzleSolverInterface
                 $checkKey1 = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $sideOffset);
                 $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $connectingPlacement->getTopSideIndex() + $sideOffset + 2);
 
-                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.5) {
+                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.1) {
                     $unmatchingSides++;
                 }
 
@@ -293,11 +293,15 @@ class ByWulfSolver implements PuzzleSolverInterface
             return null;
         }
 
+        if (in_array(0.0, $probabilities, true)) {
+            return null;
+        }
+
         foreach ($group2Copy->getPlacements() as $placement) {
             $group1->addPlacement($placement);
         }
 
-        $isGroupValid = $this->isGroupValid($group1, (int) round(count($group2Copy->getPlacements()) * 0.1));
+        $isGroupValid = $this->isGroupValid($group1, (int) round(count($group2Copy->getPlacements()) * 0.5));
 
         foreach ($group2Copy->getPlacements() as $placement) {
             $group1->removePlacement($placement);
