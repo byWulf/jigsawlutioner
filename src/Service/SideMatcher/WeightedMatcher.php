@@ -17,10 +17,10 @@ use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 class WeightedMatcher implements SideMatcherInterface
 {
     private array $weights = [
-        BigWidthClassifier::class => 0.95893780825214,
-        CornerDistanceClassifier::class => 0.84754176512042,
-        DepthClassifier::class => 0.81363284548269,
-        SmallWidthClassifier::class => 0.94909504955181,
+        BigWidthClassifier::class => 0.960854029286,
+        CornerDistanceClassifier::class => 0.84482933587476,
+        DepthClassifier::class => 0.78565062388592,
+        SmallWidthClassifier::class => 0.94630124777184,
     ];
 
     /**

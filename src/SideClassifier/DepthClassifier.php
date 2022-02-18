@@ -39,7 +39,7 @@ class DepthClassifier extends ModelBasedClassifier
         $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $comparisonClassifier;
         $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $comparisonClassifier;
 
-        return [$insideClassifier->getDepth(), $outsideClassifier->getDepth()];
+        return [$insideClassifier->getDepth() + $outsideClassifier->getDepth()];
     }
 
     /**

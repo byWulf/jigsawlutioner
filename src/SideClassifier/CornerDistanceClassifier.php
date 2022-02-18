@@ -28,7 +28,7 @@ class CornerDistanceClassifier extends ModelBasedClassifier
      */
     public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
     {
-        return [$this->getWidth(), $comparisonClassifier->getWidth()];
+        return [abs($this->getWidth() - $comparisonClassifier->getWidth())];
     }
 
     /**

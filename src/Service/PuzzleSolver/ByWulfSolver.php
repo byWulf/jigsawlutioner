@@ -12,6 +12,7 @@ use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
+use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
 use DateTimeImmutable;
@@ -33,6 +34,8 @@ class ByWulfSolver implements PuzzleSolverInterface
     private Solution $solution;
 
     private array $pieces;
+
+    private int $piecesCount;
 
     private array $matchingMap;
 
@@ -57,6 +60,7 @@ class ByWulfSolver implements PuzzleSolverInterface
     {
         $this->solution = new Solution();
         $this->pieces = $pieces;
+        $this->piecesCount = count($pieces);
         $this->missingPieces = $pieces;
 
         if ($cacheName === null) {
@@ -73,7 +77,8 @@ class ByWulfSolver implements PuzzleSolverInterface
             return $this->getMatchingMap();
         });
 
-        foreach ([[0.6, 0.6], [0.7, 0.5], [0.8, 0.4], [0.9, 0.3], [0.5, 0.2], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
+        //foreach ([[0.6, 0.6], [0.7, 0.5], [0.8, 0.4], [0.9, 0.3], [0.5, 0.2], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
+        foreach ([[0.8, 0.5], [0.6, 0.25], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . implode('/', $minProbability) . '...');
 
             $this->matchingMap = $originalMatchingMap;
@@ -278,18 +283,18 @@ class ByWulfSolver implements PuzzleSolverInterface
                 $checkKey1 = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $sideOffset);
                 $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $connectingPlacement->getTopSideIndex() + $sideOffset + 2);
 
-                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.1) {
+                if (($this->matchingMap[$checkKey1][$checkKey2] ?? 0) < $minProbability * 0.5) {
                     $unmatchingSides++;
                 }
 
                 $probabilities[] = $this->matchingMap[$checkKey1][$checkKey2] ?? 0;
             }
         }
-        if ($unmatchingSides > count($probabilities) * 0.1) {
+        if ($unmatchingSides > count($probabilities) * 0.25) {
             return null;
         }
 
-        if (count($probabilities) === 0) {
+        if (count($probabilities) < min(count($group1->getPlacements()), count($group2->getPlacements())) * 0.1) {
             return null;
         }
 
@@ -448,6 +453,7 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->validator->validate($group, [
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
                 new RectangleGroup(),
+                new RealisticSide(['piecesCount' => $this->piecesCount])
             ]);
 
             return true;
