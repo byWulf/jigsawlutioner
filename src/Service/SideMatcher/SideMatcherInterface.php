@@ -7,6 +7,7 @@ use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
 interface SideMatcherInterface
@@ -17,6 +18,7 @@ interface SideMatcherInterface
         SmallWidthClassifier::class,
         CornerDistanceClassifier::class,
         DepthClassifier::class,
+        LineDistanceClassifier::class,
     ];
 
     /**

@@ -15,5 +15,6 @@ $application->add(new Command\CreateDepthModelCommandCommand());
 $application->add(new Command\AnalyzePiecesCommand());
 $application->add(new Command\SolvePuzzleCommand());
 $application->add(new Command\FindWeightsForMatcherCommand());
+$application->add(new Command\CreateLineDistanceModelCommandCommand());
 
 $application->run();

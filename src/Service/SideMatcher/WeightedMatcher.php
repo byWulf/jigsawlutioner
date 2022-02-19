@@ -11,6 +11,7 @@ use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
@@ -21,6 +22,7 @@ class WeightedMatcher implements SideMatcherInterface
         CornerDistanceClassifier::class => 0.85142470129366,
         DepthClassifier::class => 0.78605169340463,
         SmallWidthClassifier::class => 0.94656862745098,
+        LineDistanceClassifier::class => 0.78587344028521,
     ];
 
     /**
