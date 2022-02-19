@@ -42,25 +42,6 @@ class CreateDepthModelCommandCommand extends AbstractModelCreatorCommand
 
     protected function createLearner(): Learner
     {
-
-
-//        Adaline	Low	●	●	●	●	Continuous
-        //return new Adaline(256, new Adam(0.01), 1e-2, 1000, 1e-9, 10, new HuberLoss(1)); // 0.5
-//        Extra Tree Regressor	Medium		●		●	Categorical, Continuous
-        //return new ExtraTreeRegressor(20, 1, 0.05, null);
-//        Gradient Boost	High		●	●	●	Categorical, Continuous
-        //return new GradientBoost(new RegressionTree(20, 1, 1e-3, 10, null), 1, 0.1, 10000, 1e-3, 5, 0.1, new SMAPE(), new DummyRegressor(new Constant(0.0)));
-//        K-d Neighbors Regressor	Medium				●	Depends on distance kernel
-        //return new KDNeighborsRegressor(1, true, new BallTree(10)); // 0.81818181818182 ################
-//        KNN Regressor	Medium	●			●	Depends on distance kernel
-        //return new KNNRegressor(2, true, new Cosine()); // 0.81818181811235
-//        MLP Regressor	High	●		●	●	Continuous
-//        Radius Neighbors Regressor	Medium				●	Depends on distance kernerl
-//        Regression Tree	Medium		●		●	Categorical, Continuous
-        return new RegressionTree(30, 4, 1e-4, 20, null);
-        //return new RegressionTree(20, 2, 1e-3, 10, null); // 0.81363
-//        Ridge	Low		●		●	Continuous
-        //return new Ridge(10);
-//        SVR	High					Continuous
+        return new RegressionTree(30, 6, 1e-4, 20, null);
     }
 }

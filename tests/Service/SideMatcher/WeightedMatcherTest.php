@@ -61,14 +61,14 @@ class WeightedMatcherTest extends TestCase
             echo $className . ': ' . $className::getAverageTime() . PHP_EOL;
         }
 
-        echo 'On pos 1: ' . ($onPos1 / $countMatchings) . ' (last known 0.71940928270042) // avg distance to pos 2: ' . ($distanceToPos2 / $onPos1) . ' (last known 0.058021596172889)' . PHP_EOL;
+        echo 'On pos 1: ' . ($onPos1 / $countMatchings) . ' (last known 0.74472573839662) // avg distance to pos 2: ' . ($distanceToPos2 / $onPos1) . ' (last known 0.0579616929463)' . PHP_EOL;
 
-        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 0.97679324894515)' . PHP_EOL;
+        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 0.70200421940928)' . PHP_EOL;
 
         sort($lengths);
         //echo 'Avg length diff: ' . implode(' // ', $lengths) . PHP_EOL;
 
-        $this->assertLessThanOrEqual(0.97679324894515, $matchingPositionsSum / $countMatchings);
+        $this->assertLessThanOrEqual(0.70147679324895, $matchingPositionsSum / $countMatchings);
     }
 
     /**

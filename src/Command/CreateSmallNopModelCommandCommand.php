@@ -17,7 +17,6 @@ class CreateSmallNopModelCommandCommand extends AbstractModelCreatorCommand
 
     protected function createLearner(): Learner
     {
-        return new RegressionTree(30, 4, 1e-4, 20, null);
-        return new RegressionTree(20, 2, 1e-3, 10, null);
+        return new RegressionTree(50, 6, 1e-4, 20, null);
     }
 }
