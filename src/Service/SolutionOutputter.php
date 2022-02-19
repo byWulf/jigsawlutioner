@@ -81,6 +81,14 @@ class SolutionOutputter
                     $piece->getSide(3)->getStartPoint(),
                 ]);
 
+                $readableContext = [];
+
+                if ($placement->getContext() !== null) {
+                    foreach ($placement->getContext() as $sideIndex => $sideContext) {
+                        $readableContext[$sideIndex] = '#' . ($sideContext['matchedProbabilityIndex'] !== null ? $sideContext['matchedProbabilityIndex'] + 1 : '---') . ' (' . implode(', ', array_map(fn (float $num): float => round($num, 2), array_slice($sideContext['probabilities'], 0, 10))) . ($sideContext['matchedProbabilityIndex'] > 9 ? ', ..., ' . round($sideContext['probabilities'][$sideContext['matchedProbabilityIndex']], 2) : '') . ')';
+                    }
+                }
+
                 $pieces[] = [
                     'src' => Path::makeRelative(
                         sprintf($transparentImagePathPattern, $piece->getIndex()),
@@ -107,7 +115,8 @@ class SolutionOutputter
                         $placement->getTopSideIndex(),
                         $placement->getX(),
                         $placement->getY()
-                    )
+                    ),
+                    'readableContext' => $readableContext,
                 ];
                 $pieceIndexes[] = $placement->getPiece()->getIndex();
             }
@@ -155,6 +164,37 @@ class SolutionOutputter
                             .solution .piece-overlay:hover {
                                 background-color: rgba(255, 255, 255, 0.2);
                             }
+                            .solution .piece-overlay-left {
+                                position: absolute;
+                                width: 30%;
+                                height: 80%;
+                                left: 0;
+                                top: 10%;
+                            }
+                            .solution .piece-overlay-right {
+                                position: absolute;
+                                width: 30%;
+                                height: 80%;
+                                right: 0;
+                                top: 10%;
+                            }
+                            .solution .piece-overlay-top {
+                                position: absolute;
+                                width: 80%;
+                                height: 30%;
+                                left: 10%;
+                                top: 0;
+                            }
+                            .solution .piece-overlay-bottom {
+                                position: absolute;
+                                width: 80%;
+                                height: 30%;
+                                left: 10%;
+                                bottom: 0;
+                            }
+                            .solution .piece-overlay-side:hover {
+                                background-color: rgba(255, 200, 150, 0.3);
+                            }
                         </style>
                     </head>
                     <body>
@@ -163,7 +203,12 @@ class SolutionOutputter
                                 <div class="solution" style="{% for name, value in group.solutionStyle %}{{ name }}: {{ value }};{% endfor %}" data-piece-indexes="{{ group.pieceIndexes|join(',') }}">
                                     {% for piece in group.pieces %}
                                         <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}">
-                                        <div class="piece-overlay" style="{% for name, value in piece.overlayStyle %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}"></div>
+                                        <div class="piece-overlay" style="{% for name, value in piece.overlayStyle %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}">
+                                            <div class="piece-overlay-side piece-overlay-top" title="{{ piece.readableContext[0] }}"></div>
+                                            <div class="piece-overlay-side piece-overlay-left" title="{{ piece.readableContext[1] }}"></div>
+                                            <div class="piece-overlay-side piece-overlay-bottom" title="{{ piece.readableContext[2] }}"></div>
+                                            <div class="piece-overlay-side piece-overlay-right" title="{{ piece.readableContext[3] }}"></div>
+                                        </div>
                                     {% endfor %}
                                 </div>
                             </div>

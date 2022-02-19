@@ -126,6 +126,28 @@ class ByWulfSolver implements PuzzleSolverInterface
         usort($groups, fn(Group $a, Group $b): int => count($b->getPlacements()) <=> count($a->getPlacements()));
         $this->solution->setGroups($groups);
 
+        foreach ($this->solution->getGroups() as $group) {
+            foreach ($group->getPlacements() as $placement) {
+                $context = [];
+                foreach (self::DIRECTION_OFFSETS as $indexOffset => $positionOffset) {
+                    $sideKey = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $indexOffset);
+
+                    $matchedPlacement = $group->getFirstPlacementByPosition($placement->getX() + $positionOffset['x'], $placement->getY() + $positionOffset['y']);
+                    $matchedSideKey = null;
+                    if ($matchedPlacement !== null) {
+                        $matchedSideKey = $this->getKey($matchedPlacement->getPiece()->getIndex(), $matchedPlacement->getTopSideIndex() + 6 + $indexOffset);
+                    }
+
+
+                    $context[$indexOffset] = [
+                        'probabilities' => array_values($originalMatchingMap[$sideKey] ?? []),
+                        'matchedProbabilityIndex' => $matchedSideKey !== null ? array_search($matchedSideKey, array_keys($originalMatchingMap[$sideKey] ?? [])) : null,
+                    ];
+                }
+                $placement->setContext($context);
+            }
+        }
+
         return $this->solution;
     }
 

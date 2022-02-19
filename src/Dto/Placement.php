@@ -12,7 +12,8 @@ class Placement
         private int $x,
         private int $y,
         private Piece $piece,
-        private int $topSideIndex
+        private int $topSideIndex,
+        private mixed $context = null
     ) {
     }
 
@@ -75,5 +76,16 @@ class Placement
         $rightSide = $this->piece->getSide($this->topSideIndex + 3);
 
         return ($pointService->getDistanceBetweenPoints($leftSide->getStartPoint(), $leftSide->getEndPoint()) + $pointService->getDistanceBetweenPoints($rightSide->getStartPoint(), $rightSide->getEndPoint())) / 2;
+    }
+
+    public function getContext(): mixed
+    {
+        return $this->context;
+    }
+
+    public function setContext(mixed $context): Placement
+    {
+        $this->context = $context;
+        return $this;
     }
 }
