@@ -11,7 +11,7 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
-use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
+use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
@@ -24,7 +24,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class ByWulfSolver implements PuzzleSolverInterface
 {
-    private const DIRECTION_OFFSETS = [
+    public const DIRECTION_OFFSETS = [
         0 => ['x' => 0, 'y' => -1],
         1 => ['x' => -1, 'y' => 0],
         2 => ['x' => 0, 'y' => 1],
@@ -38,6 +38,8 @@ class ByWulfSolver implements PuzzleSolverInterface
     private int $piecesCount;
 
     private array $matchingMap;
+
+    private array $originalMatchingMap;
 
     private FilesystemAdapter $cache;
 
@@ -72,7 +74,7 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->cache->commit();
         }
 
-        $originalMatchingMap = $this->cache->get(sha1(__CLASS__ . '::matchingMap_' . $cacheName), function() {
+        $this->originalMatchingMap = $this->cache->get(sha1(__CLASS__ . '::matchingMap_' . $cacheName), function() {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');;
             return $this->getMatchingMap();
         });
@@ -81,7 +83,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         foreach ([[0.8, 0.5], [0.6, 0.25], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . implode('/', $minProbability) . '...');
 
-            $this->matchingMap = $originalMatchingMap;
+            $this->matchingMap = $this->originalMatchingMap;
 
             // Loop as long as new pieces can be added
             while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability[0], $minProbability[1])) {
@@ -140,8 +142,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
 
                     $context[$indexOffset] = [
-                        'probabilities' => array_values($originalMatchingMap[$sideKey] ?? []),
-                        'matchedProbabilityIndex' => $matchedSideKey !== null ? array_search($matchedSideKey, array_keys($originalMatchingMap[$sideKey] ?? [])) : null,
+                        'probabilities' => array_values($this->originalMatchingMap[$sideKey] ?? []),
+                        'matchedProbabilityIndex' => $matchedSideKey !== null ? array_search($matchedSideKey, array_keys($this->originalMatchingMap[$sideKey] ?? [])) : null,
                     ];
                 }
                 $placement->setContext($context);
@@ -475,7 +477,8 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->validator->validate($group, [
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
                 new RectangleGroup(),
-                new RealisticSide(['piecesCount' => $this->piecesCount])
+                new RealisticSide(['piecesCount' => $this->piecesCount]),
+                new PossibleSideMatching(['matchingMap' => $this->originalMatchingMap]),
             ]);
 
             return true;

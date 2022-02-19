@@ -77,7 +77,7 @@ class TryhardSolver implements PuzzleSolverInterface
         });
 
         foreach ($this->matchingMap as &$oppositeSides) {
-            $oppositeSides = array_filter($oppositeSides, static fn (float $probability): bool => $probability >= 0.8);
+            $oppositeSides = array_filter($oppositeSides, static fn (float $probability): bool => $probability >= 0.7);
         }
         unset($oppositeSides);
         $this->matchingMap = array_filter($this->matchingMap, static fn (array $probabilities): bool => count($probabilities) > 0);
@@ -366,8 +366,8 @@ class TryhardSolver implements PuzzleSolverInterface
                     unset($probabilities[$this->getKey($pieceIndex, $i)]);
                 }
 
-                // Only keep the best four sides, because our average correct position is 2.75
-                $probabilities = array_slice($probabilities, 0, 2);
+                // Only keep the best 2 sides, because our average correct position is 2.75
+                $probabilities = array_slice($probabilities, 0, 1);
 
                 $matchingMap[$this->getKey($pieceIndex, $sideIndex)] = $probabilities;
             }
