@@ -69,12 +69,13 @@ class ByWulfSolver implements PuzzleSolverInterface
             throw new InvalidArgumentException('$cacheName has to be given.');
         }
 
+        $cacheKey = sha1(__CLASS__ . '::matchingMap_' . $cacheName);
         if (!$useCache) {
-            $this->cache->delete('matchingMap_' . $cacheName);
+            $this->cache->delete($cacheKey);
             $this->cache->commit();
         }
 
-        $this->originalMatchingMap = $this->cache->get(sha1(__CLASS__ . '::matchingMap_' . $cacheName), function() {
+        $this->originalMatchingMap = $this->cache->get($cacheKey, function() {
             $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');;
             return $this->getMatchingMap();
         });
