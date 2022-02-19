@@ -146,6 +146,7 @@ class SolutionOutputter
                                 background-color: #cde;
                                 box-shadow: 0 0 {{ 100 * resizeFactor }}px #cde, 0 0 {{ 100 * resizeFactor }}px #cde, 0 0 {{ 100 * resizeFactor }}px #cde;
                                 margin: {{ 300 * resizeFactor }}px;
+                                float: left;
                             }
                             
                             .solution {
