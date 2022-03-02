@@ -6,8 +6,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Util\TimeTrackerTrait;
+use Stringable;
 
-class DirectionClassifier implements SideClassifierInterface
+class DirectionClassifier implements SideClassifierInterface, Stringable
 {
     use TimeTrackerTrait;
 
@@ -62,5 +63,16 @@ class DirectionClassifier implements SideClassifierInterface
     public function jsonSerialize(): int
     {
         return $this->direction;
+    }
+
+    public function __toString(): string
+    {
+        $directionString = match($this->direction) {
+            self::NOP_INSIDE => 'inside',
+            self::NOP_OUTSIDE => 'outside',
+            self::NOP_STRAIGHT => 'straight',
+        };
+
+        return 'Direction(' . $directionString . ')';
     }
 }

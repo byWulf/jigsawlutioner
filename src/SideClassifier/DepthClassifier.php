@@ -6,8 +6,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Stringable;
 
-class DepthClassifier extends ModelBasedClassifier
+class DepthClassifier extends ModelBasedClassifier implements Stringable
 {
     public function __construct(
         private int $direction,
@@ -58,5 +59,10 @@ class DepthClassifier extends ModelBasedClassifier
     public function jsonSerialize(): float
     {
         return $this->depth;
+    }
+
+    public function __toString(): string
+    {
+        return 'Depth(' . round($this->depth, 2) . ')';
     }
 }

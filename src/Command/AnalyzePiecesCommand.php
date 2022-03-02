@@ -4,7 +4,6 @@ namespace Bywulf\Jigsawlutioner\Command;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
-use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Bywulf\Jigsawlutioner\Exception\SideParsingException;
@@ -12,8 +11,8 @@ use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
 use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
+use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -24,6 +23,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'app:pieces:analyze')]
 class AnalyzePiecesCommand extends Command
 {
+    use PieceLoaderTrait;
+
     protected function configure()
     {
         $this->addArgument('set', InputArgument::REQUIRED, 'Name of set folder');
@@ -42,24 +43,17 @@ class AnalyzePiecesCommand extends Command
         $setName = $input->getArgument('set');
         $meta = json_decode(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/meta.json'), true);
 
+        $numbers = $this->getPieceNumbers($meta);
         if (count($input->getArgument('pieceNumber')) > 0) {
-            $progress->start(count($input->getArgument('pieceNumber')));
-
-            foreach ($input->getArgument('pieceNumber') as $pieceNumber) {
-                $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
-
-                $progress->advance();
-            }
-        } else {
-            $progress->start($meta['max'] - $meta['min'] + 1);
-
-            for ($pieceNumber = $meta['min']; $pieceNumber <= $meta['max']; ++$pieceNumber) {
-                $this->analyzePiece($setName, $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
-
-                $progress->advance();
-            }
+            $numbers = array_map('intval', $input->getArgument('pieceNumber'));
         }
 
+        $progress->start(count($numbers));
+        foreach ($numbers as $pieceNumber) {
+            $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
+
+            $progress->advance();
+        }
         $progress->finish();
 
         $output->writeln(PHP_EOL . PHP_EOL . 'Done.');
@@ -122,7 +116,6 @@ class AnalyzePiecesCommand extends Command
                     $bigWidthClassifier = $side->getClassifier(BigWidthClassifier::class);
                     $centerPoint = $bigWidthClassifier->getCenterPoint();
                     imagesetpixel($image, (int) (($centerPoint->getX() / $resizeFactor) + 300 / $resizeFactor), (int) (($centerPoint->getY() / $resizeFactor) + 50 + $sideIndex * 250 / $resizeFactor), imagecolorallocate($image, 0, 150, 150));
-                    imagestring($image, 1, (int) (600 * $resizeFactor), (int) (50 + $sideIndex * 250 / $resizeFactor), 'CX' . round($bigWidthClassifier->getCenterPoint()->getX(), 2) . ' CY' . round($bigWidthClassifier->getCenterPoint()->getY(), 2) . ' W' . round($bigWidthClassifier->getWidth(), 2), imagecolorallocate($image, 0, 150, 150));
                 } catch (SideClassifierException) {
                 }
 
@@ -131,11 +124,17 @@ class AnalyzePiecesCommand extends Command
                     $smallWidthClassifier = $side->getClassifier(SmallWidthClassifier::class);
                     $centerPoint = $smallWidthClassifier->getCenterPoint();
                     imagesetpixel($image, (int) (($centerPoint->getX() / $resizeFactor) + 300 / $resizeFactor), (int) (($centerPoint->getY() / $resizeFactor) + 50 + $sideIndex * 250 / $resizeFactor), imagecolorallocate($image, 150, 150, 0));
-                    imagestring($image, 1,  (int) (600 / $resizeFactor), (int) (60 + $sideIndex * 250 / $resizeFactor), 'CX' . round($smallWidthClassifier->getCenterPoint()->getX(), 2) . ' CY' . round($smallWidthClassifier->getCenterPoint()->getY(), 2) . ' W' . round($smallWidthClassifier->getWidth(), 2), imagecolorallocate($image, 150, 150, 0));
                 } catch (SideClassifierException) {
                 }
 
-                imagestring($image, 5, (int) (600 / $resizeFactor), (int) (30 + $sideIndex * 250 / $resizeFactor), $side->getClassifier(DirectionClassifier::class)->getDirection(), $black);
+                $classifiers = $side->getClassifiers();
+                ksort($classifiers);
+
+                $yOffset = 0;
+                foreach ($classifiers as $classifier) {
+                    imagestring($image, 1, (int) (600 / $resizeFactor), (int) ($yOffset + $sideIndex * 250 / $resizeFactor), $classifier, $black);
+                    $yOffset += 10;
+                }
             }
 
             $piece->reduceData();

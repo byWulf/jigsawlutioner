@@ -7,8 +7,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Stringable;
 
-class LineDistanceClassifier extends ModelBasedClassifier
+class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
 {
     public function __construct(
         private int $direction,
@@ -151,5 +152,10 @@ class LineDistanceClassifier extends ModelBasedClassifier
             'minLineDistance' => $this->minLineDistance,
             'maxLineDistance' => $this->maxLineDistance,
         ];
+    }
+
+    public function __toString(): string
+    {
+        return 'LineDistance(avg: ' . round($this->averageLineDistance, 2) . ', min: ' . round($this->minLineDistance, 2) . ', max: ' . round($this->maxLineDistance, 2) . ')';
     }
 }

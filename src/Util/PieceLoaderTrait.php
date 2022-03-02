@@ -17,7 +17,7 @@ trait PieceLoaderTrait
         $meta = json_decode(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/meta.json'), true);
 
         $pieces = [];
-        for ($i = $meta['min']; $i <= $meta['max']; ++$i) {
+        foreach ($this->getPieceNumbers($meta) as $i) {
             if (!is_file(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $i . '_piece.ser')) {
                 continue;
             }
@@ -58,5 +58,31 @@ trait PieceLoaderTrait
         }
 
         return $pieces;
+    }
+
+    private function getPieceNumbers(array $meta): array
+    {
+        if (!isset($meta['numbers']) && !isset($meta['min']) && !isset($meta['max'])) {
+            throw new InvalidArgumentException('"numbers" or "min"+"max" have to be set in the meta.json.');
+        }
+
+        if (isset($meta['numbers']) && (isset($meta['min']) || isset($meta['max']))) {
+            throw new InvalidArgumentException('Either "numbers" or "min"+"max" have to be set in the meta.json, but not both at the same time.');
+        }
+
+        if (isset($meta['numbers'])) {
+            $numbers = $meta['numbers'];
+        } else {
+            if (!isset($meta['min']) || !isset($meta['max'])) {
+                throw new InvalidArgumentException('When using number range, "min" and "max" have to be set at the same time.');
+            }
+
+            $numbers = [];
+            for ($i = $meta['min']; $i <= $meta['max']; ++$i) {
+                $numbers[] = $i;
+            }
+        }
+
+        return $numbers;
     }
 }
