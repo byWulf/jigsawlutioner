@@ -66,10 +66,14 @@ class AnalyzePiecesCommand extends Command
         $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
         $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . ($hasSeparateColorImages ? '_color' : '') . '.jpg');
 
+        $resizedImage = imagecreatetruecolor((int) round(imagesx($transparentImage) / 10), (int) round(imagesy($transparentImage) / 10));
+        imagecopyresampled($resizedImage, $transparentImage, 0, 0, 0,0, (int) round(imagesx($transparentImage) / 10), (int) round(imagesy($transparentImage) / 10), imagesx($transparentImage), imagesy($transparentImage));
+
         try {
             $piece = $pieceAnalyzer->getPieceFromImage($pieceNumber, $image, new ByWulfBorderFinderContext(
                 threshold: $threshold,
-                transparentImage: $transparentImage
+                transparentImage: $transparentImage,
+                smallTransparentImage: $resizedImage,
             ));
 
             // Found corners
@@ -148,6 +152,7 @@ class AnalyzePiecesCommand extends Command
         } finally {
             imagepng($image, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_mask.png');
             imagepng($transparentImage, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_transparent.png');
+            imagepng($resizedImage, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_transparent_small.png');
         }
     }
 }

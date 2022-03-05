@@ -84,11 +84,14 @@ class ByWulfBorderFinder implements BorderFinderInterface
         if ($context->getTransparentImage() !== null) {
             $this->createTransparentImage($context->getTransparentImage(), $pixelMap, $biggestObjectColor);
         }
+        if ($context->getSmallTransparentImage() !== null) {
+            $this->createSmallTransparentImage($context->getSmallTransparentImage(), $pixelMap, $biggestObjectColor);
+        }
 
 //        // Add aprox. 2 pixels of the piece border again so the form of the piece is not off
 //        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
 //
-//        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 1.5);
+//        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 3.5);
 //
 //        $pixelMap->applyToImage();
 //
@@ -105,8 +108,9 @@ class ByWulfBorderFinder implements BorderFinderInterface
 //
 //        // Remove every black area, which is not the biggest
 //        $this->replaceSmallerColorAreas($pixelMap, $biggestObjectColor, $biggestObjectColor2, $this->allocateColor($image, 140, 140, 140));
-
-        $pixelMap->applyToImage();
+//
+//        $pixelMap->applyToImage();
+//        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor2);
         $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
 
         return $points;
@@ -386,6 +390,24 @@ class ByWulfBorderFinder implements BorderFinderInterface
         for ($y = 0; $y < imagesy($transparentImage); $y++) {
             for ($x = 0; $x < imagesx($transparentImage); $x++) {
                 if ($pixelMap->getColor($x, $y) !== $opaqueColor) {
+                    imagesetpixel($transparentImage, $x, $y, $transparentColor);
+                }
+            }
+        }
+    }
+
+    private function createSmallTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
+    {
+        $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
+        if ($transparentColor === false) {
+            throw new BorderParsingException('Color could not be created.');
+        }
+
+        imagecolortransparent($transparentImage, $transparentColor);
+
+        for ($y = 0; $y < imagesy($transparentImage); $y++) {
+            for ($x = 0; $x < imagesx($transparentImage); $x++) {
+                if ($pixelMap->getColor($x * 10, $y * 10) !== $opaqueColor) {
                     imagesetpixel($transparentImage, $x, $y, $transparentColor);
                 }
             }
