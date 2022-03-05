@@ -2,23 +2,18 @@
 
 namespace Bywulf\Jigsawlutioner\Command;
 
-use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
-use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
-use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
-use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Bywulf\Jigsawlutioner\Exception\SideParsingException;
-use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
-use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
-use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
-use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
-use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exchange\AMQPExchangeType;
+use PhpAmqpLib\Message\AMQPMessage;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Process\Process;
 
 #[AsCommand(name: 'app:pieces:analyze')]
 class AnalyzePiecesCommand extends Command
@@ -33,12 +28,15 @@ class AnalyzePiecesCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $borderFinder = new ByWulfBorderFinder();
-        $sideFinder = new ByWulfSideFinder();
-        $pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
+        $io = new SymfonyStyle($input, $output);
 
-        $progress = new ProgressBar($output);
-        $progress->setFormat(' %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%');
+        $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+        $channel = $connection->channel();
+
+        $channel->queue_declare('analyze', false, false, false, false);
+        $channel->exchange_declare('analyze', AMQPExchangeType::DIRECT, false, true, false);
+        $channel->queue_bind('analyze', 'analyze');
+
 
         $setName = $input->getArgument('set');
         $meta = json_decode(file_get_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/meta.json'), true);
@@ -48,111 +46,40 @@ class AnalyzePiecesCommand extends Command
             $numbers = array_map('intval', $input->getArgument('pieceNumber'));
         }
 
-        $progress->start(count($numbers));
+        $channel->queue_purge('analyze');
         foreach ($numbers as $pieceNumber) {
-            $this->analyzePiece($setName, (int) $pieceNumber, $pieceAnalyzer, $meta['threshold'], $meta['separateColorImages'] ?? false);
-
-            $progress->advance();
+            $channel->basic_publish(new AMQPMessage(json_encode([
+                'setName' => $setName,
+                'pieceNumber' => (int) $pieceNumber
+            ])), '', 'analyze');
         }
-        $progress->finish();
 
-        $output->writeln(PHP_EOL . PHP_EOL . 'Done.');
+        $pieceCount = count($numbers);
+
+        for ($i = 1; $i <= 10; $i++) {
+            $process = new Process([ PHP_BINARY, __DIR__ . '/../../bin/console', 'app:consumer:piece:analyze']);
+            $process->start();
+            $processes[] = $process;
+        }
+
+        $progress = new ProgressBar($output);
+        $progress->setFormat(' %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%');
+        $progress->start($pieceCount);
+        do {
+            [$queue, $messageCount, $consumerCount] = $channel->queue_declare('analyze', true);
+            $progress->setProgress($pieceCount - $messageCount);
+
+            usleep(100000);
+        } while ($messageCount > 0);
+        $progress->finish();
+        $output->writeln('');
+
+        foreach ($processes as $process) {
+            $process->stop();
+        }
+
+        $io->success('Finished.');
 
         return self::SUCCESS;
-    }
-
-    private function analyzePiece(string $setName, int $pieceNumber, PieceAnalyzer $pieceAnalyzer, float $threshold, bool $hasSeparateColorImages): void
-    {
-        $image = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '.jpg');
-        $transparentImage = imagecreatefromjpeg(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . ($hasSeparateColorImages ? '_color' : '') . '.jpg');
-
-        $resizedImage = imagecreatetruecolor((int) round(imagesx($transparentImage) / 10), (int) round(imagesy($transparentImage) / 10));
-        imagecopyresampled($resizedImage, $transparentImage, 0, 0, 0,0, (int) round(imagesx($transparentImage) / 10), (int) round(imagesy($transparentImage) / 10), imagesx($transparentImage), imagesy($transparentImage));
-
-        try {
-            $piece = $pieceAnalyzer->getPieceFromImage($pieceNumber, $image, new ByWulfBorderFinderContext(
-                threshold: $threshold,
-                transparentImage: $transparentImage,
-                smallTransparentImage: $resizedImage,
-            ));
-
-            // Found corners
-            $black = imagecolorallocate($image, 0, 0, 0);
-            foreach ($piece->getBorderPoints() as $point) {
-                if ($point instanceof DerivativePoint && $point->isUsedAsCorner()) {
-                    for ($x = (int) $point->getX() - 10; $x < $point->getX() + 10; ++$x) {
-                        imagesetpixel($image, $x, (int) $point->getY(), $black);
-                    }
-                    for ($y = (int) $point->getY() - 10; $y < $point->getY() + 10; ++$y) {
-                        imagesetpixel($image, (int) $point->getX(), $y, $black);
-                    }
-                }
-            }
-
-            // BorderPoints (red = anti-clockwise, green = clockwise)
-            foreach ($piece->getBorderPoints() as $point) {
-                $color = imagecolorallocate($image, 255, 255, 255);
-                if ($point instanceof DerivativePoint) {
-                    $diff = (int) min((abs($point->getDerivative()) / 90) * 255, 255);
-
-                    $color = imagecolorallocate(
-                        $image,
-                        255 - ($point->getDerivative() > 0 ? $diff : 0),
-                        255 - ($point->getDerivative() < 0 ? $diff : 0),
-                        255 - $diff
-                    );
-                    if ($point->isExtreme()) {
-                        $color = imagecolorallocate($image, 255, 255, 0);
-                    }
-                }
-                imagesetpixel($image, (int) $point->getX(), (int) $point->getY(), $color);
-            }
-
-            // Smoothed and normalized side points
-            $resizeFactor = 3;
-            foreach ($piece->getSides() as $sideIndex => $side) {
-                foreach ($side->getPoints() as $point) {
-                    imagesetpixel($image, (int) (($point->getX() / $resizeFactor) + 300 / $resizeFactor), (int) (($point->getY() / $resizeFactor) + 50 + $sideIndex * 250 / $resizeFactor), imagecolorallocate($image, 50, 80, 255));
-                }
-
-                try {
-                    /** @var BigWidthClassifier $bigWidthClassifier */
-                    $bigWidthClassifier = $side->getClassifier(BigWidthClassifier::class);
-                    $centerPoint = $bigWidthClassifier->getCenterPoint();
-                    imagesetpixel($image, (int) (($centerPoint->getX() / $resizeFactor) + 300 / $resizeFactor), (int) (($centerPoint->getY() / $resizeFactor) + 50 + $sideIndex * 250 / $resizeFactor), imagecolorallocate($image, 0, 150, 150));
-                } catch (SideClassifierException) {
-                }
-
-                try {
-                    /** @var SmallWidthClassifier $smallWidthClassifier */
-                    $smallWidthClassifier = $side->getClassifier(SmallWidthClassifier::class);
-                    $centerPoint = $smallWidthClassifier->getCenterPoint();
-                    imagesetpixel($image, (int) (($centerPoint->getX() / $resizeFactor) + 300 / $resizeFactor), (int) (($centerPoint->getY() / $resizeFactor) + 50 + $sideIndex * 250 / $resizeFactor), imagecolorallocate($image, 150, 150, 0));
-                } catch (SideClassifierException) {
-                }
-
-                $classifiers = $side->getClassifiers();
-                ksort($classifiers);
-
-                $yOffset = 0;
-                foreach ($classifiers as $classifier) {
-                    imagestring($image, 1, (int) (600 / $resizeFactor), (int) ($yOffset + $sideIndex * 250 / $resizeFactor), $classifier, $black);
-                    $yOffset += 10;
-                }
-            }
-
-            $piece->reduceData();
-
-            file_put_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_piece.ser', serialize($piece));
-            file_put_contents(__DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_piece.json', json_encode($piece));
-        } catch (BorderParsingException $exception) {
-            echo 'Piece ' . $pieceNumber . ' failed at BorderFinding: ' . $exception->getMessage() . PHP_EOL;
-        } catch (SideParsingException $exception) {
-            echo 'Piece ' . $pieceNumber . ' failed at SideFinding: ' . $exception->getMessage() . PHP_EOL;
-        } finally {
-            imagepng($image, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_mask.png');
-            imagepng($transparentImage, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_transparent.png');
-            imagepng($resizedImage, __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece' . $pieceNumber . '_transparent_small.png');
-        }
     }
 }
