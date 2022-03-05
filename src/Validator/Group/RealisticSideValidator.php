@@ -37,7 +37,7 @@ class RealisticSideValidator extends ConstraintValidator
             ($width < $minSize && $limits['minXBorder'] !== null && $limits['maxXBorder'] !== null) ||
             ($height < $minSize && $limits['minYBorder'] !== null && $limits['maxYBorder'] !== null)
         ) {
-            throw new GroupInvalidException('No realistic size.');
+            throw new GroupInvalidException('No realistic size. minSize: ' . $minSize . ' // maxSize: ' . $maxSize . ' // width: ' . $width . ' // height: ' . $height . ' // ' . json_encode($limits));
         }
     }
 
@@ -54,10 +54,10 @@ class RealisticSideValidator extends ConstraintValidator
             'maxY' => null,
         ];
         foreach ($value->getPlacements() as $placement) {
-            $limits['minX'] = min($limits['minX'], $placement->getX());
-            $limits['maxX'] = max($limits['maxX'], $placement->getX());
-            $limits['minY'] = min($limits['minY'], $placement->getY());
-            $limits['maxY'] = max($limits['maxY'], $placement->getY());
+            $limits['minX'] = $limits['minX'] !== null ? min($limits['minX'], $placement->getX()) : $placement->getX();
+            $limits['maxX'] = $limits['maxX'] !== null ? max($limits['maxX'], $placement->getX()) : $placement->getX();
+            $limits['minY'] = $limits['minY'] !== null ? min($limits['minY'], $placement->getY()) : $placement->getY();
+            $limits['maxY'] = $limits['maxY'] !== null ? max($limits['maxY'], $placement->getY()) : $placement->getY();
 
             if (
                 $value->getFirstPlacementByPosition($placement->getX(), $placement->getY()) === $placement &&
