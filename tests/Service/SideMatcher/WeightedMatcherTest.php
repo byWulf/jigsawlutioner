@@ -27,7 +27,7 @@ class WeightedMatcherTest extends TestCase
 
     public function testGetMatchingProbabilities(): void
     {
-        $pieces = $this->getPieces('newcam_test_ordered');
+        $pieces = $this->getPieces('test_ordered');
 
         $allSides = array_merge(...array_map(fn (Piece $piece): array => $piece->getSides(), $pieces));
 
@@ -61,14 +61,13 @@ class WeightedMatcherTest extends TestCase
             echo $className . ': ' . $className::getAverageTime() . PHP_EOL;
         }
 
-        echo 'On pos 1: ' . ($onPos1 / $countMatchings) . ' (last known 0.85337552742616) // avg distance to pos 2: ' . ($distanceToPos2 / $onPos1) . ' (last known 0.056749284679846)' . PHP_EOL;
+        echo 'On pos 1: ' . ($onPos1 / $countMatchings) . ' (last known 0.91772151898734) // avg distance to pos 2: ' . ($distanceToPos2 / $onPos1) . ' (last known 0.062800210743943)' . PHP_EOL;
 
-        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 0.48154008438819)' . PHP_EOL;
+        echo 'Current average position: ' . ($matchingPositionsSum / $countMatchings) . ' (last known average position: 0.33069620253165)' . PHP_EOL;
 
         sort($lengths);
-        //echo 'Avg length diff: ' . implode(' // ', $lengths) . PHP_EOL;
 
-        $this->assertLessThanOrEqual(0.48154008438819, $matchingPositionsSum / $countMatchings);
+        $this->assertLessThanOrEqual(0.33069620253165, $matchingPositionsSum / $countMatchings);
     }
 
     /**

@@ -137,7 +137,7 @@ abstract class AbstractModelCreatorCommand extends Command
     {
         $nopInformation = [];
 
-        foreach ($this->getPieces('newcam_test_ordered', true) as $pieceIndex => $piece) {
+        foreach ($this->getPieces('test_ordered', true) as $pieceIndex => $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
                 $nopInformation[$pieceIndex][$sideIndex] = $side;
             }

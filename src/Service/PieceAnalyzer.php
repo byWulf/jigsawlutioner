@@ -46,6 +46,7 @@ class PieceAnalyzer
         foreach ($sides as $side) {
             $points = $side->getPoints();
             $points = $this->pathService->softenPolyline($points, 10, 100);
+            $points = array_slice($points, 5, 90);
             $points = $this->pathService->rotatePointsToCenter($points);
 
             $side->setPoints($points);
