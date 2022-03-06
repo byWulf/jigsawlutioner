@@ -58,7 +58,9 @@ class AnalyzePiecesCommand extends Command
 
         for ($i = 1; $i <= 10; $i++) {
             $process = new Process([ PHP_BINARY, __DIR__ . '/../../bin/console', 'app:consumer:piece:analyze']);
-            $process->start();
+            $process->start(function (string $type, string $content) use ($output): void {
+                $output->writeln(sprintf('[%s] %s', $type, $content));
+            });
             $processes[] = $process;
         }
 
@@ -71,6 +73,10 @@ class AnalyzePiecesCommand extends Command
 
             usleep(100000);
         } while ($messageCount > 0);
+
+        // Wait another 5 seconds because we only get the open message count, not containing the messages that are currently being processed
+        sleep(5);
+
         $progress->finish();
         $output->writeln('');
 
