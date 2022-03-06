@@ -31,7 +31,7 @@ class RectangleGroupValidator extends ConstraintValidator
             ($limits['minXNop'] !== null && $limits['minXBorder'] !== null && $limits['minXNop'] <= $limits['minXBorder']) ||
             ($limits['maxXNop'] !== null && $limits['maxXBorder'] !== null && $limits['maxXNop'] >= $limits['maxXBorder'])
         ) {
-            throw new GroupInvalidException('No rectangle.');
+            throw new GroupInvalidException('No rectangle. ' . json_encode($limits));
         }
     }
 
@@ -48,12 +48,10 @@ class RectangleGroupValidator extends ConstraintValidator
             'maxXNop' => null,
         ];
         foreach ($value->getPlacements() as $placement) {
-            if (
-                $value->getFirstPlacementByPosition($placement->getX(), $placement->getY()) === $placement &&
-                count($value->getPlacementsByPosition($placement->getX(), $placement->getY())) > 1
-            ) {
+            if ($value->getLastPlacementByPosition($placement->getX(), $placement->getY()) !== $placement) {
                 continue;
             }
+
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
                 $limits['minYBorder'] = max($limits['minYBorder'] ?? $placement->getY(), $placement->getY());
