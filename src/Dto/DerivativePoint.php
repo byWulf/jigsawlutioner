@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
-use JsonSerializable;
-
-class DerivativePoint extends Point implements JsonSerializable
+class DerivativePoint extends Point
 {
     private bool $extreme = false;
 

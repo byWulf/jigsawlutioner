@@ -16,6 +16,8 @@ class Side implements JsonSerializable
      */
     private array $classifiers = [];
 
+    private array $unrotatedPoints = [];
+
     /**
      * @param Point[] $points
      */
@@ -74,9 +76,32 @@ class Side implements JsonSerializable
         return $this->startPoint;
     }
 
+    public function setStartPoint(Point $startPoint): Side
+    {
+        $this->startPoint = $startPoint;
+        return $this;
+    }
+
     public function getEndPoint(): Point
     {
         return $this->endPoint;
+    }
+
+    public function setEndPoint(Point $endPoint): Side
+    {
+        $this->endPoint = $endPoint;
+        return $this;
+    }
+
+    public function getUnrotatedPoints(): array
+    {
+        return $this->unrotatedPoints;
+    }
+
+    public function setUnrotatedPoints(array $unrotatedPoints): Side
+    {
+        $this->unrotatedPoints = $unrotatedPoints;
+        return $this;
     }
 
     public function getDirection(): int

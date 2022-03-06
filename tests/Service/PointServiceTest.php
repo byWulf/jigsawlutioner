@@ -94,4 +94,30 @@ class PointServiceTest extends TestCase
             [new Point(0, 0), 45, 5, new Point(sqrt(2) * 0.5 * 5, sqrt(2) * 0.5 * 5)],
         ];
     }
+
+    /**
+     * @dataProvider getIntersectionPointOfLinesProvider
+     */
+    public function testGetIntersectionPointOfLines(Point $line1StartPoint, Point $line1EndPoint, Point $line2StartPoint, Point $line2EndPoint, ?Point $expectedPoint): void
+    {
+        $this->assertEquals($expectedPoint, $this->pointService->getIntersectionPointOfLines($line1StartPoint, $line1EndPoint, $line2StartPoint, $line2EndPoint));
+    }
+
+    public function getIntersectionPointOfLinesProvider(): array
+    {
+        return [
+            [new Point(-1, 0), new Point(1, 0), new Point(0, -1), new Point(0, 1), new Point(0, 0)],
+            [new Point(1, 0), new Point(-1, 0), new Point(0, -1), new Point(0, 1), new Point(0, 0)],
+            [new Point(-1, 0), new Point(1, 0), new Point(0, 1), new Point(0, -1), new Point(0, 0)],
+            [new Point(1, 0), new Point(-1, 0), new Point(0, 1), new Point(0, -1), new Point(0, 0)],
+            [new Point(-5, 0), new Point(0, 0), new Point(0, -5), new Point(0, 0), new Point(0, 0)],
+            [new Point(-5, 0), new Point(-3, 0), new Point(0, -5), new Point(0, -3), new Point(0, 0)],
+            [new Point(-1, 0), new Point(1, 0), new Point(-1, 1), new Point(1, 1), null],
+            [new Point(-1, 0), new Point(-1, 0), new Point(-1, 1), new Point(1, 1), null],
+            [new Point(-1, 0), new Point(1, 0), new Point(-1, 1), new Point(-1, 1), null],
+            [new Point(-1, 0), new Point(-1, 0), new Point(-1, 1), new Point(-1, 1), null],
+            [new Point(-1, -1), new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(0, 0)],
+            [new Point(-1, 5), new Point(1, 5), new Point(3, -2), new Point(3, -3), new Point(3, 5)],
+        ];
+    }
 }

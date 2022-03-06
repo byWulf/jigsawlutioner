@@ -115,4 +115,38 @@ class PointService
 
         return $adjustedPoint;
     }
+
+    public function getIntersectionPointOfLines(Point $line1StartPoint, Point $line1EndPoint, Point $line2StartPoint, Point $line2EndPoint): ?Point
+    {
+        $x1 = $line1StartPoint->getX();
+        $y1 = $line1StartPoint->getY();
+
+        $x2 = $line1EndPoint->getX();
+        $y2 = $line1EndPoint->getY();
+
+        if ($x1 === $x2 && $y1 === $y2) {
+            return null;
+        }
+
+        $x3 = $line2StartPoint->getX();
+        $y3 = $line2StartPoint->getY();
+
+        $x4 = $line2EndPoint->getX();
+        $y4 = $line2EndPoint->getY();
+
+        if ($x3 === $x4 && $y3 === $y4) {
+            return null;
+        }
+
+        $denominator = (($x1 - $x2) * ($y3 - $y4)) - (($y1 - $y2) * ($x3 - $x4));
+
+        if ($denominator === 0.0) {
+            return null;
+        }
+
+        $intersectionX = (($x1 * $y2 - $y1 * $x2) * ($x3 - $x4) - ($x1 - $x2) * ($x3 * $y4 - $x4 * $y3)) / $denominator;
+        $intersectionY = (($x1 * $y2 - $y1 * $x2) * ($y3 - $y4) - ($y1 - $y2) * ($x3 * $y4 - $y3 * $x4)) / $denominator;
+
+        return new Point($intersectionX, $intersectionY);
+    }
 }

@@ -46,10 +46,23 @@ class PieceAnalyzer
         foreach ($sides as $side) {
             $points = $side->getPoints();
             $points = $this->pathService->softenPolyline($points, 10, 100);
-            $points = array_slice($points, 5, 90);
-            $points = $this->pathService->rotatePointsToCenter($points);
 
-            $side->setPoints($points);
+            $movedPoints = [];
+            foreach ($points as $index => $point) {
+                if (isset($points[$index - 1], $points[$index + 1])) {
+                    $rotation = $this->pointService->getRotation($points[$index - 1], $points[$index + 1]) + 90;
+
+                    $point = $this->pointService->movePoint($point, $rotation, 2);
+                }
+
+                $movedPoints[] = $point;
+            }
+
+            $points = array_slice($movedPoints, 5, 90);
+            $points = $this->pathService->softenPolyline($points, 0, 100);
+
+            $side->setUnrotatedPoints($points);
+            $side->setPoints($this->pathService->rotatePointsToCenter($points));
 
             $metadata = $this->createSideMetadata($side);
 

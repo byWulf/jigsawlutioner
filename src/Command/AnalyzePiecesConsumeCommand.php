@@ -94,6 +94,14 @@ class AnalyzePiecesConsumeCommand extends Command
                 imagesetpixel($image, (int) $point->getX(), (int) $point->getY(), $color);
             }
 
+            // Normalized side points
+            $sidePoint = imagecolorallocate($image, 255, 0, 255);
+            foreach ($piece->getSides() as $side) {
+                foreach ($side->getUnrotatedPoints() as $point) {
+                    imagesetpixel($image, (int) $point->getX(), (int) $point->getY(), $sidePoint);
+                }
+            }
+
             // Smoothed and normalized side points
             $black = imagecolorallocate($image, 0, 0, 0);
             $resizeFactor = 3;

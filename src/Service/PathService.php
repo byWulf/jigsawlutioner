@@ -71,10 +71,12 @@ class PathService
             $lineLength = $this->pointService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
             while ($offset <= $lineLength - $distance) {
                 $offset += $distance;
-                $extendedPoints[] = new Point(
-                    $points[$i]->getX() + ($points[$i + 1]->getX() - $points[$i]->getX()) / $lineLength * $offset,
-                    $points[$i]->getY() + ($points[$i + 1]->getY() - $points[$i]->getY()) / $lineLength * $offset,
-                );
+                if ($offset !== 0.0) {
+                    $extendedPoints[] = new Point(
+                        $points[$i]->getX() + ($points[$i + 1]->getX() - $points[$i]->getX()) / $lineLength * $offset,
+                        $points[$i]->getY() + ($points[$i + 1]->getY() - $points[$i]->getY()) / $lineLength * $offset,
+                    );
+                }
             }
             $offset -= $lineLength;
         }
