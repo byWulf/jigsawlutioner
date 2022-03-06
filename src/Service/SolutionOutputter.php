@@ -47,17 +47,27 @@ class SolutionOutputter
             }
 
             $currentLeft = 0;
+            $lastWidth = 0;
             for ($x = min(array_keys($widths)); $x <= max(array_keys($widths)); $x++) {
-                $currentLeft += $widths[$x] / 2;
+                $currentLeft += ($widths[$x] ?? $lastWidth) / 2;
                 $lefts[$x] = $currentLeft;
-                $currentLeft += $widths[$x] / 2;
+                $currentLeft += ($widths[$x] ?? $lastWidth) / 2;
+
+                if (isset($widths[$x])) {
+                    $lastWidth = $widths[$x];
+                }
             }
 
             $currentTop = 0;
+            $lastHeight = 0;
             for ($y = min(array_keys($heights)); $y <= max(array_keys($heights)); $y++) {
-                $currentTop += $heights[$y] / 2;
+                $currentTop += ($heights[$y] ?? $lastHeight) / 2;
                 $tops[$y] = $currentTop;
-                $currentTop += $heights[$y] / 2;
+                $currentTop += ($heights[$y] ?? $lastHeight) / 2;
+
+                if (isset($heights[$x])) {
+                    $lastHeight = $heights[$x];
+                }
             }
 
             $pieces = [];
