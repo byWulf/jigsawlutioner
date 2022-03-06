@@ -64,15 +64,14 @@ class AnalyzePiecesConsumeCommand extends Command
             ));
 
             // Found corners
-            $black = imagecolorallocate($image, 0, 0, 0);
-            foreach ($piece->getBorderPoints() as $point) {
-                if ($point instanceof DerivativePoint && $point->isUsedAsCorner()) {
-                    for ($x = (int) $point->getX() - 10; $x < $point->getX() + 10; ++$x) {
-                        imagesetpixel($image, $x, (int) $point->getY(), $black);
-                    }
-                    for ($y = (int) $point->getY() - 10; $y < $point->getY() + 10; ++$y) {
-                        imagesetpixel($image, (int) $point->getX(), $y, $black);
-                    }
+            $cornerColor = imagecolorallocate($image, 255, 128, 0);
+            foreach ($piece->getSides() as $side) {
+                $point = $side->getStartPoint();
+                for ($x = (int) $point->getX() - 10; $x < $point->getX() + 10; ++$x) {
+                    imagesetpixel($image, $x, (int) $point->getY(), $cornerColor);
+                }
+                for ($y = (int) $point->getY() - 10; $y < $point->getY() + 10; ++$y) {
+                    imagesetpixel($image, (int) $point->getX(), $y, $cornerColor);
                 }
             }
 
@@ -96,6 +95,7 @@ class AnalyzePiecesConsumeCommand extends Command
             }
 
             // Smoothed and normalized side points
+            $black = imagecolorallocate($image, 0, 0, 0);
             $resizeFactor = 3;
             foreach ($piece->getSides() as $sideIndex => $side) {
                 foreach ($side->getPoints() as $point) {
