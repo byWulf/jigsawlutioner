@@ -80,38 +80,19 @@ class ByWulfSolver implements PuzzleSolverInterface
             return $this->getMatchingMap();
         });
 
-        //foreach ([[0.6, 0.6], [0.7, 0.5], [0.8, 0.4], [0.9, 0.3], [0.5, 0.2], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
-        foreach ([[0.8, 0.5], [0.6, 0.25], [0.5, 0.1], [0.01, 0.01]] as $minProbability) {
-            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . implode('/', $minProbability) . '...');
+        foreach ($this->ignoredSideKeys as $ignoredSideKeyCombination) {
+            [$sideKey, $matchingSideKey] = explode('-', $ignoredSideKeyCombination);
 
-            $this->matchingMap = $this->originalMatchingMap;
-
-            // Loop as long as new pieces can be added
-            while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability[0], $minProbability[1])) {
-                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
-                //(new SolutionOutputter())->outputAsText($this->solution);
-            }
-
-            // Aftet that, look which groups can be merged the best
-            while ($this->addNextPlacement([$this, 'getMostFittableGroupSide'], $minProbability[0], $minProbability[1])) {
-                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Reduced groups into ' . count($this->solution->getGroups()) . ' groups.');
-                //(new SolutionOutputter())->outputAsText($this->solution);
-            }
+            unset($this->originalMatchingMap[$sideKey][$matchingSideKey]);
         }
 
-//        $this->matchingMap = $originalMatchingMap;
-//        file_put_contents('C:\Users\michael.wolf\AppData\Roaming\JetBrains\PhpStorm2021.3\scratches\scratch_6.txt', '');
-//        foreach ($this->matchingMap as $key => $map) {
-//            file_put_contents(
-//                'C:\Users\michael.wolf\AppData\Roaming\JetBrains\PhpStorm2021.3\scratches\scratch_6.txt',
-//                '#' . $key . ': ' . implode(', ', array_map(fn(string $key, float $prob) => $key . '->' . round($prob,2), array_keys($map), $map)) . PHP_EOL,
-//                FILE_APPEND
-//            );
-//        }
-//        while ($this->addNextPlacement([$this, 'getMostFittableSide'], 0.75, 0.2)) {
-//            $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
-//            //(new SolutionOutputter())->outputAsText($this->solution);
-//        }
+        $this->matchingMap = $this->originalMatchingMap;
+
+        $this->addPossiblePlacements(0.8, 0.5);
+        $this->addPossiblePlacements(0.6, 0.25);
+        $this->addPossiblePlacements(0.5, 0.1);
+        $this->addPossiblePlacements(0.01, 0.01);
+        $this->addPossiblePlacements(0, 0);
 
         $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution.');
 
@@ -129,29 +110,44 @@ class ByWulfSolver implements PuzzleSolverInterface
         usort($groups, fn(Group $a, Group $b): int => count($b->getPlacements()) <=> count($a->getPlacements()));
         $this->solution->setGroups($groups);
 
-        foreach ($this->solution->getGroups() as $group) {
-            foreach ($group->getPlacements() as $placement) {
-                $context = [];
-                foreach (self::DIRECTION_OFFSETS as $indexOffset => $positionOffset) {
-                    $sideKey = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $indexOffset);
-
-                    $matchedPlacement = $group->getFirstPlacementByPosition($placement->getX() + $positionOffset['x'], $placement->getY() + $positionOffset['y']);
-                    $matchedSideKey = null;
-                    if ($matchedPlacement !== null) {
-                        $matchedSideKey = $this->getKey($matchedPlacement->getPiece()->getIndex(), $matchedPlacement->getTopSideIndex() + 6 + $indexOffset);
-                    }
-
-
-                    $context[$indexOffset] = [
-                        'probabilities' => array_values($this->originalMatchingMap[$sideKey] ?? []),
-                        'matchedProbabilityIndex' => $matchedSideKey !== null ? array_search($matchedSideKey, array_keys($this->originalMatchingMap[$sideKey] ?? [])) : null,
-                    ];
-                }
-                $placement->setContext($context);
-            }
-        }
+        $this->setPlacementContexts();
 
         return $this->solution;
+    }
+
+    private function addPossiblePlacements(float $minProbability, float $minDifference): void
+    {
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Starting to find solution with minProbability of ' . $minProbability . '/' . $minDifference . '...');
+
+        //$this->matchingMap = $this->originalMatchingMap;
+
+        while ($this->addNextPlacement([$this, 'getMostFittableSide'], $minProbability, $minDifference)) {
+            $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups (add).');
+
+            $this->saveOutputStep();
+        }
+
+        while ($this->addNextPlacement([$this, 'getMostFittableGroupSide'], $minProbability, $minDifference)) {
+            $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups (reduce).');
+
+            $this->saveOutputStep();
+        }
+    }
+
+    private function saveOutputStep(): void
+    {
+        $this->setPlacementContexts();
+
+        $this->solutionOutputter->outputAsHtml(
+            $this->solution,
+            __DIR__ . '/../../../resources/Fixtures/Set/' . $this->cacheName . '/solution_' . $this->step . '.html',
+            __DIR__ . '/../../../resources/Fixtures/Set/' . $this->cacheName . '/piece%s_transparent_small.png',
+            previousFile: $this->step === 0 ? null : (__DIR__ . '/../../../resources/Fixtures/Set/' . $this->cacheName . '/solution_' . ($this->step - 1) . '.html'),
+            nextFile: __DIR__ . '/../../../resources/Fixtures/Set/' . $this->cacheName . '/solution_' . ($this->step + 1) . '.html',
+            ignoredSideKeys: $this->ignoredSideKeys
+        );
+
+        $this->step++;
     }
 
     private function addNextPlacement(callable $nextKeyGetter, float $minProbability, float $minDifference): bool
@@ -183,6 +179,9 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
 
         unset($this->matchingMap[$nextKey], $this->matchingMap[$matchingKey]);
+        foreach ($this->matchingMap as $loopKey => $probabilities) {
+            unset($this->matchingMap[$loopKey][$nextKey], $this->matchingMap[$loopKey][$matchingKey]);
+        }
 
         return true;
     }
@@ -315,15 +314,11 @@ class ByWulfSolver implements PuzzleSolverInterface
                 $probabilities[] = $this->matchingMap[$checkKey1][$checkKey2] ?? 0;
             }
         }
-        if ($unmatchingSides > count($probabilities) * 0.25) {
+        if ($unmatchingSides > count($probabilities) * 0.1) {
             return null;
         }
 
         if (count($probabilities) < min(count($group1->getPlacements()), count($group2->getPlacements())) * 0.1) {
-            return null;
-        }
-
-        if (in_array(0.0, $probabilities, true)) {
             return null;
         }
 
@@ -338,6 +333,35 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
 
         return $isGroupValid ? $group2Copy : null;
+    }
+
+    /**
+     * @return void
+     */
+    protected function setPlacementContexts(): void
+    {
+        foreach ($this->solution->getGroups() as $group) {
+            foreach ($group->getPlacements() as $placement) {
+                $context = [];
+                foreach (self::DIRECTION_OFFSETS as $indexOffset => $positionOffset) {
+                    $sideKey = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $indexOffset);
+
+                    $matchedPlacement = $group->getFirstPlacementByPosition($placement->getX() + $positionOffset['x'], $placement->getY() + $positionOffset['y']);
+                    $matchedSideKey = null;
+                    if ($matchedPlacement !== null) {
+                        $matchedSideKey = $this->getKey($matchedPlacement->getPiece()->getIndex(), $matchedPlacement->getTopSideIndex() + 6 + $indexOffset);
+                    }
+
+
+                    $context[$indexOffset] = [
+                        'probabilities' => $this->originalMatchingMap[$sideKey] ?? [],
+                        'matchedProbabilityIndex' => $matchedSideKey !== null ? array_search($matchedSideKey, array_keys($this->originalMatchingMap[$sideKey] ?? [])) : null,
+                        'matchingKey' => $sideKey . '-' . $matchedSideKey,
+                    ];
+                }
+                $placement->setContext($context);
+            }
+        }
     }
 
     /**
@@ -472,7 +496,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $foundGroups;
     }
 
-    private function isGroupValid(Group $group, int $maxAllowedDoubles): bool
+    private function isGroupValid(Group $group, int $maxAllowedDoubles, &$error = null): bool
     {
         try {
             $this->validator->validate($group, [
@@ -483,7 +507,9 @@ class ByWulfSolver implements PuzzleSolverInterface
             ]);
 
             return true;
-        } catch (GroupInvalidException) {
+        } catch (GroupInvalidException $exception) {
+            $error = $exception->getMessage();
+
             return false;
         }
     }
