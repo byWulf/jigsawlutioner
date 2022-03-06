@@ -21,7 +21,7 @@ class SolutionOutputter
         $this->filesystem = new Filesystem();
     }
 
-    public function outputAsHtml(Solution $solution, string $placementHtmlPath, string $transparentImagePathPattern, float $resizeFactor = 0.1): void
+    public function outputAsHtml(Solution $solution, string $placementHtmlPath, string $transparentImagePathPattern, float $resizeFactor = 0.1, string $previousFile = null, string $nextFile = null, array $ignoredSideKeys = []): void
     {
         $width = 0;
         foreach ($solution->getGroups() as $group) {
@@ -70,8 +70,6 @@ class SolutionOutputter
 
                 $rotation = -$this->pointService->getAverageRotation($topSide->getEndPoint(), $bottomSide->getStartPoint(), $bottomSide->getEndPoint(), $topSide->getStartPoint());
 
-                //$rotation = -$this->pointService->getRotation($topSide->getStartPoint(), $topSide->getEndPoint()) + 180;
-
                 $left = $lefts[$placement->getX()];
                 $top = $tops[$placement->getY()];
                 $center = $this->pointService->getAveragePoint([
@@ -82,10 +80,23 @@ class SolutionOutputter
                 ]);
 
                 $readableContext = [];
+                $matchingKey = [];
 
                 if ($placement->getContext() !== null) {
                     foreach ($placement->getContext() as $sideIndex => $sideContext) {
-                        $readableContext[$sideIndex] = '#' . ($sideContext['matchedProbabilityIndex'] !== null ? $sideContext['matchedProbabilityIndex'] + 1 : '---') . ' (' . implode(', ', array_map(fn (float $num): float => round($num, 2), array_slice($sideContext['probabilities'], 0, 10))) . ($sideContext['matchedProbabilityIndex'] > 9 ? ', ..., ' . round($sideContext['probabilities'][$sideContext['matchedProbabilityIndex']], 2) : '') . ')';
+                        $readableContext[$sideIndex] = '#' . ($sideContext['matchedProbabilityIndex'] !== null ? $sideContext['matchedProbabilityIndex'] + 1 : '---') .
+                            ' (' .
+                            implode(
+                                ', ',
+                                array_map(
+                                    fn (string $key, float $num): string => $key . ': ' . round($num, 2),
+                                    array_slice(array_keys($sideContext['probabilities']), 0, 20),
+                                    array_slice($sideContext['probabilities'], 0, 20)
+                                )
+                            ) .
+                            ($sideContext['matchedProbabilityIndex'] > 19 ? ', ..., ' . round(array_values($sideContext['probabilities'])[$sideContext['matchedProbabilityIndex']], 2) : '') .
+                            ')';
+                        $matchingKey[$sideIndex] = $sideContext['matchingKey'];
                     }
                 }
 
@@ -117,6 +128,8 @@ class SolutionOutputter
                         $placement->getY()
                     ),
                     'readableContext' => $readableContext,
+                    'matchingKey' => $matchingKey,
+                    'number' => $placement->getPiece()->getIndex() . '/' . $placement->getTopSideIndex(),
                 ];
                 $pieceIndexes[] = $placement->getPiece()->getIndex();
             }
@@ -132,10 +145,17 @@ class SolutionOutputter
             ];
         }
 
-        $this->writeHtml($groups, $placementHtmlPath, $resizeFactor);
+        $this->writeHtml(
+            $groups,
+            $placementHtmlPath,
+            $resizeFactor,
+            $previousFile ? Path::makeRelative($previousFile, dirname($placementHtmlPath)) : null,
+            $nextFile ? Path::makeRelative($nextFile, dirname($placementHtmlPath)) : null,
+            $ignoredSideKeys,
+        );
     }
 
-    private function writeHtml(array $groups, string $placementHtmlPath, float $resizeFactor): void
+    private function writeHtml(array $groups, string $placementHtmlPath, float $resizeFactor, string $previousFile = null, string $nextFile = null, array $ignoredSideKeys = []): void
     {
         $twig = new Environment(new ArrayLoader([
             'solution' => <<<HTML
@@ -196,19 +216,48 @@ class SolutionOutputter
                             .solution .piece-overlay-side:hover {
                                 background-color: rgba(255, 200, 150, 0.3);
                             }
+                            
+                            .solution .piece-overlay .number {
+                                position: absolute;
+                                left: 50%;
+                                width: 100px;
+                                margin-left: -50px;
+                                color: #000;
+                                text-shadow: 0 0 1px white, 0 0 1px white, 0 0 1px white, 0 0 1px white, 0 0 1px white, 0 0 2px white, 0 0 2px white, 0 0 2px white;
+                                font-size: 70%;
+                                text-align: center;
+                                line-height: 29px;
+                                transform: rotate(-45deg);
+                                pointer-events: none;
+                            }
                         </style>
+                        <script>
+                            const ignoredMatches = {{ ignoredMatches|json_encode|raw }};
+                            
+                            function ignoreSide(sideKey) {
+                                ignoredMatches.push(sideKey);
+                                
+                                document.getElementById('ignored-matches').value = JSON.stringify(ignoredMatches);
+                            }
+                        </script>
                     </head>
                     <body>
+                        <div class="file-navigator">
+                            {% if previousFile %}<a href="{{ previousFile }}">Previous step</a>{% endif %}
+                            {% if nextFile %}<a href="{{ nextFile }}">Next step</a>{% endif %}
+                            <input type="text" readonly id="ignored-matches" value="{{ ignoredMatches|json_encode }}">
+                        </div>
                         {% for group in groups %}
                             <div class="solution-container" style="{% for name, value in group.containerStyle %}{{ name }}: {{ value }};{% endfor %}">
                                 <div class="solution" style="{% for name, value in group.solutionStyle %}{{ name }}: {{ value }};{% endfor %}" data-piece-indexes="{{ group.pieceIndexes|join(',') }}">
                                     {% for piece in group.pieces %}
                                         <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}">
                                         <div class="piece-overlay" style="{% for name, value in piece.overlayStyle %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}">
-                                            <div class="piece-overlay-side piece-overlay-top" title="{{ piece.readableContext[0] }}"></div>
-                                            <div class="piece-overlay-side piece-overlay-left" title="{{ piece.readableContext[1] }}"></div>
-                                            <div class="piece-overlay-side piece-overlay-bottom" title="{{ piece.readableContext[2] }}"></div>
-                                            <div class="piece-overlay-side piece-overlay-right" title="{{ piece.readableContext[3] }}"></div>
+                                            <div class="piece-overlay-side piece-overlay-top" title="{{ piece.readableContext[0] }}" onclick="ignoreSide('{{ piece.matchingKey[0] }}')"></div>
+                                            <div class="piece-overlay-side piece-overlay-left" title="{{ piece.readableContext[1] }}" onclick="ignoreSide('{{ piece.matchingKey[1] }}')"></div>
+                                            <div class="piece-overlay-side piece-overlay-bottom" title="{{ piece.readableContext[2] }}" onclick="ignoreSide('{{ piece.matchingKey[2] }}')"></div>
+                                            <div class="piece-overlay-side piece-overlay-right" title="{{ piece.readableContext[3] }}" onclick="ignoreSide('{{ piece.matchingKey[3] }}')"></div>
+                                            <div class="number">{{ piece.number }}</div>
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -219,7 +268,7 @@ class SolutionOutputter
             HTML
         ]));
 
-        $this->filesystem->dumpFile($placementHtmlPath, $twig->render('solution', ['groups' => $groups, 'resizeFactor' => $resizeFactor]));
+        $this->filesystem->dumpFile($placementHtmlPath, $twig->render('solution', ['groups' => $groups, 'resizeFactor' => $resizeFactor, 'previousFile' => $previousFile, 'nextFile' => $nextFile, 'ignoredMatches' => $ignoredSideKeys]));
     }
 
     public function outputAsText(Solution $solution): void

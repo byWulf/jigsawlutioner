@@ -9,4 +9,4 @@ resources/cache/*
 
 resources/Fixtures/Set/*/piece*_*
 !resources/Fixtures/Set/*/piece*_color.jpg
-resources/Fixtures/Set/*/solution.html
+resources/Fixtures/Set/*/solution*.html

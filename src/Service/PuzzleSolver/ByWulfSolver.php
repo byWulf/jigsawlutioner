@@ -11,6 +11,7 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
+use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
@@ -45,7 +46,13 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private ValidatorInterface $validator;
 
-    private bool $debug = false;
+    private SolutionOutputter $solutionOutputter;
+
+    private string $cacheName;
+
+    private int $step;
+
+    private array $ignoredSideKeys = [];
 
     public function __construct(
         private SideMatcherInterface $sideMatcher,
@@ -53,6 +60,12 @@ class ByWulfSolver implements PuzzleSolverInterface
     ) {
         $this->cache = new FilesystemAdapter(directory: __DIR__ . '/../../../resources/cache');
         $this->validator = Validation::createValidator();
+        $this->solutionOutputter = new SolutionOutputter();
+    }
+
+    public function setIgnoredSideKeys(array $ignoredSideKeys): void
+    {
+        $this->ignoredSideKeys = $ignoredSideKeys;
     }
 
     /**
@@ -63,11 +76,13 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->solution = new Solution();
         $this->pieces = $pieces;
         $this->piecesCount = count($pieces);
-        $this->missingPieces = $pieces;
+        $this->step = 0;
 
         if ($cacheName === null) {
             throw new InvalidArgumentException('$cacheName has to be given.');
         }
+
+        $this->cacheName = $cacheName;
 
         $cacheKey = sha1(__CLASS__ . '::matchingMap_' . $cacheName);
         if (!$useCache) {

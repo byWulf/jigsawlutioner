@@ -40,6 +40,7 @@ class SolvePuzzleCommand extends Command
         $this->addArgument('pieces', InputArgument::OPTIONAL, 'Comma separated list of piece ids that should be processed from the given set.');
         $this->addOption('matcher', 'm', InputOption::VALUE_REQUIRED, 'Name of the matcher algorithm (' . implode(', ', array_keys(self::MATCHERS)) . ')', 'weighted');
         $this->addOption('solver', 's', InputOption::VALUE_REQUIRED, 'Name of the solver algorithm (' . implode(', ', array_keys(self::SOLVERS)) . ')', 'bywulf');
+        $this->addOption('ignoredSideKeys', 'i', InputOption::VALUE_OPTIONAL);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -58,6 +59,9 @@ class SolvePuzzleCommand extends Command
             new $matcherClassName(),
             new ConsoleLogger($output)
         );
+        if ($solver instanceof ByWulfSolver) {
+            $solver->setIgnoredSideKeys($input->getOption('ignoredSideKeys') ? json_decode($input->getOption('ignoredSideKeys'), true) ?? [] : []);
+        }
 
         $solutionOutputter = new SolutionOutputter();
 
@@ -79,7 +83,7 @@ class SolvePuzzleCommand extends Command
         $solutionOutputter->outputAsHtml(
             $solution,
             $htmlFile,
-            __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece%s_transparent.png'
+            __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/piece%s_transparent_small.png'
         );
 
         $output->writeln('Solution can be viewed at file://' . $htmlFile);
