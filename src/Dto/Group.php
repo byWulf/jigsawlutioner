@@ -4,15 +4,39 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
-use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use InvalidArgumentException;
+use LogicException;
+use Stringable;
 
-class Group
+class Group implements Stringable
 {
+    private static $indexCounter = 0;
+
+    private int $index;
+
+    public function __construct()
+    {
+        $this->index = self::$indexCounter++;
+    }
+
     /**
      * @var Placement[]
      */
     private array $placements = [];
+
+    /**
+     * @var Placement[][][]
+     */
+    private array $placementsByPosition = [];
+
+    /**
+     * @var Placement[]
+     */
+    private array $placementsByPiece = [];
+
+    public function getIndex(): int
+    {
+        return $this->index;
+    }
 
     /**
      * @return Placement[]
@@ -26,6 +50,8 @@ class Group
     {
         $this->placements[] = $placement;
 
+        $this->updateIndexedPlacements();
+
         return $this;
     }
 
@@ -36,34 +62,52 @@ class Group
             unset($this->placements[$index]);
         }
 
+        $this->updateIndexedPlacements();
+
         return $this;
     }
 
     public function getPlacementByPiece(Piece $piece): ?Placement
     {
-        foreach ($this->placements as $placement) {
-            if ($placement->getPiece() === $piece) {
-                return $placement;
-            }
-        }
-
-        return null;
+        return $this->placementsByPiece[$piece->getIndex()] ?? null;
     }
 
     public function getFirstPlacementByPosition(int $x, int $y): ?Placement
     {
-        foreach ($this->placements as $placement) {
-            if ($placement->getX() === $x && $placement->getY() === $y) {
-                return $placement;
-            }
+        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
+            return $placement;
         }
 
         return null;
     }
 
+    public function getLastPlacementByPosition(int $x, int $y): ?Placement
+    {
+        $lastPosition = null;
+        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
+            $lastPosition = $placement;
+        }
+
+        return $lastPosition;
+    }
+
+    public function getPlacementByPosition(int $x, int $y): ?Placement
+    {
+        $lastPosition = null;
+        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
+            if ($lastPosition !== null) {
+                throw new LogicException('More than one piece given on the requested position.');
+            }
+
+            $lastPosition = $placement;
+        }
+
+        return $lastPosition;
+    }
+
     public function getPlacementsByPosition(int $x, int $y): array
     {
-        return array_filter($this->placements, fn (Placement $placement): bool => $placement->getX() === $x && $placement->getY() === $y);
+        return $this->placementsByPosition[$y][$x] ?? [];
     }
 
     public function rotate(int $clockwiseRotations): self
@@ -81,6 +125,8 @@ class Group
             }
         }
 
+        $this->updateIndexedPlacements();
+
         return $this;
     }
 
@@ -91,6 +137,8 @@ class Group
             $placement->setY($placement->getY() + $yOffset);
         }
 
+        $this->updateIndexedPlacements();
+
         return $this;
     }
 
@@ -99,6 +147,8 @@ class Group
         foreach ($this->placements as $index => $placement) {
             $this->placements[$index] = clone $placement;
         }
+
+        $this->updateIndexedPlacements();
     }
 
     public function getWidth(): int
@@ -126,36 +176,21 @@ class Group
         ;
     }
 
-    public function hasOpenSide(Placement $placement): bool
+    private function updateIndexedPlacements(): void
     {
-        if (
-            $this->getFirstPlacementByPosition($placement->getX(), $placement->getY() - 1) === null &&
-            $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection() !== DirectionClassifier::NOP_STRAIGHT
-        ) {
-            return true;
+        $this->placementsByPosition = [];
+        foreach ($this->placements as $placement) {
+            $this->placementsByPosition[$placement->getY()][$placement->getX()][] = $placement;
         }
 
-        if (
-            $this->getFirstPlacementByPosition($placement->getX() - 1, $placement->getY()) === null &&
-            $placement->getPiece()->getSide($placement->getTopSideIndex() + 1)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
-        ) {
-            return true;
+        $this->placementsByPiece = [];
+        foreach ($this->placements as $placement) {
+            $this->placementsByPiece[$placement->getPiece()->getIndex()] = $placement;
         }
+    }
 
-        if (
-            $this->getFirstPlacementByPosition($placement->getX(), $placement->getY() + 1) === null &&
-            $placement->getPiece()->getSide($placement->getTopSideIndex() + 2)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
-        ) {
-            return true;
-        }
-
-        if (
-            $this->getFirstPlacementByPosition($placement->getX() + 1, $placement->getY()) === null &&
-            $placement->getPiece()->getSide($placement->getTopSideIndex() + 3)->getDirection() !== DirectionClassifier::NOP_STRAIGHT
-        ) {
-            return true;
-        }
-
-        return false;
+    public function __toString(): string
+    {
+        return 'group #' . $this->index;
     }
 }
