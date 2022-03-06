@@ -8,5 +8,5 @@ use Symfony\Component\Validator\Constraint;
 
 class PossibleSideMatching extends Constraint
 {
-    public array $matchingMap;
+
 }

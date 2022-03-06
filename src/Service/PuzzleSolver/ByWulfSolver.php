@@ -541,7 +541,7 @@ class ByWulfSolver implements PuzzleSolverInterface
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
                 new RectangleGroup(),
                 new RealisticSide(['piecesCount' => $this->piecesCount]),
-                new PossibleSideMatching(['matchingMap' => $this->originalMatchingMap]),
+                new PossibleSideMatching(),
             ]);
 
             return true;
