@@ -41,6 +41,7 @@ class SolvePuzzleCommand extends Command
         $this->addOption('matcher', 'm', InputOption::VALUE_REQUIRED, 'Name of the matcher algorithm (' . implode(', ', array_keys(self::MATCHERS)) . ')', 'weighted');
         $this->addOption('solver', 's', InputOption::VALUE_REQUIRED, 'Name of the solver algorithm (' . implode(', ', array_keys(self::SOLVERS)) . ')', 'bywulf');
         $this->addOption('ignoredSideKeys', 'i', InputOption::VALUE_OPTIONAL);
+        $this->addOption('tracedPieceIndex', 't', InputOption::VALUE_IS_ARRAY | InputOption::VALUE_OPTIONAL);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -61,6 +62,9 @@ class SolvePuzzleCommand extends Command
         );
         if ($solver instanceof ByWulfSolver) {
             $solver->setIgnoredSideKeys($input->getOption('ignoredSideKeys') ? json_decode($input->getOption('ignoredSideKeys'), true) ?? [] : []);
+            foreach ($input->getOption('tracedPieceIndex') as $pieceIndex) {
+                $solver->addTracedPieceIndex((int) $pieceIndex);
+            }
         }
 
         $solutionOutputter = new SolutionOutputter();
