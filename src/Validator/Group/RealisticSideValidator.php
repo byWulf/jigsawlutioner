@@ -59,12 +59,11 @@ class RealisticSideValidator extends ConstraintValidator
             $limits['minY'] = $limits['minY'] !== null ? min($limits['minY'], $placement->getY()) : $placement->getY();
             $limits['maxY'] = $limits['maxY'] !== null ? max($limits['maxY'], $placement->getY()) : $placement->getY();
 
-            if (
-                $value->getFirstPlacementByPosition($placement->getX(), $placement->getY()) === $placement &&
-                count($value->getPlacementsByPosition($placement->getX(), $placement->getY())) > 1
-            ) {
+            // Only take the new piece on this position, because the already existing piece will be deleted if it fits
+            if ($value->getLastPlacementByPosition($placement->getX(), $placement->getY()) !== $placement) {
                 continue;
             }
+
             $direction = $placement->getPiece()->getSide($placement->getTopSideIndex())->getDirection();
             if ($direction === DirectionClassifier::NOP_STRAIGHT) {
                 $limits['minYBorder'] = max($limits['minYBorder'] ?? $placement->getY(), $placement->getY());
