@@ -38,6 +38,13 @@ class Group implements Stringable
         return $this->index;
     }
 
+    public function getFirstPlacement(): ?Placement
+    {
+        $firstPlacement = reset($this->placements);
+
+        return $firstPlacement ?: null;
+    }
+
     /**
      * @return Placement[]
      */
