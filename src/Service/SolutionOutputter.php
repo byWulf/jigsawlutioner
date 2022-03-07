@@ -91,6 +91,7 @@ class SolutionOutputter
 
                 $readableContext = [];
                 $matchingKey = [];
+                $probabilities = [];
 
                 if ($placement->getContext() !== null) {
                     foreach ($placement->getContext() as $sideIndex => $sideContext) {
@@ -107,6 +108,7 @@ class SolutionOutputter
                             ($sideContext['matchedProbabilityIndex'] > 19 ? ', ..., ' . round(array_values($sideContext['probabilities'])[$sideContext['matchedProbabilityIndex']], 2) : '') .
                             ')';
                         $matchingKey[$sideIndex] = $sideContext['matchingKey'];
+                        $probabilities[$sideIndex] = $sideContext['matchedProbabilityIndex'] !== null ? round(array_values($sideContext['probabilities'])[$sideContext['matchedProbabilityIndex']], 2) : null;
                     }
                 }
 
@@ -139,6 +141,7 @@ class SolutionOutputter
                     ),
                     'readableContext' => $readableContext,
                     'matchingKey' => $matchingKey,
+                    'probabilities' => $probabilities,
                     'number' => $placement->getPiece()->getIndex() . '/' . $placement->getTopSideIndex(),
                 ];
                 $pieceIndexes[] = $placement->getPiece()->getIndex();
@@ -195,33 +198,40 @@ class SolutionOutputter
                             .solution .piece-overlay:hover {
                                 background-color: rgba(255, 255, 255, 0.2);
                             }
-                            .solution .piece-overlay-left {
-                                position: absolute;
-                                width: 30%;
-                                height: 80%;
-                                left: 0;
-                                top: 10%;
-                            }
-                            .solution .piece-overlay-right {
-                                position: absolute;
-                                width: 30%;
-                                height: 80%;
-                                right: 0;
-                                top: 10%;
-                            }
-                            .solution .piece-overlay-top {
+                            .solution .piece-overlay-0 {
                                 position: absolute;
                                 width: 80%;
                                 height: 30%;
                                 left: 10%;
                                 top: 0;
                             }
-                            .solution .piece-overlay-bottom {
+                            .solution .piece-overlay-1 {
+                                position: absolute;
+                                width: 30%;
+                                height: 80%;
+                                left: 0;
+                                top: 10%;
+                                line-height: 25px;
+                            }
+                            .solution .piece-overlay-2 {
                                 position: absolute;
                                 width: 80%;
                                 height: 30%;
                                 left: 10%;
                                 bottom: 0;
+                            }
+                            .solution .piece-overlay-3 {
+                                position: absolute;
+                                width: 30%;
+                                height: 80%;
+                                right: 0;
+                                top: 10%;
+                                line-height: 25px;
+                            }
+                            .solution .piece-overlay-side {
+                                font-weight: bold;
+                                font-size: 8px;
+                                text-align: center;
                             }
                             .solution .piece-overlay-side:hover {
                                 background-color: rgba(255, 200, 150, 0.3);
@@ -263,10 +273,18 @@ class SolutionOutputter
                                     {% for piece in group.pieces %}
                                         <img class="piece" src="{{ piece.src }}" style="{% for name, value in piece.style %}{{ name }}: {{ value }};{% endfor %}">
                                         <div class="piece-overlay" style="{% for name, value in piece.overlayStyle %}{{ name }}: {{ value }};{% endfor %}" title="{{ piece.title }}">
-                                            <div class="piece-overlay-side piece-overlay-top" title="{{ piece.readableContext[0] }}" onclick="ignoreSide('{{ piece.matchingKey[0] }}')"></div>
-                                            <div class="piece-overlay-side piece-overlay-left" title="{{ piece.readableContext[1] }}" onclick="ignoreSide('{{ piece.matchingKey[1] }}')"></div>
-                                            <div class="piece-overlay-side piece-overlay-bottom" title="{{ piece.readableContext[2] }}" onclick="ignoreSide('{{ piece.matchingKey[2] }}')"></div>
-                                            <div class="piece-overlay-side piece-overlay-right" title="{{ piece.readableContext[3] }}" onclick="ignoreSide('{{ piece.matchingKey[3] }}')"></div>
+                                            {% for i in 0..3 %}
+                                                <div 
+                                                    class="piece-overlay-side piece-overlay-{{ i }}" 
+                                                    title="{{ piece.readableContext[i] }}" 
+                                                    onclick="ignoreSide('{{ piece.matchingKey[i] }}')"
+                                                    {% if piece.probabilities[i] is not null %}
+                                                        style="text-shadow: {% for j in 0..10 %} 0 0 2px rgb({{ (1 - piece.probabilities[i]) * 255 }}, {{ piece.probabilities[i] * 255 }}, 0){{ loop.last ? '' : ', '}}{% endfor %}"
+                                                    {% endif %}
+                                                >
+                                                    {{ piece.probabilities[i] }}
+                                                </div>
+                                            {% endfor %}
                                             <div class="number">{{ piece.number }}</div>
                                         </div>
                                     {% endfor %}
