@@ -40,8 +40,8 @@ class PossibleSideMatchingValidator extends ConstraintValidator
 
                 $matchedSide = $matchedPlacement->getPiece()->getSide($matchedPlacement->getTopSideIndex() + 2 + $indexOffset);
 
-                $sideKey = $placement->getPiece()->getIndex() . '_' . $placement->getTopSideIndex() + $indexOffset;
-                $matchingSideKey = $matchedPlacement->getPiece()->getIndex() . '_' . $matchedPlacement->getTopSideIndex() + $indexOffset;
+                $sideKey = $placement->getPiece()->getIndex() . '_' . ($placement->getTopSideIndex() + $indexOffset);
+                $matchingSideKey = $matchedPlacement->getPiece()->getIndex() . '_' . ($matchedPlacement->getTopSideIndex() + $indexOffset);
 
                 if (
                     $side->getDirection() === DirectionClassifier::NOP_STRAIGHT ||
@@ -52,10 +52,5 @@ class PossibleSideMatchingValidator extends ConstraintValidator
                 }
             }
         }
-    }
-
-    private function getKey(int|string $pieceIndex, int $sideIndex): string
-    {
-        return $pieceIndex . '_' . (($sideIndex + 4) % 4);
     }
 }

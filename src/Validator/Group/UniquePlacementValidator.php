@@ -23,17 +23,12 @@ class UniquePlacementValidator extends ConstraintValidator
         }
 
         $foundDoubles = 0;
-        foreach ($value->getPlacements() as $index => $placement) {
-            foreach ($value->getPlacements() as $compareIndex => $comparePlacement) {
-                if ($compareIndex <= $index) {
-                    continue;
-                }
+        foreach ($value->getPlacementsGroupedByPosition() as $y => $horizontalPlacements) {
+            foreach ($horizontalPlacements as $x => $placements) {
+                $foundDoubles += count($placements) - 1;
 
-                if ($placement->getX() === $comparePlacement->getX() && $placement->getY() === $comparePlacement->getY()) {
-                    $foundDoubles++;
-                    if ($foundDoubles > $constraint->maxAllowedDoubles) {
-                        throw new GroupInvalidException('Doubled placements.');
-                    }
+                if ($foundDoubles > $constraint->maxAllowedDoubles) {
+                    throw new GroupInvalidException('Doubled placements.');
                 }
             }
         }

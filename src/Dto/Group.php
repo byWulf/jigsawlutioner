@@ -56,20 +56,22 @@ class Group implements Stringable
     public function addPlacement(Placement $placement): self
     {
         $this->placements[] = $placement;
-
-        $this->updateIndexedPlacements();
+        $this->placementsByPosition[$placement->getY()][$placement->getX()][] = $placement;
+        $this->placementsByPiece[$placement->getPiece()->getIndex()] = $placement;
 
         return $this;
     }
 
-    public function removePlacement(Placement $placement): self
+    public function removePlacement(Placement $placement, bool $refreshCache = true): self
     {
         $index = array_search($placement, $this->placements, true);
         if ($index !== false) {
             unset($this->placements[$index]);
-        }
 
-        $this->updateIndexedPlacements();
+            if ($refreshCache) {
+                $this->updateIndexedPlacements();
+            }
+        }
 
         return $this;
     }
@@ -81,35 +83,34 @@ class Group implements Stringable
 
     public function getFirstPlacementByPosition(int $x, int $y): ?Placement
     {
-        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
-            return $placement;
+        if (!isset($this->placementsByPosition[$y][$x])) {
+            return null;
         }
 
-        return null;
+        return reset($this->placementsByPosition[$y][$x]) ?: null;
     }
 
     public function getLastPlacementByPosition(int $x, int $y): ?Placement
     {
-        $lastPosition = null;
-        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
-            $lastPosition = $placement;
+        if (!isset($this->placementsByPosition[$y][$x])) {
+            return null;
         }
 
-        return $lastPosition;
+        return end($this->placementsByPosition[$y][$x]) ?: null;
     }
 
     public function getPlacementByPosition(int $x, int $y): ?Placement
     {
-        $lastPosition = null;
-        foreach ($this->placementsByPosition[$y][$x] ?? [] as $placement) {
-            if ($lastPosition !== null) {
-                throw new LogicException('More than one piece given on the requested position.');
-            }
-
-            $lastPosition = $placement;
+        if (count($this->placementsByPosition[$y][$x] ?? []) > 1) {
+            throw new LogicException('More than one piece given on the requested position.');
         }
 
-        return $lastPosition;
+        return $this->getFirstPlacementByPosition($x, $y);
+    }
+
+    public function getPlacementsGroupedByPosition(): array
+    {
+        return $this->placementsByPosition;
     }
 
     public function getPlacementsByPosition(int $x, int $y): array
@@ -183,15 +184,12 @@ class Group implements Stringable
         ;
     }
 
-    private function updateIndexedPlacements(): void
+    public function updateIndexedPlacements(): void
     {
         $this->placementsByPosition = [];
-        foreach ($this->placements as $placement) {
-            $this->placementsByPosition[$placement->getY()][$placement->getX()][] = $placement;
-        }
-
         $this->placementsByPiece = [];
         foreach ($this->placements as $placement) {
+            $this->placementsByPosition[$placement->getY()][$placement->getX()][] = $placement;
             $this->placementsByPiece[$placement->getPiece()->getIndex()] = $placement;
         }
     }
