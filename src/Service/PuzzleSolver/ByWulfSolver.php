@@ -12,6 +12,7 @@ use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Service\SolutionOutputter;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
@@ -147,6 +148,10 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->moveUnassignedPiecesToSingleGroups();
         $this->repeatedlyAddPossiblePlacements(0, 0);
 
+        $this->removeBadPieces(0.1);
+        $this->moveUnassignedPiecesToSingleGroups();
+
+        $this->addSinglePiecesToExistingGroups();
         $this->moveUnassignedPiecesToSingleGroups();
 
         $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution. Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
@@ -742,5 +747,106 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->solution->addGroup($group);
             $this->logPieceDecision([$piece->getIndex()], 'Adding piece to new single ' . $group . ' due to finishing the solution.');
         }
+    }
+
+    private function addSinglePiecesToExistingGroups(): void
+    {
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Adding single pieces to existing groups independent of their probability ranking...');
+
+        $singlePieces = [];
+        $groupsToExtend = [];
+
+        foreach ($this->solution->getGroups() as $group) {
+            if (count($group->getPlacements()) > 1) {
+                $groupsToExtend[] = $group;
+            } else {
+                $singlePieces[] = $group->getFirstPlacement()?->getPiece();
+                $this->solution->removeGroup($group);
+            }
+        }
+
+        do {
+            $bestPiece = null;
+            $bestGroup = null;
+            $bestPosition = null;
+            $bestRotation = null;
+            $bestRating = 0;
+            foreach ($singlePieces as $piece) {
+                foreach ($groupsToExtend as $group) {
+                    foreach ($group->getPlacements() as $placement) {
+                        foreach (self::DIRECTION_OFFSETS as $direction => $offset) {
+                            if ($placement->getPiece()->getSide($placement->getTopSideIndex() + $direction)->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+                                continue;
+                            }
+
+                            $x = $placement->getX() + $offset['x'];
+                            $y = $placement->getY() + $offset['y'];
+                            if ($group->getPlacementByPosition($x, $y) !== null) {
+                                continue;
+                            }
+
+                            for ($rotation = 0; $rotation < 4; $rotation++) {
+                                $rating = 0;
+                                foreach (self::DIRECTION_OFFSETS as $placeDirection => $placeOffset) {
+                                    $oppositePlacement = $group->getPlacementByPosition($x + $placeOffset['x'], $y + $placeOffset['y']);
+                                    if ($oppositePlacement === null) {
+                                        continue;
+                                    }
+
+                                    $sideDirection = $piece->getSide($rotation + $placeDirection)->getDirection();
+                                    $oppositeDirection = $oppositePlacement->getPiece()->getSide($oppositePlacement->getTopSideIndex() + 2 + $placeDirection)->getDirection();
+
+                                    if ($sideDirection === DirectionClassifier::NOP_STRAIGHT || $oppositeDirection === DirectionClassifier::NOP_STRAIGHT || $sideDirection === $oppositeDirection) {
+                                        $rating = 0;
+                                        break;
+                                    }
+
+                                    $sideMatchingProbability = $this->originalMatchingMap[$this->getKey($piece->getIndex(), $rotation + $placeDirection)][$this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $placeDirection)];
+                                    if ($sideMatchingProbability === 0.0) {
+                                        $rating = 0;
+                                        break;
+                                    }
+
+
+                                    $rating += $sideMatchingProbability;
+                                }
+                                if ($rating === 0) {
+                                    continue;
+                                }
+
+                                $placement = new Placement($x, $y, $piece, $rotation);
+                                $group->addPlacement($placement);
+                                $isValidGroup = $this->isGroupValid($group, 0);
+
+                                if ($rating > $bestRating && $isValidGroup) {
+                                    $bestPiece = $piece;
+                                    $bestGroup = $group;
+                                    $bestPosition = ['x' => $x, 'y' => $y];
+                                    $bestRotation = $rotation;
+                                    $bestRating = $rating;
+                                }
+
+                                $group->removePlacement($placement);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($bestPiece !== null) {
+                $bestGroup->addPlacement(new Placement($bestPosition['x'], $bestPosition['y'], $bestPiece, $bestRotation));
+                $this->logPieceDecision([$bestPiece->getIndex()], 'Added piece to ' . $bestGroup . ' for finalizing');
+
+                $index = array_search($bestPiece, $singlePieces, true);
+                if ($index !== false) {
+                    unset($singlePieces[$index]);
+                }
+
+                $this->logger?->debug((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups (place single).');
+
+                $this->saveOutputStep();
+            }
+
+        } while ($bestPiece !== null);
     }
 }
