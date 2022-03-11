@@ -36,7 +36,7 @@ trait TimeTrackerTrait
 
     public static function getAverageTime(string $namespace = 'main'): float
     {
-        if (self::$count[$namespace] === 0) {
+        if (!isset(self::$count[$namespace]) || self::$count[$namespace] === 0) {
             return 0;
         }
 

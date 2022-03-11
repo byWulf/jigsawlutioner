@@ -87,7 +87,9 @@ class PieceAnalyzerTest extends TestCase
                     ->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE))
                     ->addClassifier(new CornerDistanceClassifier(0))
                     ->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, -3.5)),
-            ]
+            ],
+            1000,
+            1000
         );
 
         $this->assertEquals($expectedPiece, $pieceAnalyzer->getPieceFromImage(1, $image, $context));
