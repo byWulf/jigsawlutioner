@@ -17,5 +17,7 @@ $application->add(new Command\SolvePuzzleCommand());
 $application->add(new Command\FindWeightsForMatcherCommand());
 $application->add(new Command\CreateLineDistanceModelCommandCommand());
 $application->add(new Command\AnalyzePiecesConsumeCommand());
+$application->add(new Command\SaveCornerPointsCommand());
+$application->add(new Command\DiffCornerPointsCommand());
 
 $application->run();

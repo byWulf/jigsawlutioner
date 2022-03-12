@@ -42,22 +42,27 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
         // We get all derivative rotations aka how much the rotation changed on each point
         $borderPoints = $this->getDerivativePoints($borderPoints);
 
+        $bestRating = 0;
+        $bestDerivatives = null;
         foreach ($this->iterateOverBestDerivativePoints($borderPoints) as $activeDerivatives) {
-            $this->logger?->debug('Looking at the following points:', $activeDerivatives);
+            $this->logger?->debug('Looking at the following points: ' . json_encode($activeDerivatives));
+            $rating = 0;
 
             // 1. Check that opposite sides are equally long
             $distance0 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
             $distance2 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
-            if (abs($distance0 - $distance2) > 0.4 * min($distance0, $distance2)) {
-                $this->logger?->debug(' -> Distance of sides 0 and 2 more than 40% apart', [$distance0, $distance2]);
+            $rating += $this->calculateRating(abs($distance0 - $distance2) / (0.4 * min($distance0, $distance2)));
+            if (abs($distance0 - $distance2) > 0.6 * min($distance0, $distance2)) {
+                $this->logger?->debug(' -> Distance of sides 0 and 2 more than 60% apart', [$distance0, $distance2]);
 
                 continue;
             }
 
             $distance1 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
             $distance3 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
-            if (abs($distance1 - $distance3) > 0.4 * min($distance1, $distance3)) {
-                $this->logger?->debug(' -> Distance of sides 1 and 3 more than 40% apart', [$distance1, $distance3]);
+            $rating += $this->calculateRating(abs($distance1 - $distance3) / (0.4 * min($distance1, $distance3)));
+            if (abs($distance1 - $distance3) > 0.6 * min($distance1, $distance3)) {
+                $this->logger?->debug(' -> Distance of sides 1 and 3 more than 60% apart', [$distance1, $distance3]);
 
                 continue;
             }
@@ -66,8 +71,9 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             $rotation0 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
             $rotation2 = $this->pointService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
             $rotationDiff0 = abs($this->pointService->normalizeRotation($rotation0 - $rotation2));
-            if ($rotationDiff0 > 30) {
-                $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 30° apart', [$rotation0, $rotation2]);
+            $rating += $this->calculateRating($rotationDiff0 / 30);
+            if ($rotationDiff0 > 40) {
+                $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 40° apart', [$rotation0, $rotation2]);
 
                 continue;
             }
@@ -75,14 +81,16 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             $rotation1 = $this->pointService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
             $rotation3 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
             $rotationDiff1 = abs($this->pointService->normalizeRotation($rotation1 - $rotation3));
-            if ($rotationDiff1 > 30) {
-                $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 30° apart', [$rotation1, $rotation3]);
+            $rating += $this->calculateRating($rotationDiff1 / 30);
+            if ($rotationDiff1 > 40) {
+                $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 40° apart', [$rotation1, $rotation3]);
 
                 continue;
             }
 
             // 4. Check that the sides are in their length not too far away from another
-            if (abs(min($distance0, $distance2) - min($distance1, $distance3)) > 0.5 * min($distance0, $distance1, $distance2, $distance3)) {
+            $rating += $this->calculateRating(abs(min($distance0, $distance2) - min($distance1, $distance3)) / (0.5 * min($distance0, $distance1, $distance2, $distance3)));
+            if (abs(min($distance0, $distance2) - min($distance1, $distance3)) > 0.75 * min($distance0, $distance1, $distance2, $distance3)) {
                 $this->logger?->debug(' -> Too narrow rectangle', [$distance0, $distance1, $distance2, $distance3]);
 
                 continue;
@@ -98,7 +106,8 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
 
                 for ($j = 0; $j < 10; ++$j) {
                     $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
-                    if ($distanceToLine > 0.05 * $sideDistance) {
+                    $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
+                    if ($distanceToLine > 0.075 * $sideDistance) {
                         $this->logger?->debug(' -> Starting part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
 
                         continue 3;
@@ -106,7 +115,8 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                 }
                 for ($j = 90; $j < 100; ++$j) {
                     $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
-                    if ($distanceToLine > 0.05 * $sideDistance) {
+                    $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
+                    if ($distanceToLine > 0.075 * $sideDistance) {
                         $this->logger?->debug(' -> Ending part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
 
                         continue 3;
@@ -114,27 +124,34 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                 }
             }
 
-            $this->logger?->debug(' -> Fitting!');
-
-            foreach ($activeDerivatives as $derivative) {
-                $derivative->setUsedAsCorner(true);
+            if ($rating > $bestRating) {
+                $bestRating = $rating;
+                $bestDerivatives = $activeDerivatives;
             }
-
-            $sides = [];
-            for ($i = 0; $i < 4; ++$i) {
-                $sides[] = new Side(
-                    $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
-                    $activeDerivatives[$i],
-                    $activeDerivatives[($i + 1) % 4]
-                );
-            }
-
-            return $sides;
         }
 
-        $this->logger?->error('Not recognized as piece');
+        if ($bestDerivatives === null) {
+            $this->logger?->error('Not recognized as piece');
 
-        return [];
+            return [];
+        }
+
+        $this->logger?->debug('Found best corners: ' . json_encode($bestDerivatives, JSON_THROW_ON_ERROR));
+
+        foreach ($bestDerivatives as $derivative) {
+            $derivative->setUsedAsCorner(true);
+        }
+
+        $sides = [];
+        for ($i = 0; $i < 4; ++$i) {
+            $sides[] = new Side(
+                $this->getPointsBetweenIndexes($borderPoints, $bestDerivatives[$i]->getIndex(), $bestDerivatives[($i + 1) % 4]->getIndex()),
+                $bestDerivatives[$i],
+                $bestDerivatives[($i + 1) % 4]
+            );
+        }
+
+        return $sides;
     }
 
     /**
@@ -211,7 +228,6 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
     private function getDerivativePoints(array $points): array
     {
         $derivativePoints = [];
-        $length = 0;
         foreach ($points as $index => $point) {
             $pointBefore = $this->pathService->getPointOnPolyline($points, $index, -$this->derivationLookahead);
             $pointAfter = $this->pathService->getPointOnPolyline($points, $index, $this->derivationLookahead);
@@ -225,8 +241,6 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                 $this->pointService->normalizeRotation($rotationAfter - $rotationBefore),
                 $index
             );
-
-            $length += $this->pointService->getDistanceBetweenPoints($point, $pointAfter);
         }
 
         return $derivativePoints;
@@ -247,5 +261,10 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             array_slice($points, $index1),
             array_slice($points, 0, $index2 + 1)
         );
+    }
+
+    private function calculateRating(float $value): float
+    {
+        return 1 - min(1, $value);
     }
 }
