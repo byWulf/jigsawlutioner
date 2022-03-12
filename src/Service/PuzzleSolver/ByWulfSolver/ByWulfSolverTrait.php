@@ -46,26 +46,13 @@ trait ByWulfSolverTrait
         }
     }
 
-    private function outputProgress(ByWulfSolverContext $context, string $step): void
+    private function outputProgress(ByWulfSolverContext $context, string $description): void
     {
-        $placedPieces = $context->getSolution()->getPieceCount();
-        $createdGroups = count($context->getSolution()->getGroups());
-        $piecesInBiggestGroup = count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? []);
-
-        $this->logger?->debug(sprintf(
-            '%s - Placed %s pieces in %s groups by step %s. Biggest groups has %s pieces.',
-            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
-            $placedPieces,
-            $createdGroups,
-            $step,
-            $piecesInBiggestGroup
-        ));
-
         if ($context->getStepProgression() !== null) {
             $context->getStepProgression()(
-                $placedPieces,
-                $createdGroups,
-                $piecesInBiggestGroup
+                $description,
+                count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
+                count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
             );
         }
     }

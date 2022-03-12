@@ -11,8 +11,6 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
-use DateTimeImmutable;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -22,9 +20,8 @@ class MergeGroupsStrategy
 
     private ValidatorInterface $validator;
 
-    public function __construct(
-        private ?LoggerInterface $logger = null,
-    ) {
+    public function __construct()
+    {
         /** @noinspection UnusedConstructorDependenciesInspection */
         $this->validator = Validation::createValidator();
     }
@@ -34,10 +31,11 @@ class MergeGroupsStrategy
      */
     public function execute(ByWulfSolverContext $context, float $minProbability): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Merging groups with minProbability of ' . $minProbability . '...');
+        $outputMessage = 'Merging groups with minProbability of ' . $minProbability . '...';
+        $this->outputProgress($context, $outputMessage);
 
         while ($this->addNextPlacement($context, $minProbability)) {
-            $this->outputProgress($context, 'MergeGroups');
+            $this->outputProgress($context, $outputMessage);
         }
     }
 

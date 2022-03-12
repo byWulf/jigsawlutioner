@@ -10,8 +10,6 @@ use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use DateTimeImmutable;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -21,16 +19,16 @@ class FillBlanksWithSinglePiecesStrategy
 
     private ValidatorInterface $validator;
 
-    public function __construct(
-        private ?LoggerInterface $logger = null,
-    ) {
+    public function __construct()
+    {
         /** @noinspection UnusedConstructorDependenciesInspection */
         $this->validator = Validation::createValidator();
     }
 
     public function execute(ByWulfSolverContext $context, Group $group, float $variationFactor = 0): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Adding single pieces to the biggest group independent of their probability ranking (using a variationFactor of ' . $variationFactor . '...');
+        $outputMessage = 'Trying to fit single pieces to the biggest group (using a variationFactor of ' . $variationFactor . '...';
+        $this->outputProgress($context, $outputMessage);
 
         $singlePieces = [];
 
@@ -118,7 +116,7 @@ class FillBlanksWithSinglePiecesStrategy
                     unset($singlePieces[$index]);
                 }
 
-                $this->outputProgress($context, 'FillBlanksWithSinglePieces');
+                $this->outputProgress($context, $outputMessage);
             }
 
         } while ($bestPiece !== null);

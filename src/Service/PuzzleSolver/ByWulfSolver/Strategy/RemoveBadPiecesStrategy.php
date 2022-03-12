@@ -9,21 +9,15 @@ use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
-use DateTimeImmutable;
-use Psr\Log\LoggerInterface;
 
 class RemoveBadPiecesStrategy
 {
     use ByWulfSolverTrait;
 
-    public function __construct(
-        private ?LoggerInterface $logger = null,
-    ) {
-    }
-
     public function execute(ByWulfSolverContext $context, float $maxProbability, int $minimumSidesBelow = 1): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Removing all pieces from solution, that have a connecting probability of ' . $maxProbability . ' or less on ' . $minimumSidesBelow . ' sides or more...');
+        $outputMessage = 'Removing all pieces from solution, that have a connecting probability of ' . $maxProbability . ' or less on ' . $minimumSidesBelow . ' sides or more...';
+        $this->outputProgress($context, $outputMessage);
 
         foreach ($context->getSolution()->getGroups() as $group) {
             $failedPlacements = [];
@@ -62,7 +56,7 @@ class RemoveBadPiecesStrategy
                     $this->splitSeparatedGroups($context, $group);
                 }
 
-                $this->outputProgress($context, 'RemoveBadPieces');
+                $this->outputProgress($context, $outputMessage);
             }
         }
     }

@@ -10,8 +10,6 @@ use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
-use DateTimeImmutable;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -21,9 +19,8 @@ class AddBestSinglePieceStrategy
 
     private ValidatorInterface $validator;
 
-    public function __construct(
-        private ?LoggerInterface $logger = null,
-    ) {
+    public function __construct()
+    {
         /** @noinspection UnusedConstructorDependenciesInspection */
         $this->validator = Validation::createValidator();
     }
@@ -33,10 +30,11 @@ class AddBestSinglePieceStrategy
      */
     public function execute(ByWulfSolverContext $context, float $minProbability, float $minDifference): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Adding new pieces with minProbability of ' . $minProbability . '/' . $minDifference . '...');
+        $outputMessage = 'Adding new pieces with minProbability of ' . $minProbability . '/' . $minDifference . '...';
+        $this->outputProgress($context, $outputMessage);
 
         while ($this->addNextPlacement($context, $minProbability, $minDifference)) {
-            $this->outputProgress($context, 'AddBestSinglePiece');
+            $this->outputProgress($context, $outputMessage);
         }
     }
 

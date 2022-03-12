@@ -27,7 +27,7 @@ class RemoveSmallGroupsStrategy
 
             $context->getSolution()->removeGroup($group);
 
-            $this->outputProgress($context, 'RemoveSmallGroups');
+            $this->outputProgress($context, 'Splitting up all groups that are not the biggest group into single pieces...');
         }
     }
 }

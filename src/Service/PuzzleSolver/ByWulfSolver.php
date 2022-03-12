@@ -113,13 +113,7 @@ class ByWulfSolver implements PuzzleSolverInterface
 
         $this->createMissingGroupsStrategy->execute($context);
 
-        $this->logger?->info(sprintf(
-            '%s - Finished creating solution. Placed %s pieces in %s groups. Biggest groups has %s pieces.',
-            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
-            $context->getSolution()->getPieceCount(),
-            count($context->getSolution()->getGroups()),
-            count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
-        ));
+        $this->outputProgress($context, 'We are done!');
 
         $groups = $context->getSolution()->getGroups();
         usort($groups, static fn(Group $a, Group $b): int => count($b->getPlacements()) <=> count($a->getPlacements()));
