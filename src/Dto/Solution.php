@@ -22,6 +22,21 @@ class Solution
         return $this->groups;
     }
 
+    public function getBiggestGroup(): ?Group
+    {
+        $biggestGroup = null;
+        $biggestCount = 0;
+        foreach ($this->groups as $group) {
+            $count = count($group->getPlacements());
+            if ($count > $biggestCount) {
+                $biggestCount = $count;
+                $biggestGroup = $group;
+            }
+        }
+
+        return $biggestGroup;
+    }
+
     /**
      * @param Group[] $groups
      */

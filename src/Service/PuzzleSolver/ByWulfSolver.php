@@ -139,6 +139,11 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->removeBadPieces(0.2);
 
         $this->repeatedlyAddPossiblePlacements(0.01, 0.01);
+        if (count($this->solution->getBiggestGroup()?->getPlacements() ?? []) < $this->piecesCount * 0.8) {
+            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Because we don\'t have a big group yet, we try a bit more...');
+            $this->removeBadPieces(0.5);
+            $this->repeatedlyAddPossiblePlacements(0.01, 0.01);
+        }
         $this->repeatedlyAddPossiblePlacements(0, 0);
 
         $this->allowRemovingWhileMerging = false;
@@ -148,10 +153,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->moveUnassignedPiecesToSingleGroups();
         $this->repeatedlyAddPossiblePlacements(0, 0);
 
-        $this->removeBadPieces(0.1);
-        $this->moveUnassignedPiecesToSingleGroups();
+        $this->tryToAssignSinglePieces();
 
-        $this->addSinglePiecesToExistingGroups();
         $this->moveUnassignedPiecesToSingleGroups();
 
         $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Finished creating solution. Placed ' . $this->solution->getPieceCount() . ' pieces in ' . count($this->solution->getGroups()) . ' groups.');
@@ -693,13 +696,14 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
     }
 
-    private function removeBadPieces(float $maxProbability): void
+    private function removeBadPieces(float $maxProbability, int $minimumSidesBelow = 1): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Removing all pieces from solution, that have a connecting probability of ' . $maxProbability . ' or less...');
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Removing all pieces from solution, that have a connecting probability of ' . $maxProbability . ' or less on ' . $minimumSidesBelow . ' sides or more...');
 
         foreach ($this->solution->getGroups() as $group) {
             $failedPlacements = [];
             foreach ($group->getPlacements() as $placement) {
+                $sidesBelow = 0;
                 foreach (self::DIRECTION_OFFSETS as $direction => $offset) {
                     $oppositePlacement = $group->getFirstPlacementByPosition(
                         $placement->getX() + $offset['x'],
@@ -710,9 +714,11 @@ class ByWulfSolver implements PuzzleSolverInterface
                     }
 
                     if (($this->originalMatchingMap[$this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $direction)][$this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $direction)] ?? 0.0) <= $maxProbability) {
-                        $failedPlacements[] = $oppositePlacement;
-                        $failedPlacements[] = $placement;
+                        $sidesBelow++;
                     }
+                }
+                if ($sidesBelow >= $minimumSidesBelow) {
+                    $failedPlacements[] = $placement;
                 }
             }
 
@@ -749,19 +755,16 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
     }
 
-    private function addSinglePiecesToExistingGroups(): void
+    private function addSinglePiecesToGroup(Group $group, float $variationFactor = 0): void
     {
-        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Adding single pieces to existing groups independent of their probability ranking...');
+        $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Adding single pieces to the biggest group independent of their probability ranking (using a variationFactor of ' . $variationFactor . '...');
 
         $singlePieces = [];
-        $groupsToExtend = [];
 
-        foreach ($this->solution->getGroups() as $group) {
-            if (count($group->getPlacements()) > 1) {
-                $groupsToExtend[] = $group;
-            } else {
-                $singlePieces[] = $group->getFirstPlacement()?->getPiece();
-                $this->solution->removeGroup($group);
+        foreach ($this->solution->getGroups() as $singleGroup) {
+            if (count($singleGroup->getPlacements()) === 1) {
+                $singlePieces[] = $singleGroup->getFirstPlacement()?->getPiece();
+                $this->solution->removeGroup($singleGroup);
             }
         }
 
@@ -772,62 +775,63 @@ class ByWulfSolver implements PuzzleSolverInterface
             $bestRotation = null;
             $bestRating = 0;
             foreach ($singlePieces as $piece) {
-                foreach ($groupsToExtend as $group) {
-                    foreach ($group->getPlacements() as $placement) {
-                        foreach (self::DIRECTION_OFFSETS as $direction => $offset) {
-                            if ($placement->getPiece()->getSide($placement->getTopSideIndex() + $direction)->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
-                                continue;
-                            }
+                foreach ($group->getPlacements() as $placement) {
+                    foreach (self::DIRECTION_OFFSETS as $direction => $offset) {
+                        if ($placement->getPiece()->getSide($placement->getTopSideIndex() + $direction)->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+                            continue;
+                        }
 
-                            $x = $placement->getX() + $offset['x'];
-                            $y = $placement->getY() + $offset['y'];
-                            if ($group->getPlacementByPosition($x, $y) !== null) {
-                                continue;
-                            }
+                        $x = $placement->getX() + $offset['x'];
+                        $y = $placement->getY() + $offset['y'];
+                        if ($group->getPlacementByPosition($x, $y) !== null) {
+                            continue;
+                        }
 
-                            for ($rotation = 0; $rotation < 4; $rotation++) {
-                                $rating = 0;
-                                foreach (self::DIRECTION_OFFSETS as $placeDirection => $placeOffset) {
-                                    $oppositePlacement = $group->getPlacementByPosition($x + $placeOffset['x'], $y + $placeOffset['y']);
-                                    if ($oppositePlacement === null) {
-                                        continue;
-                                    }
-
-                                    $sideDirection = $piece->getSide($rotation + $placeDirection)->getDirection();
-                                    $oppositeDirection = $oppositePlacement->getPiece()->getSide($oppositePlacement->getTopSideIndex() + 2 + $placeDirection)->getDirection();
-
-                                    if ($sideDirection === DirectionClassifier::NOP_STRAIGHT || $oppositeDirection === DirectionClassifier::NOP_STRAIGHT || $sideDirection === $oppositeDirection) {
-                                        $rating = 0;
-                                        break;
-                                    }
-
-                                    $sideMatchingProbability = $this->originalMatchingMap[$this->getKey($piece->getIndex(), $rotation + $placeDirection)][$this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $placeDirection)];
-                                    if ($sideMatchingProbability === 0.0) {
-                                        $rating = 0;
-                                        break;
-                                    }
-
-
-                                    $rating += $sideMatchingProbability;
-                                }
-                                if ($rating === 0) {
+                        for ($rotation = 0; $rotation < 4; $rotation++) {
+                            $rating = 0;
+                            $connectedSides = 0;
+                            foreach (self::DIRECTION_OFFSETS as $placeDirection => $placeOffset) {
+                                $oppositePlacement = $group->getPlacementByPosition($x + $placeOffset['x'], $y + $placeOffset['y']);
+                                if ($oppositePlacement === null) {
                                     continue;
                                 }
 
-                                $placement = new Placement($x, $y, $piece, $rotation);
-                                $group->addPlacement($placement);
-                                $isValidGroup = $this->isGroupValid($group, 0);
+                                $sideDirection = $piece->getSide($rotation + $placeDirection)->getDirection();
+                                $oppositeDirection = $oppositePlacement->getPiece()->getSide($oppositePlacement->getTopSideIndex() + 2 + $placeDirection)->getDirection();
 
-                                if ($rating > $bestRating && $isValidGroup) {
-                                    $bestPiece = $piece;
-                                    $bestGroup = $group;
-                                    $bestPosition = ['x' => $x, 'y' => $y];
-                                    $bestRotation = $rotation;
-                                    $bestRating = $rating;
+                                if ($sideDirection === DirectionClassifier::NOP_STRAIGHT || $oppositeDirection === DirectionClassifier::NOP_STRAIGHT || $sideDirection === $oppositeDirection) {
+                                    $rating = 0;
+                                    break;
                                 }
 
-                                $group->removePlacement($placement);
+                                $sideMatchingProbability = $this->originalMatchingMap[$this->getKey($piece->getIndex(), $rotation + $placeDirection)][$this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $placeDirection)];
+                                if ($sideMatchingProbability === 0.0) {
+                                    $rating = 0;
+                                    break;
+                                }
+
+
+                                $rating += $sideMatchingProbability;
+                                $connectedSides++;
                             }
+                            if ($rating === 0 || $connectedSides <= 1) {
+                                continue;
+                            }
+
+                            $placement = new Placement($x, $y, $piece, $rotation);
+                            $group->addPlacement($placement);
+                            $isValidGroup = $this->isGroupValid($group, 0);
+                            $rating = $rating + (mt_rand() / mt_getrandmax()) * $variationFactor;
+
+                            if ($rating > $bestRating && $isValidGroup) {
+                                $bestPiece = $piece;
+                                $bestGroup = $group;
+                                $bestPosition = ['x' => $x, 'y' => $y];
+                                $bestRotation = $rotation;
+                                $bestRating = $rating;
+                            }
+
+                            $group->removePlacement($placement);
                         }
                     }
                 }
@@ -848,5 +852,64 @@ class ByWulfSolver implements PuzzleSolverInterface
             }
 
         } while ($bestPiece !== null);
+    }
+
+    private function splitSmallGroupsIntoSingleGroups(Group $exceptGroup): void
+    {
+        foreach ($this->solution->getGroups() as $group) {
+            if ($group === $exceptGroup) {
+                continue;
+            }
+
+            foreach ($group->getPlacements() as $placement) {
+                $newGroup = new Group();
+                $newGroup->addPlacement($placement);
+                $this->solution->addGroup($newGroup);
+            }
+            $this->solution->removeGroup($group);
+        }
+    }
+
+    private function tryToAssignSinglePieces(): void
+    {
+        $biggestGroup = $this->solution->getBiggestGroup();
+        if ($biggestGroup === null) {
+            return;
+        }
+
+        // We are perfectly finished, we don't have to do anything more
+        if (count($biggestGroup->getPlacements()) === $this->piecesCount) {
+            return;
+        }
+
+        // Too bad performance, we better stop here to not waste more time
+        if (count($biggestGroup->getPlacements()) < $this->piecesCount * 0.9) {
+            return;
+        }
+
+        // First try to assign all pieces that are still single to the biggest group
+        $this->splitSmallGroupsIntoSingleGroups($biggestGroup);
+        $this->moveUnassignedPiecesToSingleGroups();
+        $this->addSinglePiecesToGroup($biggestGroup);
+
+        if (count($biggestGroup->getPlacements()) === $this->piecesCount) {
+            return;
+        }
+
+        // Then try to remove all bad connections and do it again
+        $this->removeBadPieces(0.5, 2);
+        $this->moveUnassignedPiecesToSingleGroups();
+        $this->addSinglePiecesToGroup($biggestGroup);
+
+        if (count($biggestGroup->getPlacements()) === $this->piecesCount) {
+            return;
+        }
+
+        // If there are still pieces missing, do it a few times with a bit of variance
+        for ($i = 0; $i < 5; $i++) {
+            $this->removeBadPieces(0.5, 2);
+            $this->moveUnassignedPiecesToSingleGroups();
+            $this->addSinglePiecesToGroup($biggestGroup, 0.2);
+        }
     }
 }
