@@ -233,6 +233,9 @@ class SolutionOutputter
                                 font-size: 8px;
                                 text-align: center;
                             }
+                            .solution .piece-overlay-side .probability {
+                                display: none;
+                            }
                             .solution .piece-overlay-side:hover {
                                 background-color: rgba(255, 200, 150, 0.3);
                             }
@@ -249,6 +252,8 @@ class SolutionOutputter
                                 line-height: 29px;
                                 transform: rotate(-45deg);
                                 pointer-events: none;
+                                
+                                display: none;
                             }
                         </style>
                         <script>
@@ -282,7 +287,7 @@ class SolutionOutputter
                                                         style="text-shadow: {% for j in 0..10 %} 0 0 2px rgb({{ (1 - piece.probabilities[i]) * 255 }}, {{ piece.probabilities[i] * 255 }}, 0){{ loop.last ? '' : ', '}}{% endfor %}"
                                                     {% endif %}
                                                 >
-                                                    {{ piece.probabilities[i] }}
+                                                    <span class="probability">{{ piece.probabilities[i] }}</span>
                                                 </div>
                                             {% endfor %}
                                             <div class="number">{{ piece.number }}</div>

@@ -13,11 +13,13 @@ use Bywulf\Jigsawlutioner\Util\PieceLoaderTrait;
 use InvalidArgumentException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'app:puzzle:solve')]
 class SolvePuzzleCommand extends Command
@@ -40,8 +42,6 @@ class SolvePuzzleCommand extends Command
         $this->addArgument('pieces', InputArgument::OPTIONAL, 'Comma separated list of piece ids that should be processed from the given set.');
         $this->addOption('matcher', 'm', InputOption::VALUE_REQUIRED, 'Name of the matcher algorithm (' . implode(', ', array_keys(self::MATCHERS)) . ')', 'weighted');
         $this->addOption('solver', 's', InputOption::VALUE_REQUIRED, 'Name of the solver algorithm (' . implode(', ', array_keys(self::SOLVERS)) . ')', 'bywulf');
-        $this->addOption('ignoredSideKeys', 'i', InputOption::VALUE_OPTIONAL);
-        $this->addOption('tracedPieceIndex', 't', InputOption::VALUE_IS_ARRAY | InputOption::VALUE_OPTIONAL);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -60,12 +60,6 @@ class SolvePuzzleCommand extends Command
             new $matcherClassName(),
             new ConsoleLogger($output)
         );
-        if ($solver instanceof ByWulfSolver) {
-            $solver->setIgnoredSideKeys($input->getOption('ignoredSideKeys') ? json_decode($input->getOption('ignoredSideKeys'), true) ?? [] : []);
-            foreach ($input->getOption('tracedPieceIndex') as $pieceIndex) {
-                $solver->addTracedPieceIndex((int) $pieceIndex);
-            }
-        }
 
         $solutionOutputter = new SolutionOutputter();
 
@@ -79,9 +73,44 @@ class SolvePuzzleCommand extends Command
             $pieces = array_filter($pieces, fn (Piece $piece): bool => in_array($piece->getIndex(), $pieceIds));
         }
 
-        $solution = $solver->findSolution($pieces, $setName, !$input->getOption('force'));
+        $io = new SymfonyStyle($input, $output);
 
-        //$solutionOutputter->outputAsText($solution);
+        $placedPiecesSection = $output->section();
+
+        ProgressBar::setFormatDefinition('custom', '%message:14s%: %current%/%max% [%bar%]');
+
+        $placedPiecesProgressBar = new ProgressBar($output->section(), count($pieces));
+        $createdGroupsProgressBar = new ProgressBar($output->section(), count($pieces));
+        $piecesInBiggestGroupProgressBar = new ProgressBar($output->section(), count($pieces));
+
+        $placedPiecesProgressBar->setFormat('custom');
+        $createdGroupsProgressBar->setFormat('custom');
+        $piecesInBiggestGroupProgressBar->setFormat('custom');
+
+        $placedPiecesProgressBar->setMessage('Placed pieces');
+        $createdGroupsProgressBar->setMessage('Created groups');
+        $piecesInBiggestGroupProgressBar->setMessage('Biggest group');
+
+        $placedPiecesProgressBar->start();
+        $createdGroupsProgressBar->start();
+        $piecesInBiggestGroupProgressBar->start();
+
+        $solution = $solver->findSolution(
+            $pieces,
+            $setName,
+            !$input->getOption('force'),
+            function (int $placedPieces, int $createdGroups, int $piecesInBiggestGroup) use (
+                $placedPiecesProgressBar,
+                $createdGroupsProgressBar,
+                $piecesInBiggestGroupProgressBar
+            ): void {
+                $placedPiecesProgressBar->setProgress($placedPieces);
+                $createdGroupsProgressBar->setProgress($createdGroups);
+                $piecesInBiggestGroupProgressBar->setProgress($piecesInBiggestGroup);
+            }
+        );
+
+
 
         $htmlFile = __DIR__ . '/../../resources/Fixtures/Set/' . $setName . '/solution.html';
         $solutionOutputter->outputAsHtml(
