@@ -22,7 +22,7 @@
     "require": {
         "ext-gd": "*",
         "emcconville/point-reduction-algorithms": "^1.2",
-        "psr/log": "^1.0",
+        "psr/log": "^1.0 || ^2.0 || ^3.0",
         "rubix/ml": "^1.2",
         "symfony/console": "^6.0",
         "symfony/cache": "^6.0",
