@@ -37,7 +37,7 @@ class RealisticSideValidator extends ConstraintValidator
             ($width < $minSize && $limits['minXBorder'] !== null && $limits['maxXBorder'] !== null) ||
             ($height < $minSize && $limits['minYBorder'] !== null && $limits['maxYBorder'] !== null)
         ) {
-            throw new GroupInvalidException('No realistic size. minSize: ' . $minSize . ' // maxSize: ' . $maxSize . ' // width: ' . $width . ' // height: ' . $height . ' // ' . json_encode($limits));
+            throw new GroupInvalidException('No realistic size. minSize: ' . $minSize . ' // maxSize: ' . $maxSize . ' // width: ' . $width . ' // height: ' . $height);
         }
     }
 

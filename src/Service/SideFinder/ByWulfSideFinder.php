@@ -45,7 +45,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
         $bestRating = 0;
         $bestDerivatives = null;
         foreach ($this->iterateOverBestDerivativePoints($borderPoints) as $activeDerivatives) {
-            $this->logger?->debug('Looking at the following points: ' . json_encode($activeDerivatives));
+            $this->logger?->debug('Looking at the following points: ', $activeDerivatives);
             $rating = 0;
 
             // 1. Check that opposite sides are equally long
@@ -136,7 +136,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             return [];
         }
 
-        $this->logger?->debug('Found best corners: ' . json_encode($bestDerivatives, JSON_THROW_ON_ERROR));
+        $this->logger?->debug('Found best corners!', $bestDerivatives);
 
         foreach ($bestDerivatives as $derivative) {
             $derivative->setUsedAsCorner(true);

@@ -7,12 +7,17 @@ namespace Bywulf\Jigsawlutioner\Validator\Group;
 use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use JsonException;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 class RectangleGroupValidator extends ConstraintValidator
 {
+    /**
+     * @throws GroupInvalidException
+     * @throws JsonException
+     */
     public function validate(mixed $value, Constraint $constraint): void
     {
         if (!$constraint instanceof RectangleGroup) {
@@ -31,7 +36,7 @@ class RectangleGroupValidator extends ConstraintValidator
             ($limits['minXNop'] !== null && $limits['minXBorder'] !== null && $limits['minXNop'] <= $limits['minXBorder']) ||
             ($limits['maxXNop'] !== null && $limits['maxXBorder'] !== null && $limits['maxXNop'] >= $limits['maxXBorder'])
         ) {
-            throw new GroupInvalidException('No rectangle. ' . json_encode($limits));
+            throw new GroupInvalidException('No rectangle.');
         }
     }
 
