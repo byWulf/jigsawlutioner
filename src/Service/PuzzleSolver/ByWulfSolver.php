@@ -16,9 +16,7 @@ use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\FillBlanksW
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\MergeGroupsStrategy;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\RemoveBadPiecesStrategy;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\RemoveSmallGroupsStrategy;
-use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Closure;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ByWulfSolver implements PuzzleSolverInterface
 {
@@ -31,11 +29,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         3 => ['x' => 1, 'y' => 0],
     ];
 
-    private FilesystemAdapter $cache;
+    private ?Closure $stepProgressionCallback = null;
 
-    private bool $allowRemovingWhileMerging = true;
-
-    private bool $outputStepSaving = false;
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
     private MergeGroupsStrategy $mergeGroupsStrategy;
     private FillBlanksWithSinglePiecesStrategy $fillBlanksWithSinglePiecesStrategy;
@@ -43,16 +38,19 @@ class ByWulfSolver implements PuzzleSolverInterface
     private RemoveSmallGroupsStrategy $removeSmallGroupsStrategy;
     private CreateMissingGroupsStrategy $createMissingGroupsStrategy;
 
-    public function __construct(
-        private SideMatcherInterface $sideMatcher,
-        private ?Closure $stepProgression = null,
-    ) {
+    public function __construct()
+    {
         $this->addBestSinglePieceStrategy = new AddBestSinglePieceStrategy();
         $this->mergeGroupsStrategy = new MergeGroupsStrategy();
         $this->fillBlanksWithSinglePiecesStrategy = new FillBlanksWithSinglePiecesStrategy();
         $this->removeBadPiecesStrategy = new RemoveBadPiecesStrategy();
         $this->removeSmallGroupsStrategy = new RemoveSmallGroupsStrategy();
         $this->createMissingGroupsStrategy = new CreateMissingGroupsStrategy();
+    }
+
+    public function setStepProgressionCallback(Closure $stepProgressionCallback): void
+    {
+        $this->stepProgressionCallback = $stepProgressionCallback;
     }
 
     /**
@@ -66,7 +64,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         $context = new ByWulfSolverContext(
             $pieces,
             $matchingMap,
-            $this->stepProgression
+            $this->stepProgressionCallback
         );
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
