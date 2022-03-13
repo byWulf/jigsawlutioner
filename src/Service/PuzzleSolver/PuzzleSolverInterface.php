@@ -11,6 +11,7 @@ interface PuzzleSolverInterface
 {
     /**
      * @param Piece[] $pieces
+     * @param array<string, array<string, float>>
      */
-    public function findSolution(array $pieces): Solution;
+    public function findSolution(array $pieces, array $matchingMap): Solution;
 }

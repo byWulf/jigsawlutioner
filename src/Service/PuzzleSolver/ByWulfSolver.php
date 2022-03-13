@@ -18,9 +18,6 @@ use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\RemoveBadPi
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy\RemoveSmallGroupsStrategy;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Closure;
-use DateTimeImmutable;
-use InvalidArgumentException;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
 class ByWulfSolver implements PuzzleSolverInterface
@@ -48,29 +45,28 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     public function __construct(
         private SideMatcherInterface $sideMatcher,
-        private ?LoggerInterface $logger = null
+        private ?Closure $stepProgression = null,
     ) {
-        $this->cache = new FilesystemAdapter(directory: __DIR__ . '/../../../resources/cache');
-
-        $this->addBestSinglePieceStrategy = new AddBestSinglePieceStrategy($this->logger);
-        $this->mergeGroupsStrategy = new MergeGroupsStrategy($this->logger);
-        $this->fillBlanksWithSinglePiecesStrategy = new FillBlanksWithSinglePiecesStrategy($this->logger);
-        $this->removeBadPiecesStrategy = new RemoveBadPiecesStrategy($this->logger);
-        $this->removeSmallGroupsStrategy = new RemoveSmallGroupsStrategy($this->logger);
-        $this->createMissingGroupsStrategy = new CreateMissingGroupsStrategy($this->logger);
+        $this->addBestSinglePieceStrategy = new AddBestSinglePieceStrategy();
+        $this->mergeGroupsStrategy = new MergeGroupsStrategy();
+        $this->fillBlanksWithSinglePiecesStrategy = new FillBlanksWithSinglePiecesStrategy();
+        $this->removeBadPiecesStrategy = new RemoveBadPiecesStrategy();
+        $this->removeSmallGroupsStrategy = new RemoveSmallGroupsStrategy();
+        $this->createMissingGroupsStrategy = new CreateMissingGroupsStrategy();
     }
 
     /**
      * @param Piece[] $pieces
+     * @param array<string, array<string, float>>
+     *
      * @throws PuzzleSolverException
-     * @throws \Psr\Cache\InvalidArgumentException
      */
-    public function findSolution(array $pieces, string $cacheName = null, bool $useCache = true, Closure $stepProgression = null): Solution
+    public function findSolution(array $pieces, array $matchingMap): Solution
     {
         $context = new ByWulfSolverContext(
             $pieces,
-            $this->getMatchingMap($pieces, $cacheName, $useCache),
-            $stepProgression
+            $matchingMap,
+            $this->stepProgression
         );
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
@@ -95,7 +91,6 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->repeatedlyAddPossiblePlacements($context, 0.01, 0.01);
 
         if (count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? []) < $context->getPiecesCount() * 0.8) {
-            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Because we don\'t have a big group yet, we try a bit more...');
             $this->removeBadPiecesStrategy->execute($context, 0.5);
             $this->repeatedlyAddPossiblePlacements($context, 0.01, 0.01);
         }
@@ -209,52 +204,5 @@ class ByWulfSolver implements PuzzleSolverInterface
                 $placement->setContext($context);
             }
         }
-    }
-
-    /**
-     * @param Piece[] $pieces
-     *
-     * @return float[][]
-     * @throws \Psr\Cache\InvalidArgumentException
-     */
-    private function getMatchingMap(array $pieces, ?string $cacheName, bool $useCache): array
-    {
-        if ($cacheName === null) {
-            throw new InvalidArgumentException('$cacheName has to be given.');
-        }
-
-        $cacheKey = sha1(__CLASS__ . '::matchingMap_' . $cacheName);
-        if (!$useCache) {
-            $this->cache->delete($cacheKey);
-            $this->cache->commit();
-        }
-
-        return $this->cache->get($cacheKey, function() use ($pieces) {
-            $this->logger?->info((new DateTimeImmutable())->format('Y-m-d H:i:s') . ' - Creating matching probability map...');
-
-            $matchingMap = [];
-
-            $allSides = [];
-            foreach ($pieces as $pieceIndex => $piece) {
-                foreach ($piece->getSides() as $sideIndex => $side) {
-                    $allSides[$this->getKey($pieceIndex, $sideIndex)] = $side;
-                }
-            }
-
-            foreach ($pieces as $pieceIndex => $piece) {
-                foreach ($piece->getSides() as $sideIndex => $side) {
-                    $probabilities = $this->sideMatcher->getMatchingProbabilities($side, $allSides);
-                    arsort($probabilities);
-                    $matchingMap[$this->getKey($pieceIndex, $sideIndex)] = $probabilities;
-
-                    // Remove own sides from map, because the puzzle must not be matched with itself
-                    for ($i = 0; $i < 4; $i++) {
-                        unset($matchingMap[$this->getKey($pieceIndex, $sideIndex)][$this->getKey($pieceIndex, $i)]);
-                    }
-                }
-            }
-
-            return $matchingMap;
-        });
     }
 }

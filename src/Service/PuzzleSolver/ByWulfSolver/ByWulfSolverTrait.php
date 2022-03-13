@@ -11,13 +11,12 @@ use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
-use DateTimeImmutable;
 
 trait ByWulfSolverTrait
 {
-    private function getKey(int|string $pieceIndex, int $sideIndex): string
+    private function getKey(int $pieceNumber, int $sideIndex): string
     {
-        return $pieceIndex . '_' . (($sideIndex + 4) % 4);
+        return $pieceNumber . '_' . (($sideIndex + 4) % 4);
     }
 
     private function getPieceIndexFromKey(string $key): int
