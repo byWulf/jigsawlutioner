@@ -1,4 +1,6 @@
 # jigsawlutioner.byWulf
+
+
 ## About
 Jigsawlutioner is an algorithm designed to solve a jigsaw puzzle based on images taken by each puzzle piece.
 

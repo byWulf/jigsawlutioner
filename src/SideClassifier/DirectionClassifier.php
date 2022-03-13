@@ -5,13 +5,10 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
-use Bywulf\Jigsawlutioner\Util\TimeTrackerTrait;
 use Stringable;
 
 class DirectionClassifier implements SideClassifierInterface, Stringable
 {
-    use TimeTrackerTrait;
-
     public const NOP_STRAIGHT = 0;
     public const NOP_INSIDE = -1;
     public const NOP_OUTSIDE = 1;
@@ -33,11 +30,6 @@ class DirectionClassifier implements SideClassifierInterface, Stringable
     public function getDirection(): int
     {
         return $this->direction;
-    }
-
-    public function getOppositeDirection(): int
-    {
-        return -$this->direction;
     }
 
     /**
