@@ -10,7 +10,6 @@ use Bywulf\Jigsawlutioner\Dto\PixelMap;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Exception\PixelMapException;
-use Bywulf\Jigsawlutioner\Service\PointService;
 use GdImage;
 use InvalidArgumentException;
 
@@ -21,12 +20,9 @@ class ByWulfBorderFinder implements BorderFinderInterface
     private const DIRECTION_RIGHT = 2;
     private const DIRECTION_DOWN = 1;
 
-    private PointService $pointService;
-
     public function __construct(
         private float $reduction = 0.002
     ) {
-        $this->pointService = new PointService();
     }
 
     /**
@@ -38,13 +34,13 @@ class ByWulfBorderFinder implements BorderFinderInterface
         GdImage $image,
         BorderFinderContextInterface $context
     ): array {
+        /** @noinspection PhpConditionAlreadyCheckedInspection */
         if (!$context instanceof ByWulfBorderFinderContext) {
             throw new InvalidArgumentException('Expected context of type ' . ByWulfBorderFinderContext::class . ', got ' . $context::class);
         }
 
         $objectColor = $this->allocateColor($image, 0, 0, 0);
         $biggestObjectColor = $this->allocateColor($image, 50, 50, 50);
-        $biggestObjectColor2 = $this->allocateColor($image, 51, 51, 51);
         $backgroundColor = $this->allocateColor($image, 255, 255, 255);
         $surroundingColor = $this->allocateColor($image, 200, 200, 200);
 
@@ -88,32 +84,7 @@ class ByWulfBorderFinder implements BorderFinderInterface
             $this->createSmallTransparentImage($context->getSmallTransparentImage(), $pixelMap, $biggestObjectColor);
         }
 
-//        // Add aprox. 2 pixels of the piece border again so the form of the piece is not off
-//        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
-//
-//        $points = $this->extendPointsArea($points, $pixelMap->getWidth() * $this->reduction * 3.5);
-//
-//        $pixelMap->applyToImage();
-//
-//        imagefilledpolygon(
-//            $pixelMap->getImage(),
-//            array_merge(...array_map(fn(Point $point): array => [round($point->getX()), round($point->getY())], $points)),
-//            $biggestObjectColor
-//        );
-//
-//        $pixelMap = PixelMap::createFromImage($pixelMap->getImage());
-//
-//        // Cut every thin lines (black pixels with at least 6 white pixels around it)
-//        $this->replaceThinPixels($pixelMap, $biggestObjectColor, $this->allocateColor($image, 140, 140, 200));
-//
-//        // Remove every black area, which is not the biggest
-//        $this->replaceSmallerColorAreas($pixelMap, $biggestObjectColor, $biggestObjectColor2, $this->allocateColor($image, 140, 140, 140));
-//
-//        $pixelMap->applyToImage();
-//        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor2);
-        $points = $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
-
-        return $points;
+        return $this->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
     }
 
     /**
@@ -219,7 +190,6 @@ class ByWulfBorderFinder implements BorderFinderInterface
                 $testPoints = 9;
                 $objectPixels = 0;
                 $freePixels = 0;
-                $mixedPixels = 0;
                 for ($rotation = 0; $rotation < 180; $rotation += 180 / $testPoints) {
                     $offsetX = (int) round($radius * cos(deg2rad($rotation)));
                     $offsetY = (int) round($radius * sin(deg2rad($rotation)));
@@ -229,9 +199,6 @@ class ByWulfBorderFinder implements BorderFinderInterface
 
                     if ($color1 === $objectColor && $color2 === $objectColor) {
                         ++$objectPixels;
-                    }
-                    if (($color1 === $objectColor) !== ($color2 === $objectColor)) {
-                        ++$mixedPixels;
                     }
                     if ($color1 !== $objectColor && $color2 !== $objectColor) {
                         ++$freePixels;
@@ -287,7 +254,7 @@ class ByWulfBorderFinder implements BorderFinderInterface
         } while ($areaFound);
 
         // Remove the biggest area
-        usort($areas, fn (array $a, array $b): int => $a['size'] <=> $b['size']);
+        usort($areas, static fn (array $a, array $b): int => $a['size'] <=> $b['size']);
         array_pop($areas);
 
         foreach ($areas as $area) {
@@ -347,7 +314,7 @@ class ByWulfBorderFinder implements BorderFinderInterface
                     for ($i = $direction + 3; $i < $direction + 7; ++$i) {
                         $checkDirection = $i % 4;
 
-                        if (($pixelMap->getColor($x + $directionOffsets[$checkDirection]['x'], $y + $directionOffsets[$checkDirection]['y']) ?? null) === $objectColor) {
+                        if (($pixelMap->getColor($x + $directionOffsets[$checkDirection]['x'], $y + $directionOffsets[$checkDirection]['y'])) === $objectColor) {
                             $x += $directionOffsets[$checkDirection]['x'];
                             $y += $directionOffsets[$checkDirection]['y'];
                             $direction = $checkDirection;
@@ -378,6 +345,9 @@ class ByWulfBorderFinder implements BorderFinderInterface
         throw new BorderParsingException('No area found');
     }
 
+    /**
+     * @throws BorderParsingException
+     */
     private function createTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
     {
         $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
@@ -396,6 +366,9 @@ class ByWulfBorderFinder implements BorderFinderInterface
         }
     }
 
+    /**
+     * @throws BorderParsingException
+     */
     private function createSmallTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
     {
         $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
@@ -412,27 +385,5 @@ class ByWulfBorderFinder implements BorderFinderInterface
                 }
             }
         }
-    }
-
-    /**
-     * @param Point[] $points
-     * @param float $reduction
-     * @return Point[]
-     */
-    private function extendPointsArea(array $points, float $reduction): array
-    {
-        $adjustedPoints = [];
-
-        $count = count($points);
-        foreach ($points as $index => $point) {
-            $pointBefore = $points[($index - 10 + $count) % $count];
-            $pointAfter = $points[($index + 10) % $count];
-
-            $verticalRotation = $this->pointService->getRotation($pointBefore, $pointAfter) + 90;
-
-            $adjustedPoints[] = $this->pointService->movePoint($point, $verticalRotation, $reduction);
-        }
-
-        return $adjustedPoints;
     }
 }

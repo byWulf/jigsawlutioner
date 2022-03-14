@@ -7,7 +7,6 @@ namespace Bywulf\Jigsawlutioner\Validator\Group;
 use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use JsonException;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
@@ -16,7 +15,6 @@ class RectangleGroupValidator extends ConstraintValidator
 {
     /**
      * @throws GroupInvalidException
-     * @throws JsonException
      */
     public function validate(mixed $value, Constraint $constraint): void
     {

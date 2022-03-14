@@ -18,13 +18,11 @@ class DepthClassifier extends ModelBasedClassifier implements Stringable
 
     public static function fromMetadata(SideMetadata $metadata): self
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $metadata->getSide()->getClassifier(DirectionClassifier::class);
-        if ($directionClassifier->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+        if ($metadata->getSide()->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
 
-        return new DepthClassifier($directionClassifier->getDirection(), $metadata->getDepth());
+        return new DepthClassifier($metadata->getSide()->getDirection(), $metadata->getDepth());
     }
 
     public static function getModelPath(): string

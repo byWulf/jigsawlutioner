@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
-use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use JsonSerializable;

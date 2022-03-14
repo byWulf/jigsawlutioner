@@ -40,7 +40,7 @@ trait ByWulfSolverTrait
             ]);
 
             return true;
-        } catch (GroupInvalidException) {
+        } /** @noinspection PhpRedundantCatchClauseInspection */ catch (GroupInvalidException) {
             return false;
         }
     }

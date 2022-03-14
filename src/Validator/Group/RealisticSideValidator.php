@@ -13,6 +13,9 @@ use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 class RealisticSideValidator extends ConstraintValidator
 {
+    /**
+     * @throws GroupInvalidException
+     */
     public function validate(mixed $value, Constraint $constraint): void
     {
         if (!$constraint instanceof RealisticSide) {

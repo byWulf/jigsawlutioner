@@ -93,11 +93,11 @@ class Piece implements JsonSerializable
         return [
             'index' => $this->index,
             'borderPoints' => array_map(
-                fn (DerivativePoint $point): array => $point->jsonSerialize(),
+                static fn (DerivativePoint $point): array => $point->jsonSerialize(),
                 $this->borderPoints
             ),
             'sides' => array_map(
-                fn (Side $side): array => $side->jsonSerialize(),
+                static fn (Side $side): array => $side->jsonSerialize(),
                 $this->sides
             ),
             'imageWidth' => $this->imageWidth,

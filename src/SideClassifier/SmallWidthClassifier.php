@@ -20,9 +20,7 @@ class SmallWidthClassifier extends ModelBasedClassifier implements Stringable
 
     public static function fromMetadata(SideMetadata $metadata): self
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $metadata->getSide()->getClassifier(DirectionClassifier::class);
-        if ($directionClassifier->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+        if ($metadata->getSide()->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
 
@@ -47,7 +45,7 @@ class SmallWidthClassifier extends ModelBasedClassifier implements Stringable
         }
 
         return new SmallWidthClassifier(
-            $directionClassifier->getDirection(),
+            $metadata->getSide()->getDirection(),
             $pointWidths[$smallestWidthIndex],
             new Point(
                 $points[$smallestWidthIndex]->getX() + $pointWidths[$smallestWidthIndex] / 2,
@@ -85,7 +83,7 @@ class SmallWidthClassifier extends ModelBasedClassifier implements Stringable
         $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
 
         $xDiff = $insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
-        $yDiff = $insideClassifier->getCenterPoint()->getY() - $insideClassifier->getCenterPoint()->getY();
+        $yDiff = $insideClassifier->getCenterPoint()->getY() - $outsideClassifier->getCenterPoint()->getY();
         $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
 
         return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);

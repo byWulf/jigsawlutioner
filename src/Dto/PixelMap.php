@@ -118,7 +118,7 @@ class PixelMap
 
     private function fillToRight(int $x, int $y, mixed $sourceColor, int $color, int &$filledPixels): int
     {
-        $x = $x + 1;
+        ++$x;
         while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
             $this->pixels[$y][$x] = $color;
             ++$filledPixels;
@@ -130,7 +130,7 @@ class PixelMap
 
     private function fillToLeft(int $x, int $y, int $sourceColor, int $color, int &$filledPixels): int
     {
-        $x = $x - 1;
+        --$x;
         while (isset($this->pixels[$y][$x]) && ($this->pixels[$y][$x] === $sourceColor || $this->pixels[$y][$x] === $color)) {
             $this->pixels[$y][$x] = $color;
             ++$filledPixels;

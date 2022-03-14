@@ -9,7 +9,7 @@ use Stringable;
 
 class Group implements Stringable
 {
-    private static $indexCounter = 0;
+    private static int $indexCounter = 0;
 
     private int $index;
 
@@ -165,8 +165,8 @@ class Group implements Stringable
             return 0;
         }
         return
-            max(array_map(fn (Placement $placement): int => $placement->getX(), $this->placements)) -
-            min(array_map(fn (Placement $placement): int => $placement->getX(), $this->placements)) +
+            max(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) -
+            min(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) +
             1
         ;
     }
@@ -178,8 +178,8 @@ class Group implements Stringable
         }
 
         return
-            max(array_map(fn (Placement $placement): int => $placement->getY(), $this->placements)) -
-            min(array_map(fn (Placement $placement): int => $placement->getY(), $this->placements)) +
+            max(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements)) -
+            min(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements)) +
             1
         ;
     }

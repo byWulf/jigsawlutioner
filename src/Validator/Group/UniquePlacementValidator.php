@@ -12,6 +12,9 @@ use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 class UniquePlacementValidator extends ConstraintValidator
 {
+    /**
+     * @throws GroupInvalidException
+     */
     public function validate(mixed $value, Constraint $constraint): void
     {
         if (!$constraint instanceof UniquePlacement) {
@@ -23,8 +26,8 @@ class UniquePlacementValidator extends ConstraintValidator
         }
 
         $foundDoubles = 0;
-        foreach ($value->getPlacementsGroupedByPosition() as $y => $horizontalPlacements) {
-            foreach ($horizontalPlacements as $x => $placements) {
+        foreach ($value->getPlacementsGroupedByPosition() as $horizontalPlacements) {
+            foreach ($horizontalPlacements as $placements) {
                 $foundDoubles += count($placements) - 1;
 
                 if ($foundDoubles > $constraint->maxAllowedDoubles) {

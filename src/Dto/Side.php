@@ -55,9 +55,14 @@ class Side implements JsonSerializable
     }
 
     /**
-     * @param class-string $classifierClassName
+     * @param class-string<SideClassifierInterface>
+     *
+     * @template T of SideClassifierInterface
+     * @psalm-param class-string<T> $classifierClassName
+     * @return T
      *
      * @throws SideClassifierException
+     *
      */
     public function getClassifier(string $classifierClassName): SideClassifierInterface
     {
@@ -76,21 +81,9 @@ class Side implements JsonSerializable
         return $this->startPoint;
     }
 
-    public function setStartPoint(Point $startPoint): Side
-    {
-        $this->startPoint = $startPoint;
-        return $this;
-    }
-
     public function getEndPoint(): Point
     {
         return $this->endPoint;
-    }
-
-    public function setEndPoint(Point $endPoint): Side
-    {
-        $this->endPoint = $endPoint;
-        return $this;
     }
 
     public function getUnrotatedPoints(): array
@@ -106,21 +99,18 @@ class Side implements JsonSerializable
 
     public function getDirection(): int
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $this->getClassifier(DirectionClassifier::class);
-
-        return $directionClassifier->getDirection();
+        return $this->getClassifier(DirectionClassifier::class)->getDirection();
     }
 
     public function jsonSerialize(): array
     {
         return [
             'points' => array_map(
-                fn (Point $point): array => $point->jsonSerialize(),
+                static fn (Point $point): array => $point->jsonSerialize(),
                 $this->points
             ),
             'classifiers' => array_map(
-                fn (SideClassifierInterface $classifier) => $classifier->jsonSerialize(),
+                static fn (SideClassifierInterface $classifier) => $classifier->jsonSerialize(),
                 $this->classifiers
             ),
             'startPoint' => $this->startPoint->jsonSerialize(),

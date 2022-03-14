@@ -14,6 +14,9 @@ use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 class PossibleSideMatchingValidator extends ConstraintValidator
 {
+    /**
+     * @throws GroupInvalidException
+     */
     public function validate(mixed $value, Constraint $constraint): void
     {
         if (!$constraint instanceof PossibleSideMatching) {

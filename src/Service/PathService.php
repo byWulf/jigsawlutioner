@@ -24,11 +24,11 @@ class PathService
      */
     public function simplifyPoints(array $points): array
     {
-        $algoPoints = array_map(fn (Point $point): ReductionPoint => new ReductionPoint($point->getX(), $point->getY()), $points);
+        $algoPoints = array_map(static fn (Point $point): ReductionPoint => new ReductionPoint($point->getX(), $point->getY()), $points);
         $reducer = new RamerDouglasPeucker($algoPoints);
         $reducedPoints = $reducer->reduce(2);
 
-        return array_map(fn (ReductionPoint $point): Point => new Point($point->x, $point->y), $reducedPoints);
+        return array_map(static fn (ReductionPoint $point): Point => new Point($point->x, $point->y), $reducedPoints);
     }
 
     /**
@@ -91,6 +91,7 @@ class PathService
     {
         $indexDirection = $length < 0 ? -1 : 1;
         $movedLength = 0;
+        /** @noinspection CallableParameterUseCaseInTypeContextInspection */
         $length = abs($length);
         while (true) {
             $nextIndex = $index + $indexDirection;

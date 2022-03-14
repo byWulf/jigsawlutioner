@@ -77,6 +77,6 @@ class Solution
 
     public function getPieceCount(): int
     {
-        return array_sum(array_map(fn(Group $group): int => count($group->getPlacements()), $this->getGroups()));
+        return array_sum(array_map(static fn(Group $group): int => count($group->getPlacements()), $this->getGroups()));
     }
 }

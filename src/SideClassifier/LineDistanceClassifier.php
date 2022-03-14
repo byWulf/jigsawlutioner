@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
-use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Stringable;
@@ -21,12 +20,10 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
 
     public static function fromMetadata(SideMetadata $metadata): self
     {
-        /** @var DirectionClassifier $directionClassifier */
-        $directionClassifier = $metadata->getSide()->getClassifier(DirectionClassifier::class);
-        if ($directionClassifier->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+        if ($metadata->getSide()->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
-        $isInside = $directionClassifier->getDirection() === DirectionClassifier::NOP_INSIDE;
+        $isInside = $metadata->getSide()->getDirection() === DirectionClassifier::NOP_INSIDE;
 
         $pointWidths = $metadata->getPointWidths();
         $gettingBigger = true;
@@ -90,7 +87,7 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
         }
 
         return new LineDistanceClassifier(
-            $directionClassifier->getDirection(),
+            $metadata->getSide()->getDirection(),
             $countedPointsCount > 0 ? $averageDistanceSum / $countedPointsCount : 0,
             $minDistance ?? 0.0,
             $maxDistance ?? 0.0

@@ -211,7 +211,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                             $filteredDerivativePoints[$i4],
                         ];
 
-                        usort($activeDerivatives, fn (DerivativePoint $a, DerivativePoint $b): int => $a->getIndex() <=> $b->getIndex());
+                        usort($activeDerivatives, static fn (DerivativePoint $a, DerivativePoint $b): int => $a->getIndex() <=> $b->getIndex());
 
                         yield $activeDerivatives;
                     }

@@ -11,7 +11,7 @@ class PointService
 {
     private function getDistanceSquared(Point $point1, Point $point2): float
     {
-        return pow($point1->getX() - $point2->getX(), 2) + pow($point1->getY() - $point2->getY(), 2);
+        return (($point1->getX() - $point2->getX()) ** 2) + (($point1->getY() - $point2->getY()) ** 2);
     }
 
     /**
@@ -38,7 +38,7 @@ class PointService
 
     public function getDistanceBetweenPoints(Point $point1, Point $point2): float
     {
-        return sqrt(pow($point2->getX() - $point1->getX(), 2) + pow($point2->getY() - $point1->getY(), 2));
+        return sqrt((($point2->getX() - $point1->getX()) ** 2) + (($point2->getY() - $point1->getY()) ** 2));
     }
 
     public function getRotation(Point $point1, Point $point2): float
