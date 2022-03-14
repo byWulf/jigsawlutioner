@@ -1,4 +1,4 @@
-# jigsawlutioner.byWulf
+# jigsawlutioner.byWulf - algorithm
 
 
 ## About
