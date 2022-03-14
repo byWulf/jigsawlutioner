@@ -6,6 +6,10 @@ Jigsawlutioner is an algorithm designed to solve a jigsaw puzzle based on images
 
 ![Transforming single pieces into solved puzzle](doc/solution_mockup.png)
 
+## See also
+* [bywulf/jigsawlutioner-cli](https://github.com/byWulf/jigsawlutioner-cli) - command line tools to use this algorithm
+* [byWulf/jigsawlutioner-machine](https://github.com/byWulf/jigsawlutioner-machine) - lego machine scanning and solving the puzzle by its own automatically
+
 ## Why
 Solving jigsaw puzzles by hand should be a relaxing leisure activity. But when it comes to a point, when you have a table full of black pieces, and all you can do it brutforcing them by trying each side to each other sides resolving in 4 solved connections within 2 hours, that is no fun anymore. This algorithm doesn't care about colors and only looks at the individual formed piece borders so it is able to attack exactly this problem case.
 
