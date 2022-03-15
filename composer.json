@@ -31,5 +31,8 @@
         "phpunit/phpunit": "^9",
         "phpspec/prophecy-phpunit": "^2.0",
         "symfony/var-dumper": "^6.0"
+    },
+    "scripts": {
+        "test": "./vendor/bin/phpunit tests/"
     }
 }
