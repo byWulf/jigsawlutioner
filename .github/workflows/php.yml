@@ -1,0 +1,46 @@
+name: PHP Composer
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php-version:
+          - "8.0"
+          - "8.1"
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+      
+    - name: "Install PHP with extensions"
+      uses: "shivammathur/setup-php@v2"
+      with:
+        php-version: ${{ matrix.php-version }}
+        
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+      
+    - name: "Determine composer cache directory"
+      id: "determine-composer-cache-directory"
+      run: 'echo "::set-output name=directory::$(composer config cache-dir)"'
+      
+    - name: "Cache dependencies installed with composer"
+      uses: "actions/cache@v2"
+      with:
+        path: "${{ steps.determine-composer-cache-directory.outputs.directory }}"
+        key: "php-${{ matrix.php-version }}-composer-cache"
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run test suite
+      run: composer test
