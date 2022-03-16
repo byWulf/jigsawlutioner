@@ -1,5 +1,11 @@
 # jigsawlutioner.byWulf - algorithm
+![Build status](https://img.shields.io/github/workflow/status/bywulf/jigsawlutioner/PHP%20Composer?style=flat-square)
+![Latest release](https://img.shields.io/github/v/release/bywulf/jigsawlutioner?style=flat-square&color=lightgrey)
+![License](https://img.shields.io/github/license/bywulf/jigsawlutioner?style=flat-square&color=yellow)
+![GitHub top language](https://img.shields.io/github/languages/top/bywulf/jigsawlutioner?style=flat-square)
 
+[![Donate](https://img.shields.io/badge/PayPal-donate-informational?style=flat-square&logo=paypal)](https://www.paypal.com/donate/?hosted_button_id=QGSRL3B9BN7BW)
+[![Donate](https://img.shields.io/badge/Buy%20me%20a%20coffee-donate-informational?style=flat-square&logo=buy-me-a-coffee&color=c2944f)](https://www.buymeacoffee.com/bywulf)
 
 ## About
 Jigsawlutioner is an algorithm designed to solve a jigsaw puzzle based on images taken by each puzzle piece.
