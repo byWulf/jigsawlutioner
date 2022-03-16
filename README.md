@@ -77,12 +77,16 @@ We currently have the following classifiers (`SideClassifierInterface`):
 ### ByWulfSolver
 When you parsed all your pieces, you can start solving the puzzle. First generate a matching map of all probabilities between all sides. Then the solver will search for the solution:
 ```injectablephp
-    $sideMatcher = new WeightedMatcher();
-    $matchingMapGenerator = new MatchingMapGenerator($sideMatcher);
-    $matchingMap = $matchingMapGenerator->getMatchingMap($pieces);
+use Bywulf\Jigsawlutioner\Service\SideMatcher\WeightedMatcher;
+use Bywulf\Jigsawlutioner\Service\MatchingMapGenerator;
+use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 
-    $solver = new ByWulfSolver();
-    $solution = $solver->findSolution($pieces, $matchingMap);
+$sideMatcher = new WeightedMatcher();
+$matchingMapGenerator = new MatchingMapGenerator($sideMatcher);
+$matchingMap = $matchingMapGenerator->getMatchingMap($pieces);
+
+$solver = new ByWulfSolver();
+$solution = $solver->findSolution($pieces, $matchingMap);
 ```
 
 On success a `Solution` is returned. On failure a `JigsawlutionerException` is thrown.
