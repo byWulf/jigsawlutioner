@@ -1,4 +1,5 @@
-# jigsawlutioner.byWulf - algorithm
+![jigsawlutioner.byWulf - algorithm](doc/jigsawlutioner_algorithm_logo.png)
+
 ![Build status](https://img.shields.io/github/workflow/status/bywulf/jigsawlutioner/PHP%20Composer?style=flat-square)
 ![Latest release](https://img.shields.io/github/v/release/bywulf/jigsawlutioner?style=flat-square&color=lightgrey)
 ![License](https://img.shields.io/github/license/bywulf/jigsawlutioner?style=flat-square&color=yellow)
