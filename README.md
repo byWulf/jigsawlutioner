@@ -33,4 +33,65 @@ Currently only standard rectangle puzzles are supported by the algorithm. Althou
 4. SideMatcher: Returns the probability between two sides, how good they can fit together.
 5. PuzzleSolver: Solves the jigsaw puzzle and returns a matrix of where every piece should be placed with correct rotation.
 
+## Usage
+### PieceAnalyzer
+You need a high definition image of your puzzle piece. It should be 1000px wide and its borders should be distinct. Best practice: use a backlight when taking the images, so it becomes black/white and the borders really stand out.
 
+If you want to get an image returned where the background got transparent (f.e. to display it somewhere connected to other pieces), specify it also. Best practice: take two images of the piece in the same position. First with backlight for better border detection, and one with normal light for the colored piece becoming transparent.
+```injectablephp
+use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
+use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
+use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
+
+$borderFinder = new ByWulfBorderFinder();
+$sideFinder = new ByWulfSideFinder();
+
+$pieceAnalyzer = new PieceAnalyzer($borderFinder, $sideFinder);
+
+$image = imagecreatefromjpeg('piece_blackwhite.jpg');
+$transparentImage = imagecreatefromjpeg('piece_color.jpg');
+
+$piece = $pieceAnalyzer->getPieceFromImage(1, $image, new ByWulfBorderFinderContext(
+    threshold: 0.65,
+    transparentImage: $transparentImage,
+));
+```
+
+On success a `Piece` object is returned. On failure a `JigsawlutionerException` is thrown.
+
+The most important data in the `$piece` are the `$piece->getBorderPoints()` (which specify the points of the border on the image) and the four `$piece->getSides()` objects. 
+
+Each `Side` object has the following data:
+* `$side->getPoints()`: a normalized list of the points of the side. They are reduced to 100 equally distributed and softened points and afterwards rotated horizontally.
+* `$side->getStartPoint()`/`$side->getEndPoint()`: The position of the corner points of this side on the image.
+* `$side->getClassifiers()`: Each side is described by classifiers. These are simple numbers that are comparable to other sides to see, how much two sides matches. 
+
+We currently have the following classifiers (`SideClassifierInterface`):
+* `DirectionClassifier`: contains the information, if the side is straight (on the border of the puzzle) or if has a nop (`DirectionClassifier::NOP_OUTSIDE`) or a hole (`DirectionClassifier::NOP_INSIDE`).
+* `BigWidthClassifier`: where is the widest point of the nop/hole and how wide is it
+* `SmallWidthClassifier`: where is the smallest point of the nop/hole and how wide is it
+* `CornerDistanceClassifier`: how far the the two endpoints of the side apart
+* `DepthClassifier`: how deep is the nop/hole
+* `LineDistanceClassifier`: we look at the points between the start/end point and the smallest point of the nop/hole. We ignore the first and last 20%. We then look at the remaining points and calculate the minimum, maximum and average distance to the straight line between the two endpoints.
+
+### ByWulfSolver
+When you parsed all your pieces, you can start solving the puzzle. First generate a matching map of all probabilities between all sides. Then the solver will search for the solution:
+```injectablephp
+    $sideMatcher = new WeightedMatcher();
+    $matchingMapGenerator = new MatchingMapGenerator($sideMatcher);
+    $matchingMap = $matchingMapGenerator->getMatchingMap($pieces);
+
+    $solver = new ByWulfSolver();
+    $solution = $solver->findSolution($pieces, $matchingMap);
+```
+
+On success a `Solution` is returned. On failure a `JigsawlutionerException` is thrown.
+
+The solution will contain multiple `$solution->getGroups()`. One for every connected area of the piece. Ideally you get exactly one group containing all pieces.
+
+Each `Group` has a list of `$group->getPlacements()`. One placement for each piece.
+
+Each `Placement` has the following information:
+* `$placement->getPiece()`: the piece described in this placement
+* `$placement->getX()` / `$placement->getY()`: the position of the piece in the pattern of the group. One unit means one piece row/column. 
+* `$placement->getTopSideIndex()`: specifies the side array index of the piece, that points to the top of the group (so the piece must be rotated, that this side is at the top).
