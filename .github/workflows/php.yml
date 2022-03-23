@@ -46,7 +46,7 @@ jobs:
       run: composer test
 
     - name: what files
-      run: ls -la .phpunit.cache
+      run: ls -la .phpunit.cache/code-coverage/
 
     - name: Upload code coverage
       uses: codecov/codecov-action@v2
