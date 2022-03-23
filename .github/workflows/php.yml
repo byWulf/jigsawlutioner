@@ -10,7 +10,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         php-version:
@@ -20,19 +20,19 @@ jobs:
     steps:
     - name: "Checkout"
       uses: actions/checkout@v2
-      
+
     - name: "Install PHP with extensions"
       uses: "shivammathur/setup-php@v2"
       with:
         php-version: ${{ matrix.php-version }}
-        
+
     - name: Validate composer.json and composer.lock
       run: composer validate --strict
-      
+
     - name: "Determine composer cache directory"
       id: "determine-composer-cache-directory"
       run: 'echo "::set-output name=directory::$(composer config cache-dir)"'
-      
+
     - name: "Cache dependencies installed with composer"
       uses: "actions/cache@v2"
       with:
@@ -44,3 +44,11 @@ jobs:
 
     - name: Run test suite
       run: composer test
+
+    - name: what files
+      run: ls -la .phpunit.cache
+
+    - name: Upload code coverage
+      with:
+        files: .phpunit.cache/coverage.xml
+        fail_ci_if_error: true # optional (default = false)
