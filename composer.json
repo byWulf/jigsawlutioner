@@ -50,6 +50,6 @@
         "test:php-cs-fixer": "@php ./vendor/bin/php-cs-fixer -vvv fix --dry-run",
         "test:phpmd": "@php ./vendor/bin/phpmd src text ruleset.xml",
         "test:phpstan": "@php ./vendor/bin/phpstan analyse -c phpstan.neon",
-        "test:phpunit": "@php ./vendor/bin/phpunit tests/"
+        "test:phpunit": "@php ./vendor/bin/phpunit tests/ --coverage-xml tests/coverage"
     }
 }
