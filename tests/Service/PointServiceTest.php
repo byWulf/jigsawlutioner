@@ -9,6 +9,9 @@ use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Service\PointService;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Service\PointService
+ */
 class PointServiceTest extends TestCase
 {
     private PointService $pointService;
