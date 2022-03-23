@@ -5,17 +5,23 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
+use InvalidArgumentException;
 use Stringable;
 
 class DirectionClassifier implements SideClassifierInterface, Stringable
 {
     public const NOP_STRAIGHT = 0;
+
     public const NOP_INSIDE = -1;
+
     public const NOP_OUTSIDE = 1;
 
     public function __construct(
         private int $direction
     ) {
+        if (!in_array($this->direction, [self::NOP_STRAIGHT, self::NOP_INSIDE, self::NOP_OUTSIDE], true)) {
+            throw new InvalidArgumentException('Invalid direction "' . $this->direction . '" given.');
+        }
     }
 
     public static function fromMetadata(SideMetadata $metadata): self
@@ -59,10 +65,11 @@ class DirectionClassifier implements SideClassifierInterface, Stringable
 
     public function __toString(): string
     {
-        $directionString = match($this->direction) {
+        $directionString = match ($this->direction) {
             self::NOP_INSIDE => 'inside',
             self::NOP_OUTSIDE => 'outside',
             self::NOP_STRAIGHT => 'straight',
+            default => 'unknown',
         };
 
         return 'Direction(' . $directionString . ')';

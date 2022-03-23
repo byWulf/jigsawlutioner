@@ -10,20 +10,10 @@ use Bywulf\Jigsawlutioner\Dto\Placement;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
-use Symfony\Component\Validator\Validation;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class AddBestSinglePieceStrategy
 {
     use ByWulfSolverTrait;
-
-    private ValidatorInterface $validator;
-
-    public function __construct()
-    {
-        /** @noinspection UnusedConstructorDependenciesInspection */
-        $this->validator = Validation::createValidator();
-    }
 
     /**
      * @throws PuzzleSolverException
@@ -50,13 +40,14 @@ class AddBestSinglePieceStrategy
 
         $nextPieceIndex = $this->getPieceIndexFromKey($nextKey);
 
-        $matchingKey = array_key_first($context->getMatchingProbabilities($nextKey));
+        $matchingKey = array_key_first($context->getMatchingProbabilities($nextKey)) ?? '';
         $matchingPieceIndex = $this->getPieceIndexFromKey($matchingKey);
 
         $existingGroup = null;
         foreach ($context->getSolution()->getGroups() as $group) {
             if ($group->getPlacementByPiece($context->getPiece($matchingPieceIndex))) {
                 $existingGroup = $group;
+
                 break;
             }
         }
@@ -78,7 +69,7 @@ class AddBestSinglePieceStrategy
     {
         $bestRating = 0;
         $bestKey = null;
-        foreach ($context->getMatchingMap() as $key => $probabilities) {
+        foreach (array_keys($context->getMatchingMap()) as $key) {
             if ($context->getSolution()->getGroupByPiece($context->getPiece($this->getPieceIndexFromKey($key)))) {
                 continue;
             }

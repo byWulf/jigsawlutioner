@@ -19,9 +19,6 @@ class PointServiceTest extends TestCase
     }
 
     /**
-     * @param Point[] $points
-     * @param Point[] $expectedPoints
-     *
      * @dataProvider getDistanceToLineDataSets
      */
     public function testDistanceToLine(Point $point, Point $lineStart, Point $lineEnd, float $expectedDistance): void
@@ -52,7 +49,7 @@ class PointServiceTest extends TestCase
     /**
      * @dataProvider getAverageRotationDataSets
      */
-    public function testGetAverageRotation(Point $topLeftPoint, Point $bottomLeftPoint, Point $bottomRightPoint, Point $topRightPoint, float $expectedRotation) : void
+    public function testGetAverageRotation(Point $topLeftPoint, Point $bottomLeftPoint, Point $bottomRightPoint, Point $topRightPoint, float $expectedRotation): void
     {
         $this->assertEquals($expectedRotation, $this->pointService->getAverageRotation($topLeftPoint, $bottomLeftPoint, $bottomRightPoint, $topRightPoint));
     }

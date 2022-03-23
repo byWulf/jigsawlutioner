@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Validator\Group;
 
 use Bywulf\Jigsawlutioner\Dto\Group;
+use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
@@ -33,27 +34,27 @@ class PossibleSideMatchingValidator extends ConstraintValidator
                 if ($value->getLastPlacementByPosition($placement->getX(), $placement->getY()) !== $placement) {
                     continue;
                 }
-
                 $side = $placement->getPiece()->getSide($placement->getTopSideIndex() + $indexOffset);
 
                 $matchedPlacement = $value->getLastPlacementByPosition($placement->getX() + $positionOffset['x'], $placement->getY() + $positionOffset['y']);
                 if ($matchedPlacement === null) {
                     continue;
                 }
-
                 $matchedSide = $matchedPlacement->getPiece()->getSide($matchedPlacement->getTopSideIndex() + 2 + $indexOffset);
 
-                $sideKey = $placement->getPiece()->getIndex() . '_' . ($placement->getTopSideIndex() + $indexOffset);
-                $matchingSideKey = $matchedPlacement->getPiece()->getIndex() . '_' . ($matchedPlacement->getTopSideIndex() + $indexOffset);
-
-                if (
-                    $side->getDirection() === DirectionClassifier::NOP_STRAIGHT ||
-                    $matchedSide->getDirection() === DirectionClassifier::NOP_STRAIGHT ||
-                    $side->getDirection() === $matchedSide->getDirection()
-                ) {
-                    throw new GroupInvalidException('Side directions don\'t match. ' . $sideKey . '(' . $side->getDirection() . ') <-> ' . $matchingSideKey . '(' . $matchedSide->getDirection() . ')');
+                if (!$this->doSideDirectionsMatch($side, $matchedSide)) {
+                    throw new GroupInvalidException('Side directions don\'t match.');
                 }
             }
         }
+    }
+
+    private function doSideDirectionsMatch(Side $side1, Side $side2): bool
+    {
+        return
+            $side1->getDirection() !== DirectionClassifier::NOP_STRAIGHT &&
+            $side2->getDirection() !== DirectionClassifier::NOP_STRAIGHT &&
+            $side1->getDirection() !== $side2->getDirection()
+        ;
     }
 }

@@ -100,6 +100,6 @@ class BigWidthClassifier extends ModelBasedClassifier implements Stringable
 
     public function __toString(): string
     {
-        return 'BigWidth(w: ' . round($this->width, 2) . ', cx: '  . round($this->centerPoint->getX(), 2) . ', cy: ' . round($this->centerPoint->getY(), 2) . ')';
+        return 'BigWidth(w: ' . round($this->width, 2) . ', cx: ' . round($this->centerPoint->getX(), 2) . ', cy: ' . round($this->centerPoint->getY(), 2) . ')';
     }
 }

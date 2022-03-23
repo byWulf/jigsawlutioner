@@ -16,6 +16,9 @@ class Side implements JsonSerializable
      */
     private array $classifiers = [];
 
+    /**
+     * @var Point[]
+     */
     private array $unrotatedPoints = [];
 
     /**
@@ -55,18 +58,20 @@ class Side implements JsonSerializable
     }
 
     /**
-     * @param class-string<SideClassifierInterface>
-     *
      * @template T of SideClassifierInterface
-     * @psalm-param class-string<T> $classifierClassName
-     * @return T
+     *
+     * @param class-string<T> $classifierClassName
      *
      * @throws SideClassifierException
      *
+     * @return T
      */
-    public function getClassifier(string $classifierClassName): SideClassifierInterface
+    public function getClassifier(string $classifierClassName): object
     {
-        return $this->classifiers[$classifierClassName] ?? throw new SideClassifierException('Classifier "' . $classifierClassName . '" not set.');
+        /** @var T $classifier */
+        $classifier = $this->classifiers[$classifierClassName] ?? throw new SideClassifierException('Classifier "' . $classifierClassName . '" not set.');
+
+        return $classifier;
     }
 
     public function addClassifier(SideClassifierInterface $classifier): self
@@ -86,14 +91,21 @@ class Side implements JsonSerializable
         return $this->endPoint;
     }
 
+    /**
+     * @return Point[]
+     */
     public function getUnrotatedPoints(): array
     {
         return $this->unrotatedPoints;
     }
 
+    /**
+     * @param Point[] $unrotatedPoints
+     */
     public function setUnrotatedPoints(array $unrotatedPoints): Side
     {
         $this->unrotatedPoints = $unrotatedPoints;
+
         return $this;
     }
 

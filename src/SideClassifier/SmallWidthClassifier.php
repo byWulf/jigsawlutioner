@@ -61,6 +61,8 @@ class SmallWidthClassifier extends ModelBasedClassifier implements Stringable
 
     /**
      * @param SmallWidthClassifier $comparisonClassifier
+     *
+     * @return array{float, float, float}
      */
     public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
     {
@@ -110,6 +112,6 @@ class SmallWidthClassifier extends ModelBasedClassifier implements Stringable
 
     public function __toString(): string
     {
-        return 'SmallWidth(w: ' . round($this->width, 2) . ', cx: '  . round($this->centerPoint->getX(), 2) . ', cy: ' . round($this->centerPoint->getY(), 2) . ')';
+        return 'SmallWidth(w: ' . round($this->width, 2) . ', cx: ' . round($this->centerPoint->getX(), 2) . ', cy: ' . round($this->centerPoint->getY(), 2) . ')';
     }
 }

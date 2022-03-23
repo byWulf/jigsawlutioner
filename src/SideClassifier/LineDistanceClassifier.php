@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
+use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use Stringable;
@@ -23,8 +24,58 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
         if ($metadata->getSide()->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
             throw new SideClassifierException('Not available on straight sides.');
         }
-        $isInside = $metadata->getSide()->getDirection() === DirectionClassifier::NOP_INSIDE;
 
+        $averageDistanceSum = 0;
+        $minDistance = null;
+        $maxDistance = null;
+        $countedPointsCount = 0;
+
+        foreach (self::getPointsToLookAt($metadata, 0.2) as $point) {
+            ++$countedPointsCount;
+            $averageDistanceSum += $point->getY();
+
+            if ($minDistance === null || $point->getY() < $minDistance) {
+                $minDistance = $point->getY();
+            }
+
+            if ($maxDistance === null || $point->getY() > $maxDistance) {
+                $maxDistance = $point->getY();
+            }
+        }
+
+        return new LineDistanceClassifier(
+            $metadata->getSide()->getDirection(),
+            $countedPointsCount > 0 ? $averageDistanceSum / $countedPointsCount : 0,
+            $minDistance ?? 0.0,
+            $maxDistance ?? 0.0
+        );
+    }
+
+    /**
+     * @throws SideClassifierException
+     *
+     * @return iterable<Point>
+     */
+    private static function getPointsToLookAt(SideMetadata $metadata, float $skipPercentage): iterable
+    {
+        $smallestWidthIndex = self::getSmallestWidthIndex($metadata);
+        $oppositeSmallestWidthIndex = self::getOppositeSmallestWidthIndex($metadata, $smallestWidthIndex);
+
+        $pointsCount = count($metadata->getSide()->getPoints());
+        $leftPointCount = $smallestWidthIndex + 1;
+        $rightPointCount = $pointsCount - $oppositeSmallestWidthIndex;
+
+        for ($i = round($leftPointCount * $skipPercentage); $i < $pointsCount - round($rightPointCount * $skipPercentage); ++$i) {
+            if ($i >= round($leftPointCount * (1 - $skipPercentage)) && $i <= $oppositeSmallestWidthIndex + round($rightPointCount * $skipPercentage)) {
+                continue;
+            }
+
+            yield $metadata->getSide()->getPoints()[$i];
+        }
+    }
+
+    private static function getSmallestWidthIndex(SideMetadata $metadata): int
+    {
         $pointWidths = $metadata->getPointWidths();
         $gettingBigger = true;
         $smallestWidthIndex = 0;
@@ -43,9 +94,16 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
             throw new SideClassifierException('Couldn\'t determine smallest width of nop.');
         }
 
+        return $smallestWidthIndex;
+    }
+
+    private static function getOppositeSmallestWidthIndex(SideMetadata $metadata, int $smallestWidthIndex): int
+    {
+        $isInside = $metadata->getSide()->getDirection() === DirectionClassifier::NOP_INSIDE;
+
         $oppositeSmallestWidthIndex = $metadata->getDeepestIndex();
         $pointsCount = count($metadata->getSide()->getPoints());
-        for ($i = $metadata->getDeepestIndex(); $i < $pointsCount; $i++) {
+        for ($i = $metadata->getDeepestIndex(); $i < $pointsCount; ++$i) {
             if (
                 ($isInside && $metadata->getSide()->getPoints()[$i]->getY() < $metadata->getSide()->getPoints()[$smallestWidthIndex]->getY()) ||
                 (!$isInside && $metadata->getSide()->getPoints()[$i]->getY() > $metadata->getSide()->getPoints()[$smallestWidthIndex]->getY())
@@ -54,44 +112,7 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
             }
         }
 
-        $averageDistanceSum = 0;
-        $minDistance = null;
-        $maxDistance = null;
-        $countedPointsCount = 0;
-        $skipPercentage = 0.2;
-
-        $leftPointCount = $smallestWidthIndex + 1;
-        for ($i = round($leftPointCount * $skipPercentage); $i < round($leftPointCount * (1 - $skipPercentage)); $i++) {
-            $y = $metadata->getSide()->getPoints()[$i]->getY();
-            $countedPointsCount++;
-            $averageDistanceSum += $y;
-            if ($minDistance === null || $y < $minDistance) {
-                $minDistance = $y;
-            }
-            if ($maxDistance === null || $y > $maxDistance) {
-                $maxDistance = $y;
-            }
-        }
-
-        $rightPointCount = $pointsCount - $oppositeSmallestWidthIndex + 1;
-        for ($i = round($rightPointCount * $skipPercentage) + $oppositeSmallestWidthIndex; $i < $pointsCount - round($rightPointCount * $skipPercentage); $i++) {
-            $y = $metadata->getSide()->getPoints()[$i]->getY();
-            $countedPointsCount++;
-            $averageDistanceSum += $y;
-            if ($minDistance === null || $y < $minDistance) {
-                $minDistance = $y;
-            }
-            if ($maxDistance === null || $y > $maxDistance) {
-                $maxDistance = $y;
-            }
-        }
-
-        return new LineDistanceClassifier(
-            $metadata->getSide()->getDirection(),
-            $countedPointsCount > 0 ? $averageDistanceSum / $countedPointsCount : 0,
-            $minDistance ?? 0.0,
-            $maxDistance ?? 0.0
-        );
+        return $oppositeSmallestWidthIndex;
     }
 
     public static function getModelPath(): string
@@ -101,6 +122,8 @@ class LineDistanceClassifier extends ModelBasedClassifier implements Stringable
 
     /**
      * @param LineDistanceClassifier $comparisonClassifier
+     *
+     * @return array{float, float}
      */
     public function getPredictionData(SideClassifierInterface $comparisonClassifier): array
     {

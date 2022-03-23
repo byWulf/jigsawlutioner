@@ -17,6 +17,9 @@ use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
 
 class WeightedMatcher implements SideMatcherInterface
 {
+    /**
+     * @var array<string, float>
+     */
     private array $weights = [
         BigWidthClassifier::class => 0.9479055258467,
         CornerDistanceClassifier::class => 0.82788941663622,
@@ -78,11 +81,6 @@ class WeightedMatcher implements SideMatcherInterface
         }
 
         return $weightSum > 0 ? $sum / $weightSum : 0;
-    }
-
-    public function setWeights(array $weights): void
-    {
-        $this->weights = $weights;
     }
 
     private function getWeightForClassifier(string $classifierName): ?float

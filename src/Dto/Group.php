@@ -62,16 +62,35 @@ class Group implements Stringable
         return $this;
     }
 
-    public function removePlacement(Placement $placement, bool $refreshCache = true): self
+    public function addPlacementsFromGroup(Group $group): self
     {
-        $index = array_search($placement, $this->placements, true);
-        if ($index !== false) {
-            unset($this->placements[$index]);
+        foreach ($group->getPlacements() as $placement) {
+            $this->addPlacement($placement);
+        }
 
-            if ($refreshCache) {
-                $this->updateIndexedPlacements();
+        return $this;
+    }
+
+    public function removePlacement(Placement $placement): self
+    {
+        $this->removePlacements([$placement]);
+
+        return $this;
+    }
+
+    /**
+     * @param Placement[] $placements
+     */
+    public function removePlacements(array $placements): self
+    {
+        foreach ($placements as $placement) {
+            $index = array_search($placement, $this->placements, true);
+            if ($index !== false) {
+                unset($this->placements[$index]);
             }
         }
+
+        $this->updateIndexedPlacements();
 
         return $this;
     }
@@ -108,11 +127,17 @@ class Group implements Stringable
         return $this->getFirstPlacementByPosition($x, $y);
     }
 
+    /**
+     * @return Placement[][][]
+     */
     public function getPlacementsGroupedByPosition(): array
     {
         return $this->placementsByPosition;
     }
 
+    /**
+     * @return Placement[]
+     */
     public function getPlacementsByPosition(int $x, int $y): array
     {
         return $this->placementsByPosition[$y][$x] ?? [];
@@ -164,6 +189,7 @@ class Group implements Stringable
         if (count($this->placements) === 0) {
             return 0;
         }
+
         return
             max(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) -
             min(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) +

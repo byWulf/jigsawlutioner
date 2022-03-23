@@ -8,5 +8,4 @@ use Symfony\Component\Validator\Constraint;
 
 class RectangleGroup extends Constraint
 {
-
 }

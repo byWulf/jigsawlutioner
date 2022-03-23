@@ -10,8 +10,8 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 interface PuzzleSolverInterface
 {
     /**
-     * @param Piece[] $pieces
-     * @param array<string, array<string, float>>
+     * @param Piece[]                             $pieces
+     * @param array<string, array<string, float>> $matchingMap
      */
     public function findSolution(array $pieces, array $matchingMap): Solution;
 }

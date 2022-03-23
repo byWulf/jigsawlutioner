@@ -10,6 +10,7 @@ use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
+use InvalidArgumentException;
 use JsonSerializable;
 
 class Piece implements JsonSerializable
@@ -107,7 +108,7 @@ class Piece implements JsonSerializable
 
     public static function fromSerialized(string $serializedContent): self
     {
-        return unserialize(
+        $piece = unserialize(
             $serializedContent,
             ['allowed_classes' => [
                 DerivativePoint::class,
@@ -123,5 +124,11 @@ class Piece implements JsonSerializable
                 LineDistanceClassifier::class,
             ]]
         );
+
+        if (!$piece instanceof Piece) {
+            throw new InvalidArgumentException('Given serialized object was not a Piece.');
+        }
+
+        return $piece;
     }
 }

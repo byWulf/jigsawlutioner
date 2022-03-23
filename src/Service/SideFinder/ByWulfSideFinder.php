@@ -15,9 +15,13 @@ use Psr\Log\LoggerInterface;
 class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
 {
     private const DERIVATIVE_LIMIT = -40;
+
     private const DERIVATIVE_NEIGHBOUR_LOOKAHEAD = 20;
+
     private ?LoggerInterface $logger = null;
+
     private PointService $pointService;
+
     private PathService $pathService;
 
     public function __construct(
@@ -40,91 +44,14 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
     public function getSides(array &$borderPoints): array
     {
         // We get all derivative rotations aka how much the rotation changed on each point
-        $borderPoints = $this->getDerivativePoints($borderPoints);
+        $derivativePoints = $this->getDerivativePoints($borderPoints);
 
         $bestRating = 0;
         $bestDerivatives = null;
-        foreach ($this->iterateOverBestDerivativePoints($borderPoints) as $activeDerivatives) {
-            $this->logger?->debug('Looking at the following points: ', $activeDerivatives);
-            $rating = 0;
+        foreach ($this->iterateOverBestDerivativePoints($derivativePoints) as $activeDerivatives) {
+            $rating = $this->getDerivativesRating($activeDerivatives, $borderPoints);
 
-            // 1. Check that opposite sides are equally long
-            $distance0 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
-            $distance2 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
-            $rating += $this->calculateRating(abs($distance0 - $distance2) / (0.4 * min($distance0, $distance2)));
-            if (abs($distance0 - $distance2) > 0.6 * min($distance0, $distance2)) {
-                $this->logger?->debug(' -> Distance of sides 0 and 2 more than 60% apart', [$distance0, $distance2]);
-
-                continue;
-            }
-
-            $distance1 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
-            $distance3 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
-            $rating += $this->calculateRating(abs($distance1 - $distance3) / (0.4 * min($distance1, $distance3)));
-            if (abs($distance1 - $distance3) > 0.6 * min($distance1, $distance3)) {
-                $this->logger?->debug(' -> Distance of sides 1 and 3 more than 60% apart', [$distance1, $distance3]);
-
-                continue;
-            }
-
-            // 2. Check that opposite sides are equally rotated
-            $rotation0 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
-            $rotation2 = $this->pointService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
-            $rotationDiff0 = abs($this->pointService->normalizeRotation($rotation0 - $rotation2));
-            $rating += $this->calculateRating($rotationDiff0 / 30);
-            if ($rotationDiff0 > 40) {
-                $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 40° apart', [$rotation0, $rotation2]);
-
-                continue;
-            }
-
-            $rotation1 = $this->pointService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
-            $rotation3 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
-            $rotationDiff1 = abs($this->pointService->normalizeRotation($rotation1 - $rotation3));
-            $rating += $this->calculateRating($rotationDiff1 / 30);
-            if ($rotationDiff1 > 40) {
-                $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 40° apart', [$rotation1, $rotation3]);
-
-                continue;
-            }
-
-            // 4. Check that the sides are in their length not too far away from another
-            $rating += $this->calculateRating(abs(min($distance0, $distance2) - min($distance1, $distance3)) / (0.5 * min($distance0, $distance1, $distance2, $distance3)));
-            if (abs(min($distance0, $distance2) - min($distance1, $distance3)) > 0.75 * min($distance0, $distance1, $distance2, $distance3)) {
-                $this->logger?->debug(' -> Too narrow rectangle', [$distance0, $distance1, $distance2, $distance3]);
-
-                continue;
-            }
-
-            // 5. Check that the first 10% are straight to the side
-            for ($i = 0; $i < 4; ++$i) {
-                $sideDistance = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
-                $extendedPoints = $this->pathService->extendPointsByCount(
-                    $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
-                    100
-                );
-
-                for ($j = 0; $j < 10; ++$j) {
-                    $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
-                    $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
-                    if ($distanceToLine > 0.075 * $sideDistance) {
-                        $this->logger?->debug(' -> Starting part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
-
-                        continue 3;
-                    }
-                }
-                for ($j = 90; $j < 100; ++$j) {
-                    $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
-                    $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
-                    if ($distanceToLine > 0.075 * $sideDistance) {
-                        $this->logger?->debug(' -> Ending part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
-
-                        continue 3;
-                    }
-                }
-            }
-
-            if ($rating > $bestRating) {
+            if ($rating !== null && $rating > $bestRating) {
                 $bestRating = $rating;
                 $bestDerivatives = $activeDerivatives;
             }
@@ -155,60 +82,124 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
     }
 
     /**
+     * @param DerivativePoint[] $activeDerivatives
+     * @param Point[]           $borderPoints
+     */
+    private function getDerivativesRating(array $activeDerivatives, array $borderPoints): ?float
+    {
+        $this->logger?->debug('Looking at the following points: ', $activeDerivatives);
+        $rating = 0;
+
+        // 1. Check that opposite sides are equally long
+        $distance0 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
+        $distance2 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
+        $rating += $this->calculateRating(abs($distance0 - $distance2) / (0.4 * min($distance0, $distance2)));
+        if (abs($distance0 - $distance2) > 0.6 * min($distance0, $distance2)) {
+            $this->logger?->debug(' -> Distance of sides 0 and 2 more than 60% apart', [$distance0, $distance2]);
+
+            return null;
+        }
+
+        $distance1 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
+        $distance3 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
+        $rating += $this->calculateRating(abs($distance1 - $distance3) / (0.4 * min($distance1, $distance3)));
+        if (abs($distance1 - $distance3) > 0.6 * min($distance1, $distance3)) {
+            $this->logger?->debug(' -> Distance of sides 1 and 3 more than 60% apart', [$distance1, $distance3]);
+
+            return null;
+        }
+
+        // 2. Check that opposite sides are equally rotated
+        $rotation0 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
+        $rotation2 = $this->pointService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
+        $rotationDiff0 = abs($this->pointService->normalizeRotation($rotation0 - $rotation2));
+        $rating += $this->calculateRating($rotationDiff0 / 30);
+        if ($rotationDiff0 > 40) {
+            $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 40° apart', [$rotation0, $rotation2]);
+
+            return null;
+        }
+
+        $rotation1 = $this->pointService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
+        $rotation3 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
+        $rotationDiff1 = abs($this->pointService->normalizeRotation($rotation1 - $rotation3));
+        $rating += $this->calculateRating($rotationDiff1 / 30);
+        if ($rotationDiff1 > 40) {
+            $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 40° apart', [$rotation1, $rotation3]);
+
+            return null;
+        }
+
+        // 4. Check that the sides are in their length not too far away from another
+        $rating += $this->calculateRating(abs(min($distance0, $distance2) - min($distance1, $distance3)) / (0.5 * min($distance0, $distance1, $distance2, $distance3)));
+        if (abs(min($distance0, $distance2) - min($distance1, $distance3)) > 0.75 * min($distance0, $distance1, $distance2, $distance3)) {
+            $this->logger?->debug(' -> Too narrow rectangle', [$distance0, $distance1, $distance2, $distance3]);
+
+            return null;
+        }
+
+        // 5. Check that the first 10% are straight to the side
+        if (!$this->areLineStartsStraight($activeDerivatives, $borderPoints, $rating)) {
+            return null;
+        }
+
+        return $rating;
+    }
+
+    /**
+     * @param DerivativePoint[] $activeDerivatives
+     * @param Point[]           $borderPoints
+     */
+    private function areLineStartsStraight(array $activeDerivatives, array $borderPoints, float &$rating): bool
+    {
+        for ($i = 0; $i < 4; ++$i) {
+            $sideDistance = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+            $extendedPoints = $this->pathService->extendPointsByCount(
+                $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
+                100
+            );
+
+            for ($j = 0; $j < 10; ++$j) {
+                $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+                $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
+                if ($distanceToLine > 0.075 * $sideDistance) {
+                    $this->logger?->debug(' -> Starting part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
+
+                    return false;
+                }
+            }
+            for ($j = 90; $j < 100; ++$j) {
+                $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+                $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
+                if ($distanceToLine > 0.075 * $sideDistance) {
+                    $this->logger?->debug(' -> Ending part of side ' . $i . ' not straight at point ' . $j, [$distanceToLine, $sideDistance]);
+
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @param DerivativePoint[] $derivativePoints
      *
      * @return iterable<DerivativePoint[]>
      */
     private function iterateOverBestDerivativePoints(array $derivativePoints): iterable
     {
-        $count = count($derivativePoints);
-
-        // We search for the extremes (=lowest derivations)
-        $filteredDerivativePoints = [];
-        $currentDirection = null;
-        for ($i = 1; $i <= $count + 1; ++$i) {
-            $direction = $derivativePoints[$i % $count]->getDerivative() < $derivativePoints[($i - 1) % $count]->getDerivative() ? -1 : 1;
-            if ($currentDirection === null) {
-                $currentDirection = $direction;
-
-                continue;
-            }
-
-            $currentIndex = ($i - 1) % $count;
-            if ($direction === 1 && $currentDirection === -1 && $derivativePoints[$currentIndex]->getDerivative() < self::DERIVATIVE_LIMIT) {
-                $lowestDerivativeInNeighbourhood = 0;
-                $lowestIndex = null;
-                for ($j = -self::DERIVATIVE_NEIGHBOUR_LOOKAHEAD; $j <= self::DERIVATIVE_NEIGHBOUR_LOOKAHEAD; ++$j) {
-                    $index = ($currentIndex + $j + $count) % $count;
-                    if ($derivativePoints[$index]->getDerivative() < $lowestDerivativeInNeighbourhood) {
-                        $lowestDerivativeInNeighbourhood = $derivativePoints[$index]->getDerivative();
-                        $lowestIndex = $index;
-                    }
-                }
-
-                if ($lowestIndex === $currentIndex) {
-                    $filteredDerivativePoints[] = $derivativePoints[$currentIndex];
-                    $derivativePoints[$currentIndex]->setExtreme(true);
-                }
-            }
-
-            $currentDirection = $direction;
-        }
-
-        asort($filteredDerivativePoints);
-
-        $filteredDerivativePoints = array_values($filteredDerivativePoints);
-        $filteredCount = count($filteredDerivativePoints);
+        $filteredCount = count($derivativePoints);
 
         for ($i4 = 3; $i4 < $filteredCount; ++$i4) {
             for ($i3 = 2; $i3 < $i4; ++$i3) {
                 for ($i2 = 1; $i2 < $i3; ++$i2) {
                     for ($i1 = 0; $i1 < $i2; ++$i1) {
                         $activeDerivatives = [
-                            $filteredDerivativePoints[$i1],
-                            $filteredDerivativePoints[$i2],
-                            $filteredDerivativePoints[$i3],
-                            $filteredDerivativePoints[$i4],
+                            $derivativePoints[$i1],
+                            $derivativePoints[$i2],
+                            $derivativePoints[$i3],
+                            $derivativePoints[$i4],
                         ];
 
                         usort($activeDerivatives, static fn (DerivativePoint $a, DerivativePoint $b): int => $a->getIndex() <=> $b->getIndex());
@@ -225,7 +216,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
      *
      * @return DerivativePoint[]
      */
-    private function getDerivativePoints(array $points): array
+    private function getDerivativePoints(array &$points): array
     {
         $derivativePoints = [];
         foreach ($points as $index => $point) {
@@ -243,7 +234,47 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
             );
         }
 
-        return $derivativePoints;
+        $points = $derivativePoints;
+
+        return $this->filterForBestDerivativePoints($derivativePoints);
+    }
+
+    /**
+     * @param DerivativePoint[] $derivativePoints
+     *
+     * @return DerivativePoint[]
+     */
+    private function filterForBestDerivativePoints(array $derivativePoints): array
+    {
+        $count = count($derivativePoints);
+
+        // We search for the extremes (=lowest derivations)
+        $filteredDerivativePoints = [];
+        $currentDirection = null;
+        for ($i = 1; $i <= $count + 1; ++$i) {
+            $direction = $derivativePoints[$i % $count]->getDerivative() < $derivativePoints[($i - 1) % $count]->getDerivative() ? -1 : 1;
+            if ($currentDirection === null) {
+                $currentDirection = $direction;
+
+                continue;
+            }
+
+            $currentIndex = ($i - 1) % $count;
+            if ($direction === 1 && $currentDirection === -1 && $derivativePoints[$currentIndex]->getDerivative() < self::DERIVATIVE_LIMIT) {
+                $lowestIndex = $this->getLowestIndexOfDerivative($currentIndex, $derivativePoints);
+
+                if ($lowestIndex === $currentIndex) {
+                    $filteredDerivativePoints[] = $derivativePoints[$currentIndex];
+                    $derivativePoints[$currentIndex]->setExtreme(true);
+                }
+            }
+
+            $currentDirection = $direction;
+        }
+
+        asort($filteredDerivativePoints);
+
+        return array_values($filteredDerivativePoints);
     }
 
     /**
@@ -266,5 +297,25 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
     private function calculateRating(float $value): float
     {
         return 1 - min(1, $value);
+    }
+
+    /**
+     * @param DerivativePoint[] $derivativePoints
+     */
+    protected function getLowestIndexOfDerivative(int $currentIndex, array $derivativePoints): ?int
+    {
+        $count = count($derivativePoints);
+
+        $lowestDerivativeInNeighbourhood = 0;
+        $lowestIndex = null;
+        for ($j = -self::DERIVATIVE_NEIGHBOUR_LOOKAHEAD; $j <= self::DERIVATIVE_NEIGHBOUR_LOOKAHEAD; ++$j) {
+            $index = ($currentIndex + $j + $count) % $count;
+            if ($derivativePoints[$index]->getDerivative() < $lowestDerivativeInNeighbourhood) {
+                $lowestDerivativeInNeighbourhood = $derivativePoints[$index]->getDerivative();
+                $lowestIndex = $index;
+            }
+        }
+
+        return $lowestIndex;
     }
 }

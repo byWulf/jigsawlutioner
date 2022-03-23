@@ -9,7 +9,7 @@ use GdImage;
 class ByWulfBorderFinderContext implements BorderFinderContextInterface
 {
     public function __construct(
-        private float    $threshold,
+        private float $threshold,
         private ?GdImage $transparentImage = null,
         private ?GdImage $smallTransparentImage = null,
     ) {
@@ -28,6 +28,7 @@ class ByWulfBorderFinderContext implements BorderFinderContextInterface
     public function setTransparentImage(?GdImage $transparentImage): ByWulfBorderFinderContext
     {
         $this->transparentImage = $transparentImage;
+
         return $this;
     }
 
@@ -39,6 +40,7 @@ class ByWulfBorderFinderContext implements BorderFinderContextInterface
     public function setSmallTransparentImage(?GdImage $smallTransparentImage): ByWulfBorderFinderContext
     {
         $this->smallTransparentImage = $smallTransparentImage;
+
         return $this;
     }
 }

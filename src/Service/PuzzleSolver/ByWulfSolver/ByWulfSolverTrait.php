@@ -11,9 +11,13 @@ use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 trait ByWulfSolverTrait
 {
+    protected ?ValidatorInterface $validator = null;
+
     private function getKey(int $pieceNumber, int $sideIndex): string
     {
         return $pieceNumber . '_' . (($sideIndex + 4) % 4);
@@ -31,6 +35,10 @@ trait ByWulfSolverTrait
 
     private function isGroupValid(Group $group, int $maxAllowedDoubles, int $piecesCount): bool
     {
+        if ($this->validator === null) {
+            $this->validator = Validation::createValidator();
+        }
+
         try {
             $this->validator->validate($group, [
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),

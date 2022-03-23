@@ -29,15 +29,50 @@ class RectangleGroupValidator extends ConstraintValidator
         $limits = $this->getLimits($value);
 
         if (
-            ($limits['minYNop'] !== null && $limits['minYBorder'] !== null && $limits['minYNop'] <= $limits['minYBorder']) ||
-            ($limits['maxYNop'] !== null && $limits['maxYBorder'] !== null && $limits['maxYNop'] >= $limits['maxYBorder']) ||
-            ($limits['minXNop'] !== null && $limits['minXBorder'] !== null && $limits['minXNop'] <= $limits['minXBorder']) ||
-            ($limits['maxXNop'] !== null && $limits['maxXBorder'] !== null && $limits['maxXNop'] >= $limits['maxXBorder'])
+            $this->hasNopsBelowMinimumXBorder($limits) ||
+            $this->hasNopsBelowMinimumYBorder($limits) ||
+            $this->hasNopsAboveMaximumXBorder($limits) ||
+            $this->hasNopsAboveMaximumYBorder($limits)
         ) {
             throw new GroupInvalidException('No rectangle.');
         }
     }
 
+    /**
+     * @param array{minYBorder: int|null, minYNop: int|null, maxYBorder: int|null, maxYNop: int|null, minXBorder: int|null, minXNop: int|null, maxXBorder: int|null, maxXNop: int|null} $limits
+     */
+    private function hasNopsBelowMinimumYBorder(array $limits): bool
+    {
+        return $limits['minYNop'] !== null && $limits['minYBorder'] !== null && $limits['minYNop'] <= $limits['minYBorder'];
+    }
+
+    /**
+     * @param array{minYBorder: int|null, minYNop: int|null, maxYBorder: int|null, maxYNop: int|null, minXBorder: int|null, minXNop: int|null, maxXBorder: int|null, maxXNop: int|null} $limits
+     */
+    private function hasNopsAboveMaximumYBorder(array $limits): bool
+    {
+        return $limits['maxYNop'] !== null && $limits['maxYBorder'] !== null && $limits['maxYNop'] >= $limits['maxYBorder'];
+    }
+
+    /**
+     * @param array{minYBorder: int|null, minYNop: int|null, maxYBorder: int|null, maxYNop: int|null, minXBorder: int|null, minXNop: int|null, maxXBorder: int|null, maxXNop: int|null} $limits
+     */
+    private function hasNopsBelowMinimumXBorder(array $limits): bool
+    {
+        return $limits['minXNop'] !== null && $limits['minXBorder'] !== null && $limits['minXNop'] <= $limits['minXBorder'];
+    }
+
+    /**
+     * @param array{minYBorder: int|null, minYNop: int|null, maxYBorder: int|null, maxYNop: int|null, minXBorder: int|null, minXNop: int|null, maxXBorder: int|null, maxXNop: int|null} $limits
+     */
+    private function hasNopsAboveMaximumXBorder(array $limits): bool
+    {
+        return $limits['maxXNop'] !== null && $limits['maxXBorder'] !== null && $limits['maxXNop'] >= $limits['maxXBorder'];
+    }
+
+    /**
+     * @return array{minYBorder: int|null, minYNop: int|null, maxYBorder: int|null, maxYNop: int|null, minXBorder: int|null, minXNop: int|null, maxXBorder: int|null, maxXNop: int|null}
+     */
     private function getLimits(Group $value): array
     {
         $limits = [

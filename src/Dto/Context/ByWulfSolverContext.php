@@ -23,13 +23,12 @@ class ByWulfSolverContext
     private bool $removingAllowed = true;
 
     /**
-     * @param Solution                            $solution
      * @param Piece[]                             $pieces
      * @param array<string, array<string, float>> $originalMatchingMap
      */
     public function __construct(
-        private array    $pieces,
-        private array    $originalMatchingMap,
+        private array $pieces,
+        private array $originalMatchingMap,
         private ?Closure $stepProgression = null
     ) {
         $this->solution = new Solution();
@@ -42,6 +41,9 @@ class ByWulfSolverContext
         return $this->solution;
     }
 
+    /**
+     * @return Piece[]
+     */
     public function getPieces(): array
     {
         return $this->pieces;
@@ -61,6 +63,9 @@ class ByWulfSolverContext
         return $this->piecesCount;
     }
 
+    /**
+     * @return array<string, array<string, float>>
+     */
     public function getMatchingMap(): array
     {
         return $this->matchingMap;
@@ -79,9 +84,13 @@ class ByWulfSolverContext
         return $this->matchingMap[$key1][$key2] ?? 0;
     }
 
+    /**
+     * @param array<string, array<string, float>> $matchingMap
+     */
     public function setMatchingMap(array $matchingMap): ByWulfSolverContext
     {
         $this->matchingMap = $matchingMap;
+
         return $this;
     }
 
@@ -92,6 +101,9 @@ class ByWulfSolverContext
         return $this;
     }
 
+    /**
+     * @return array<string, array<string, float>>
+     */
     public function getOriginalMatchingMap(): array
     {
         return $this->originalMatchingMap;
@@ -99,7 +111,7 @@ class ByWulfSolverContext
 
     public function getOriginalMatchingProbability(string $key1, string $key2): float
     {
-        return $this->originalMatchingMap[$key1][$key2] ?? 0;
+        return $this->originalMatchingMap[$key1][$key2] ?? 0.0;
     }
 
     public function isRemovingAllowed(): bool
@@ -110,6 +122,7 @@ class ByWulfSolverContext
     public function setRemovingAllowed(bool $removingAllowed): ByWulfSolverContext
     {
         $this->removingAllowed = $removingAllowed;
+
         return $this;
     }
 

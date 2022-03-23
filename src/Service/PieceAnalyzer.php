@@ -71,6 +71,7 @@ class PieceAnalyzer
                 try {
                     $side->addClassifier($className::fromMetadata($metadata));
                 } catch (SideClassifierException) {
+                    // If a classifier could not be created, don't add it to the side
                 }
             }
         }

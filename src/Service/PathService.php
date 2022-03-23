@@ -61,13 +61,14 @@ class PathService
      */
     public function extendPointsByDistance(array $points, float $distance): array
     {
-        if (count($points) === 0) {
+        $pointsCount = count($points);
+        if ($pointsCount === 0) {
             return [];
         }
 
         $extendedPoints = [$points[0]];
         $offset = 0;
-        for ($i = 0; $i < count($points) - 1; ++$i) {
+        for ($i = 0; $i < $pointsCount - 1; ++$i) {
             $lineLength = $this->pointService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
             while ($offset <= $lineLength - $distance) {
                 $offset += $distance;
@@ -118,8 +119,9 @@ class PathService
     private function getLengthOfPolyline(array $points): float
     {
         $length = 0;
+        $pointsCount = count($points);
 
-        for ($i = 0; $i < count($points) - 1; ++$i) {
+        for ($i = 0; $i < $pointsCount - 1; ++$i) {
             $length += $this->pointService->getDistanceBetweenPoints($points[$i], $points[$i + 1]);
         }
 
@@ -141,7 +143,7 @@ class PathService
 
         $softenedPoints = [];
         $softenedPoints[] = new Point($points[0]->getX(), $points[0]->getY());
-        foreach ($points as $index => $point) {
+        foreach (array_keys($points) as $index) {
             $xSum = 0;
             $ySum = 0;
             $count = 0;

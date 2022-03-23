@@ -37,7 +37,7 @@ class MatchingMapGenerator
                 $matchingMap[$this->getKey($pieceIndex, $sideIndex)] = $probabilities;
 
                 // Remove own sides from map, because the puzzle must not be matched with itself
-                for ($i = 0; $i < 4; $i++) {
+                for ($i = 0; $i < 4; ++$i) {
                     unset($matchingMap[$this->getKey($pieceIndex, $sideIndex)][$this->getKey($pieceIndex, $i)]);
                 }
             }

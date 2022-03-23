@@ -62,7 +62,6 @@ class PointService
 
     /**
      * @param Point[] $points
-     * @return Point
      */
     public function getAveragePoint(array $points): Point
     {

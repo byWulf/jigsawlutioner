@@ -6,5 +6,4 @@ namespace Bywulf\Jigsawlutioner\Dto\Context;
 
 interface BorderFinderContextInterface
 {
-
 }

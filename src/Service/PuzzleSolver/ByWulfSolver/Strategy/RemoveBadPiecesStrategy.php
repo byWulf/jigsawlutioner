@@ -20,30 +20,7 @@ class RemoveBadPiecesStrategy
         $this->outputProgress($context, $outputMessage);
 
         foreach ($context->getSolution()->getGroups() as $group) {
-            $failedPlacements = [];
-            foreach ($group->getPlacements() as $placement) {
-                $sidesBelow = 0;
-                foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
-                    $oppositePlacement = $group->getFirstPlacementByPosition(
-                        $placement->getX() + $offset['x'],
-                        $placement->getY() + $offset['y']
-                    );
-                    if ($oppositePlacement === null) {
-                        continue;
-                    }
-
-                    $probability = $context->getOriginalMatchingProbability(
-                        $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $direction),
-                        $this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $direction)
-                    );
-                    if ($probability <= $maxProbability) {
-                        $sidesBelow++;
-                    }
-                }
-                if ($sidesBelow >= $minimumSidesBelow) {
-                    $failedPlacements[] = $placement;
-                }
-            }
+            $failedPlacements = $this->getFailedPlacements($group, $context, $maxProbability, $minimumSidesBelow);
 
             if (count($failedPlacements) > 0) {
                 foreach ($failedPlacements as $failedPlacement) {
@@ -59,6 +36,39 @@ class RemoveBadPiecesStrategy
                 $this->outputProgress($context, $outputMessage);
             }
         }
+    }
+
+    /**
+     * @return Placement[]
+     */
+    private function getFailedPlacements(Group $group, ByWulfSolverContext $context, float $maxProbability, int $minimumSidesBelow): array
+    {
+        $failedPlacements = [];
+        foreach ($group->getPlacements() as $placement) {
+            $sidesBelow = 0;
+            foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
+                $oppositePlacement = $group->getFirstPlacementByPosition(
+                    $placement->getX() + $offset['x'],
+                    $placement->getY() + $offset['y']
+                );
+                if ($oppositePlacement === null) {
+                    continue;
+                }
+
+                $probability = $context->getOriginalMatchingProbability(
+                    $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $direction),
+                    $this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $direction)
+                );
+                if ($probability <= $maxProbability) {
+                    ++$sidesBelow;
+                }
+            }
+            if ($sidesBelow >= $minimumSidesBelow) {
+                $failedPlacements[] = $placement;
+            }
+        }
+
+        return $failedPlacements;
     }
 
     private function splitSeparatedGroups(ByWulfSolverContext $context, Group $group): void

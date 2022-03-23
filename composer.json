@@ -30,9 +30,26 @@
     "require-dev": {
         "phpunit/phpunit": "^9",
         "phpspec/prophecy-phpunit": "^2.0",
-        "symfony/var-dumper": "^6.0"
+        "symfony/var-dumper": "^6.0",
+        "friendsofphp/php-cs-fixer": "^3.4",
+        "phpmd/phpmd": "^2.11",
+        "phpstan/phpstan": "^1.4",
+        "phpstan/phpstan-deprecation-rules": "^1.0"
     },
     "scripts": {
-        "test": "./vendor/bin/phpunit tests/"
+        "fix": [
+            "@fix:php-cs-fixer"
+        ],
+        "fix:php-cs-fixer": "@php ./vendor/bin/php-cs-fixer -vvv fix",
+        "test": [
+            "@test:php-cs-fixer",
+            "@test:phpstan",
+            "@test:phpmd",
+            "@test:phpunit"
+        ],
+        "test:php-cs-fixer": "@php ./vendor/bin/php-cs-fixer -vvv fix --dry-run",
+        "test:phpmd": "@php ./vendor/bin/phpmd src text ruleset.xml",
+        "test:phpstan": "@php ./vendor/bin/phpstan analyse -c phpstan.neon",
+        "test:phpunit": "@php ./vendor/bin/phpunit tests/"
     }
 }

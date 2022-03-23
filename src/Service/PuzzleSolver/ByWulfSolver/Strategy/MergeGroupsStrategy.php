@@ -11,19 +11,17 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
-use Symfony\Component\Validator\Validation;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\GroupRepositioner;
 
 class MergeGroupsStrategy
 {
     use ByWulfSolverTrait;
 
-    private ValidatorInterface $validator;
+    private GroupRepositioner $groupRepositioner;
 
     public function __construct()
     {
-        /** @noinspection UnusedConstructorDependenciesInspection */
-        $this->validator = Validation::createValidator();
+        $this->groupRepositioner = new GroupRepositioner();
     }
 
     /**
@@ -44,6 +42,7 @@ class MergeGroupsStrategy
      */
     private function addNextPlacement(ByWulfSolverContext $context, float $minProbability): bool
     {
+        $adjustedGroup = null;
         $nextKey = $this->getMostFittableGroupSide($context, $minProbability, $adjustedGroup);
         if ($nextKey === null) {
             return false;
@@ -51,7 +50,7 @@ class MergeGroupsStrategy
 
         $nextPieceIndex = $this->getPieceIndexFromKey($nextKey);
 
-        $matchingKey = array_key_first($context->getMatchingProbabilities($nextKey));
+        $matchingKey = array_key_first($context->getMatchingProbabilities($nextKey)) ?? '';
         $matchingPieceIndex = $this->getPieceIndexFromKey($matchingKey);
 
         $this->mergeGroups(
@@ -76,7 +75,7 @@ class MergeGroupsStrategy
         $bestRating = 0;
         $bestKey = null;
         foreach (array_keys($context->getMatchingMap()) as $key) {
-            $matchingKey = array_key_first($context->getMatchingProbabilities($key));
+            $matchingKey = array_key_first($context->getMatchingProbabilities($key)) ?? '';
             if ($context->getMatchingProbability($key, $matchingKey) < $minProbability) {
                 continue;
             }
@@ -96,7 +95,7 @@ class MergeGroupsStrategy
             }
 
             $probabilities = [];
-            $group2Copy = $this->getRepositionedGroup($context, $group1, $group2, $key, $matchingKey, $minProbability, $probabilities, $bestRating);
+            $group2Copy = $this->groupRepositioner->getRepositionedGroup($context, $group1, $group2, $key, $matchingKey, $minProbability, $probabilities, $bestRating);
             if ($group2Copy === null) {
                 continue;
             }
@@ -114,118 +113,12 @@ class MergeGroupsStrategy
         return $bestKey;
     }
 
-    /**
-     * @throws PuzzleSolverException
-     */
-    private function getRepositionedGroup(ByWulfSolverContext $context, Group $group1, Group $group2, string $key1, string $key2, float $minProbability, array &$probabilities, float $bestRating): ?Group
+    private function mergeGroups(Solution $solution, bool $removingAllowed, ?Group $group1, ?Group $group2, Group $adjustedGroup): void
     {
-        $piece1 = $context->getPiece($this->getPieceIndexFromKey($key1));
-        $sideIndex1 = $this->getSideIndexFromKey($key1);
-        $placement1 = $group1->getPlacementByPiece($piece1);
-
-        if ($placement1 === null) {
-            throw new PuzzleSolverException('Something went wrong.');
+        if ($group1 === null || $group2 === null) {
+            return;
         }
 
-        $piece2 = $context->getPiece($this->getPieceIndexFromKey($key2));
-        $sideIndex2 = $this->getSideIndexFromKey($key2);
-
-        // First clone the second group to manipulate the clone for testing the fittment
-        $group2Copy = clone $group2;
-        $placement2 = $group2Copy->getPlacementByPiece($piece2);
-
-        if ($placement2 === null) {
-            throw new PuzzleSolverException('Something went wrong.');
-        }
-
-        $neededRotations = $placement1->getTopSideIndex() - $sideIndex1 - $placement2->getTopSideIndex() + $sideIndex2 + 2;
-        $group2Copy->rotate($neededRotations);
-
-        $targetX = $placement1->getX() + ByWulfSolver::DIRECTION_OFFSETS[($sideIndex1 - $placement1->getTopSideIndex() + 4) % 4]['x'];
-        $targetY = $placement1->getY() + ByWulfSolver::DIRECTION_OFFSETS[($sideIndex1 - $placement1->getTopSideIndex() + 4) % 4]['y'];
-        $group2Copy->move($targetX - $placement2->getX(), $targetY - $placement2->getY());
-
-        $group1Copy = clone $group1;
-
-        if ($context->isRemovingAllowed()) {
-            foreach ($group1Copy->getPlacements() as $placement) {
-                foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
-                    $oppositePlacement = $group2Copy->getLastPlacementByPosition($placement->getX() + $offset['x'], $placement->getY() + $offset['y']);
-                    if ($oppositePlacement === null) {
-                        continue;
-                    }
-                    $placementDirection = $placement->getPiece()->getSide($placement->getTopSideIndex() + $direction)->getDirection();
-                    $oppositeDirection = $oppositePlacement->getPiece()->getSide($oppositePlacement->getTopSideIndex() + 2 + $direction)->getDirection();
-
-                    if ($placementDirection === $oppositeDirection) {
-                        $group1Copy->removePlacement($placement, false);
-                        $group2Copy->removePlacement($oppositePlacement, false);
-                    }
-                }
-            }
-            $group1Copy->updateIndexedPlacements();
-            $group2Copy->updateIndexedPlacements();
-        }
-
-        foreach ($group2Copy->getPlacements() as $placement) {
-            $group1Copy->addPlacement($placement);
-        }
-
-        $unmatchingSides = 0;
-
-        //Check that the connecting sides have a matching probability of > 0.5
-        foreach ($group2Copy->getPlacements() as $placement) {
-            for ($sideOffset = 0; $sideOffset < 4; $sideOffset++) {
-                $ownNeighbour = $group2Copy->getPlacementByPosition(
-                    $placement->getX() + ByWulfSolver::DIRECTION_OFFSETS[$sideOffset]['x'],
-                    $placement->getY() + ByWulfSolver::DIRECTION_OFFSETS[$sideOffset]['y']
-                );
-                if ($ownNeighbour) {
-                    continue;
-                }
-
-                $connectingPlacement = $group1->getPlacementByPosition(
-                    $placement->getX() + ByWulfSolver::DIRECTION_OFFSETS[$sideOffset]['x'],
-                    $placement->getY() + ByWulfSolver::DIRECTION_OFFSETS[$sideOffset]['y']
-                );
-                if (!$connectingPlacement) {
-                    continue;
-                }
-
-                $checkKey1 = $this->getKey($placement->getPiece()->getIndex(), $placement->getTopSideIndex() + $sideOffset);
-                $checkKey2 = $this->getKey($connectingPlacement->getPiece()->getIndex(), $connectingPlacement->getTopSideIndex() + $sideOffset + 2);
-
-                if ($context->getOriginalMatchingProbability($checkKey1, $checkKey2) < $minProbability * 0.5) {
-                    $unmatchingSides++;
-                }
-
-                $probabilities[] = $context->getOriginalMatchingProbability($checkKey1, $checkKey2);
-            }
-        }
-
-        if (array_sum($probabilities) <= $bestRating) {
-            return null;
-        }
-
-        $maxUnmatchedSides = count($probabilities) * 0.1;
-        if ($unmatchingSides > $maxUnmatchedSides) {
-            return null;
-        }
-
-        $minConnectingSides = min(!$minProbability ? 1 : 5, min(count($group1->getPlacements()), count($group2->getPlacements())) * 0.5);
-        if (count($probabilities) < $minConnectingSides) {
-            return null;
-        }
-
-        if ($this->isGroupValid($group1Copy, (int) round(count($group2Copy->getPlacements()) * 0.5), $context->getPiecesCount())) {
-            return $group2Copy;
-        }
-
-        return null;
-    }
-
-    private function mergeGroups(Solution $solution, bool $removingAllowed, Group $group1, Group $group2, Group $adjustedGroup): void
-    {
         $removedPiecesGroup1 = new Group();
         $removedPiecesGroup2 = new Group();
 
@@ -240,6 +133,7 @@ class MergeGroupsStrategy
                 $removedPiecesGroup2->addPlacement($placement);
 
                 $group1->removePlacement($existingPlacement);
+
                 continue;
             }
 

@@ -86,6 +86,7 @@ class Placement
     public function setContext(mixed $context): Placement
     {
         $this->context = $context;
+
         return $this;
     }
 }

@@ -6,5 +6,4 @@ namespace Bywulf\Jigsawlutioner\Exception;
 
 class GroupInvalidException extends JigsawlutionerException
 {
-
 }

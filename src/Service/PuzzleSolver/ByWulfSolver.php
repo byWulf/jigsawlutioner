@@ -32,10 +32,15 @@ class ByWulfSolver implements PuzzleSolverInterface
     private ?Closure $stepProgressionCallback = null;
 
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
+
     private MergeGroupsStrategy $mergeGroupsStrategy;
+
     private FillBlanksWithSinglePiecesStrategy $fillBlanksWithSinglePiecesStrategy;
+
     private RemoveBadPiecesStrategy $removeBadPiecesStrategy;
+
     private RemoveSmallGroupsStrategy $removeSmallGroupsStrategy;
+
     private CreateMissingGroupsStrategy $createMissingGroupsStrategy;
 
     public function __construct()
@@ -54,8 +59,8 @@ class ByWulfSolver implements PuzzleSolverInterface
     }
 
     /**
-     * @param Piece[] $pieces
-     * @param array<string, array<string, float>>
+     * @param Piece[]                             $pieces
+     * @param array<string, array<string, float>> $matchingMap
      *
      * @throws PuzzleSolverException
      */
@@ -109,7 +114,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->outputProgress($context, 'We are done!');
 
         $groups = $context->getSolution()->getGroups();
-        usort($groups, static fn(Group $a, Group $b): int => count($b->getPlacements()) <=> count($a->getPlacements()));
+        usort($groups, static fn (Group $a, Group $b): int => count($b->getPlacements()) <=> count($a->getPlacements()));
         $context->getSolution()->setGroups($groups);
 
         $this->setPlacementContexts($context->getSolution(), $context->getOriginalMatchingMap());
@@ -117,7 +122,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         return $context->getSolution();
     }
 
-    private function tryToAssignSinglePieces(ByWulfSolverContext $context): void {
+    private function tryToAssignSinglePieces(ByWulfSolverContext $context): void
+    {
         $biggestGroup = $context->getSolution()->getBiggestGroup();
         if ($biggestGroup === null) {
             return;
@@ -152,7 +158,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
 
         // If there are still pieces missing, do it a few times with a bit of variance
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 5; ++$i) {
             $this->removeBadPiecesStrategy->execute($context, 0.5, 2);
             $this->createMissingGroupsStrategy->execute($context);
             $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup, 0.2);
@@ -162,10 +168,11 @@ class ByWulfSolver implements PuzzleSolverInterface
     /**
      * @throws PuzzleSolverException
      */
-    private function repeatedlyAddPossiblePlacements(ByWulfSolverContext $context, float $minProbability, float $minDifference): void {
+    private function repeatedlyAddPossiblePlacements(ByWulfSolverContext $context, float $minProbability, float $minDifference): void
+    {
         $lastPieceCount = $context->getSolution()->getPieceCount();
         $lastGroupCount = count($context->getSolution()->getGroups());
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 5; ++$i) {
             $context->setMatchingMap($context->getOriginalMatchingMap());
             $this->addBestSinglePieceStrategy->execute($context, $minProbability, $minDifference);
             $this->mergeGroupsStrategy->execute($context, $minProbability);
@@ -178,6 +185,9 @@ class ByWulfSolver implements PuzzleSolverInterface
         }
     }
 
+    /**
+     * @param array<string, array<string, float>> $matchingMap
+     */
     private function setPlacementContexts(Solution $solution, array $matchingMap): void
     {
         foreach ($solution->getGroups() as $group) {
@@ -191,7 +201,6 @@ class ByWulfSolver implements PuzzleSolverInterface
                     if ($matchedPlacement !== null) {
                         $matchedSideKey = $this->getKey($matchedPlacement->getPiece()->getIndex(), $matchedPlacement->getTopSideIndex() + 6 + $indexOffset);
                     }
-
 
                     $context[$indexOffset] = [
                         'probabilities' => $matchingMap[$sideKey] ?? [],
