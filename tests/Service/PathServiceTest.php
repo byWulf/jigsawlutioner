@@ -9,6 +9,7 @@ use Bywulf\Jigsawlutioner\Service\PathService;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @covers \Bywulf\Jigsawlutioner\Dto\
  * @covers \Bywulf\Jigsawlutioner\Service\PathService
  */
 class PathServiceTest extends TestCase

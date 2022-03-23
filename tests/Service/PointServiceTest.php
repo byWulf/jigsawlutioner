@@ -10,6 +10,7 @@ use Bywulf\Jigsawlutioner\Service\PointService;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @covers \Bywulf\Jigsawlutioner\Dto\
  * @covers \Bywulf\Jigsawlutioner\Service\PointService
  */
 class PointServiceTest extends TestCase

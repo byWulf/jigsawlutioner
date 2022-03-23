@@ -10,6 +10,7 @@ use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @covers \Bywulf\Jigsawlutioner\Dto\
  * @covers \Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder
  */
 class ByWulfSideFinderTest extends TestCase
