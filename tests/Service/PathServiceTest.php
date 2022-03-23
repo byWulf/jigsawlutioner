@@ -8,10 +8,6 @@ use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Service\PathService;
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers \Bywulf\Jigsawlutioner\Dto\
- * @covers \Bywulf\Jigsawlutioner\Service\PathService
- */
 class PathServiceTest extends TestCase
 {
     private PathService $pathService;

@@ -10,10 +10,6 @@ use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers \Bywulf\Jigsawlutioner\Dto\
- * @covers \Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder
- */
 class ByWulfBorderFinderTest extends TestCase
 {
     private ByWulfBorderFinder $borderFinder;
