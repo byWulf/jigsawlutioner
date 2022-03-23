@@ -92,14 +92,14 @@ class PointService
         return $this->normalizeRotation(($topRotation + $bottomRotation + $leftRotation + $rightRotation) / 4);
     }
 
-    private function justifyRotation(float $baseRotation, float $rotationToJustify): float
+    public function justifyRotation(float $baseRotation, float $rotationToJustify): float
     {
         while (abs($rotationToJustify - $baseRotation) > abs($rotationToJustify - $baseRotation - 180)) {
-            $rotationToJustify -= 180;
+            $rotationToJustify -= 360;
         }
 
         while (abs($rotationToJustify - $baseRotation) > abs($rotationToJustify - $baseRotation + 180)) {
-            $rotationToJustify += 180;
+            $rotationToJustify += 360;
         }
 
         return $rotationToJustify;

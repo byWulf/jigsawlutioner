@@ -22,7 +22,6 @@
     "require": {
         "php": "^8.0",
         "ext-gd": "*",
-        "emcconville/point-reduction-algorithms": "^1.2",
         "psr/log": "^1 || ^2 || ^3",
         "rubix/ml": "^1.3.2",
         "symfony/validator": "^6.0"
@@ -50,6 +49,7 @@
         "test:php-cs-fixer": "@php ./vendor/bin/php-cs-fixer -vvv fix --dry-run",
         "test:phpmd": "@php ./vendor/bin/phpmd src text ruleset.xml",
         "test:phpstan": "@php ./vendor/bin/phpstan analyse -c phpstan.neon",
-        "test:phpunit": "@php ./vendor/bin/phpunit tests/ --coverage-clover .phpunit.cache/code-coverage/clover.xml --coverage-filter src/"
+        "test:phpunit": "@php ./vendor/bin/phpunit tests/ --coverage-clover .phpunit.cache/code-coverage/clover.xml --coverage-filter src/",
+        "test:phpunit_coverage": ["@putenv XDEBUG_MODE=coverage", "@php ./vendor/bin/phpunit tests/ --coverage-html .phpunit.cache/code-coverage --coverage-filter src/"]
     }
 }
