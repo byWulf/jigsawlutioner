@@ -15,7 +15,6 @@ use PHPUnit\Framework\TestCase;
  */
 class PlacementTest extends TestCase
 {
-
     public function testGetXAndY(): void
     {
         $placement = new Placement(1, 2, new Piece(1, [], [], 10, 15), 1);
