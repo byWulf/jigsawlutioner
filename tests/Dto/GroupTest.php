@@ -46,23 +46,7 @@ class GroupTest extends TestCase
         $this->assertEquals($placement3, $group->getLastPlacementByPosition(1, 2));
     }
 
-    public function testGetPlacementsByPosition(): void
-    {
-        $group = new Group();
-
-        $this->assertNull($group->getPlacementByPosition(1, 2));
-
-        $placement1 = new Placement(1, 2, new Piece(3, [], [], 3, 3), 2);
-        $placement2 = new Placement(2, 3, new Piece(4, [], [], 4, 4), 3);
-        $placement3 = new Placement(3, 4, new Piece(5, [], [], 5, 5), 0);
-        $group->addPlacement($placement1);
-        $group->addPlacement($placement2);
-        $group->addPlacement($placement3);
-
-        $this->assertEquals($placement1, $group->getPlacementByPosition(1, 2));
-    }
-
-    public function testGetPlacementsByPositionNotUnique(): void
+    public function testGetPlacementByPositionNotUnique(): void
     {
         $group = new Group();
 
@@ -75,6 +59,22 @@ class GroupTest extends TestCase
 
         $this->expectException(LogicException::class);
         $group->getPlacementByPosition(1, 2);
+    }
+
+    public function testGetPlacementsByPosition(): void
+    {
+        $group = new Group();
+
+        $this->assertEquals([], $group->getPlacementsByPosition(1, 2));
+
+        $placement1 = new Placement(1, 2, new Piece(3, [], [], 3, 3), 2);
+        $placement2 = new Placement(2, 3, new Piece(4, [], [], 4, 4), 3);
+        $placement3 = new Placement(1, 2, new Piece(5, [], [], 5, 5), 0);
+        $group->addPlacement($placement1);
+        $group->addPlacement($placement2);
+        $group->addPlacement($placement3);
+
+        $this->assertEquals([$placement1, $placement3], $group->getPlacementsByPosition(1, 2));
     }
 
     public function testGetFirstPlacement(): void
@@ -273,14 +273,14 @@ class GroupTest extends TestCase
         $this->assertEquals(-1, $placement3->getX());
         $this->assertEquals(4, $placement3->getY());
 
-        $group->rotate(2);
+        $group->rotate(-1);
 
-        $this->assertEquals(4, $placement1->getX());
-        $this->assertEquals(-1, $placement1->getY());
-        $this->assertEquals(6, $placement2->getX());
-        $this->assertEquals(-2, $placement2->getY());
-        $this->assertEquals(1, $placement3->getX());
-        $this->assertEquals(-4, $placement3->getY());
+        $this->assertEquals(1, $placement1->getX());
+        $this->assertEquals(4, $placement1->getY());
+        $this->assertEquals(2, $placement2->getX());
+        $this->assertEquals(6, $placement2->getY());
+        $this->assertEquals(4, $placement3->getX());
+        $this->assertEquals(1, $placement3->getY());
     }
 
     public function testMove(): void

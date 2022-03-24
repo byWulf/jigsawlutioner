@@ -14,7 +14,9 @@ use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 /**
  * @covers \Bywulf\Jigsawlutioner\Dto\Piece
@@ -27,6 +29,15 @@ class PieceTest extends TestCase
         $serializedPiece = serialize($piece);
 
         $this->assertEquals($piece, Piece::fromSerialized($serializedPiece));
+    }
+
+    public function testFromSerializedInvalidDto(): void
+    {
+        $object = new stdClass();
+        $serializedPiece = serialize($object);
+
+        $this->expectException(InvalidArgumentException::class);
+        Piece::fromSerialized($serializedPiece);
     }
 
     public function testGetIndex(): void
