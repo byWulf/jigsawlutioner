@@ -16,7 +16,6 @@ use ReflectionClass;
  */
 class GroupTest extends TestCase
 {
-
     public function testGetPlacements(): void
     {
         $group = new Group();
@@ -93,7 +92,6 @@ class GroupTest extends TestCase
 
         $this->assertEquals($placement1, $group->getFirstPlacement());
     }
-
 
     public function testGetFirstPlacementByPosition(): void
     {
@@ -306,7 +304,7 @@ class GroupTest extends TestCase
         $this->assertEquals(-1, $placement3->getY());
     }
 
-    public function test__clone(): void
+    public function testClone(): void
     {
         $group = new Group();
 
@@ -343,7 +341,7 @@ class GroupTest extends TestCase
         $this->assertEquals(2, $group3->getIndex());
     }
 
-    public function test__toString(): void
+    public function testToString(): void
     {
         $reflectionClass = new ReflectionClass(Group::class);
         $reflectionClass->setStaticPropertyValue('indexCounter', 0);

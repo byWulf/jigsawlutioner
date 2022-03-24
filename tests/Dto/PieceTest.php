@@ -104,7 +104,7 @@ class PieceTest extends TestCase
                     'index' => 4,
                     'extreme' => false,
                     'usedAsCorner' => false,
-                ]
+                ],
             ],
             'sides' => [
                 [
@@ -112,7 +112,7 @@ class PieceTest extends TestCase
                         [
                             'x' => 4,
                             'y' => 5,
-                        ]
+                        ],
                     ],
                     'classifiers' => [
                         BigWidthClassifier::class => [
@@ -121,7 +121,7 @@ class PieceTest extends TestCase
                             'centerPoint' => [
                                 'x' => 4,
                                 'y' => 5,
-                            ]
+                            ],
                         ],
                         CornerDistanceClassifier::class => 10,
                         DepthClassifier::class => 10,
@@ -138,8 +138,8 @@ class PieceTest extends TestCase
                             'centerPoint' => [
                                 'x' => 4,
                                 'y' => 5,
-                            ]
-                        ]
+                            ],
+                        ],
                     ],
                     'startPoint' => [
                         'x' => 5,
@@ -148,8 +148,8 @@ class PieceTest extends TestCase
                     'endPoint' => [
                         'x' => 6,
                         'y' => 7,
-                    ]
-                ]
+                    ],
+                ],
             ],
             'imageWidth' => 10,
             'imageHeight' => 15,
@@ -171,7 +171,7 @@ class PieceTest extends TestCase
     {
         $side = new Side([new Point($x, $y)], new Point(5, 6), new Point(6, 7));
 
-        $side->addClassifier(new BigWidthClassifier(DirectionClassifier::NOP_INSIDE, 10, new Point(4,5)));
+        $side->addClassifier(new BigWidthClassifier(DirectionClassifier::NOP_INSIDE, 10, new Point(4, 5)));
         $side->addClassifier(new CornerDistanceClassifier(10));
         $side->addClassifier(new DepthClassifier(DirectionClassifier::NOP_INSIDE, 10));
         $side->addClassifier(new DirectionClassifier(DirectionClassifier::NOP_INSIDE));

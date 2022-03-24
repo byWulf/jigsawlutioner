@@ -15,7 +15,6 @@ use PHPUnit\Framework\TestCase;
  */
 class ByWulfSolverContextTest extends TestCase
 {
-
     public function testGetters(): void
     {
         $piece1 = new Piece(1, [], [], 1, 1);

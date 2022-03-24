@@ -12,7 +12,6 @@ use PHPUnit\Framework\TestCase;
  */
 class DerivativePointTest extends TestCase
 {
-
     public function testIsExtreme(): void
     {
         $point = new DerivativePoint(1.5, 2.5, 30.11, 2);

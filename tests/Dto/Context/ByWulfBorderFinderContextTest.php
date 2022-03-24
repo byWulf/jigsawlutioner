@@ -23,6 +23,5 @@ class ByWulfBorderFinderContextTest extends TestCase
         $this->assertEquals($threshold, $context->getThreshold());
         $this->assertEquals($transparentImage, $context->getTransparentImage());
         $this->assertEquals($smallTransparentImage, $context->getSmallTransparentImage());
-
     }
 }

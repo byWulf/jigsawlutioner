@@ -78,6 +78,7 @@ class MatchingMapGeneratorTest extends TestCase
     private function getMockProbabilities(int $pieceIndex, int $sideIndex): array
     {
         $offset = $pieceIndex * 20 + $sideIndex;
+
         return [
             '1_0' => $offset + 0,
             '1_1' => $offset + 1,
