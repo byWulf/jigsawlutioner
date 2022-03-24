@@ -10,6 +10,9 @@ use Bywulf\Jigsawlutioner\Service\PointService;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Service\PointService
+ */
 class PointServiceTest extends TestCase
 {
     private PointService $pointService;

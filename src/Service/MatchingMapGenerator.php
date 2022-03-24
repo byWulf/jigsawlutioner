@@ -24,21 +24,21 @@ class MatchingMapGenerator
         $matchingMap = [];
 
         $allSides = [];
-        foreach ($pieces as $pieceIndex => $piece) {
+        foreach ($pieces as $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
-                $allSides[$this->getKey($pieceIndex, $sideIndex)] = $side;
+                $allSides[$this->getKey($piece->getIndex(), $sideIndex)] = $side;
             }
         }
 
-        foreach ($pieces as $pieceIndex => $piece) {
+        foreach ($pieces as $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
                 $probabilities = $this->sideMatcher->getMatchingProbabilities($side, $allSides);
                 arsort($probabilities);
-                $matchingMap[$this->getKey($pieceIndex, $sideIndex)] = $probabilities;
+                $matchingMap[$this->getKey($piece->getIndex(), $sideIndex)] = $probabilities;
 
                 // Remove own sides from map, because the puzzle must not be matched with itself
                 for ($i = 0; $i < 4; ++$i) {
-                    unset($matchingMap[$this->getKey($pieceIndex, $sideIndex)][$this->getKey($pieceIndex, $i)]);
+                    unset($matchingMap[$this->getKey($piece->getIndex(), $sideIndex)][$this->getKey($piece->getIndex(), $i)]);
                 }
             }
         }
