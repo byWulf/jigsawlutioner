@@ -29,8 +29,8 @@ class RealisticSideValidator extends ConstraintValidator
 
         $limits = $this->getLimits($value);
 
-        $width = $limits['maxX'] - $limits['minX'];
-        $height = $limits['maxY'] - $limits['minY'];
+        $width = $limits['maxX'] - $limits['minX'] + 1;
+        $height = $limits['maxY'] - $limits['minY'] + 1;
         if ($this->isUnrealisticSize($width, $height, $constraint->piecesCount, $limits)) {
             throw new GroupInvalidException('No realistic size.');
         }
