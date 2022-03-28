@@ -54,7 +54,7 @@ class RectangleGroupValidatorTest extends TestCase
         if ($expectException) {
             $this->expectException(GroupInvalidException::class);
         } else {
-            $this->expectNotToPerformAssertions();
+            $this->assertNull(null);
         }
 
         $this->validator->validate($value, new RectangleGroup());
@@ -148,6 +148,15 @@ class RectangleGroupValidatorTest extends TestCase
             $this->mockPlacement(1, -1, 'o', 'i', 'o', 's', 0),
         ];
         yield [$placements, true];
+
+        $placements = [
+            $this->mockPlacement(0, 0, 's', 's', 'i', 'o', 0),
+            $this->mockPlacement(0, 0, 'i', 's', 'i', 'o', 0),
+            $this->mockPlacement(0, 1, 'o', 's', 's', 'i', 0),
+            $this->mockPlacement(1, 1, 'i', 'o', 's', 's', 0),
+            $this->mockPlacement(1, 0, 'i', 'i', 'o', 's', 0),
+        ];
+        yield [$placements, false];
     }
 
     private function mockPlacement(int $x, int $y, string $top, string $left, string $bottom, string $right, int $topSide): Placement

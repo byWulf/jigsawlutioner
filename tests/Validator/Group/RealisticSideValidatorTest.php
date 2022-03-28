@@ -54,7 +54,7 @@ class RealisticSideValidatorTest extends TestCase
         if ($expectException) {
             $this->expectException(GroupInvalidException::class);
         } else {
-            $this->expectNotToPerformAssertions();
+            $this->assertNull(null);
         }
 
         $this->validator->validate($value, new RealisticSide(['piecesCount' => $piecesCount]));

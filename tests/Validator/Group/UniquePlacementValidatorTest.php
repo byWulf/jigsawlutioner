@@ -48,7 +48,7 @@ class UniquePlacementValidatorTest extends TestCase
 
         $this->validator->validate($value, new UniquePlacement());
 
-        $this->expectNotToPerformAssertions();
+        $this->assertNull(null);
     }
 
     public function testValidateSuccessWithMax(): void
@@ -63,7 +63,7 @@ class UniquePlacementValidatorTest extends TestCase
 
         $this->validator->validate($value, new UniquePlacement(['maxAllowedDoubles' => 2]));
 
-        $this->expectNotToPerformAssertions();
+        $this->assertNull(null);
     }
 
     public function testValidateFailure(): void

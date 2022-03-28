@@ -54,7 +54,7 @@ class PossibleSideMatchingValidatorTest extends TestCase
         if ($expectException) {
             $this->expectException(GroupInvalidException::class);
         } else {
-            $this->expectNotToPerformAssertions();
+            $this->assertNull(null);
         }
 
         $this->validator->validate($value, new PossibleSideMatching());
