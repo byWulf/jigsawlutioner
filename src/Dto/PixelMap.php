@@ -35,7 +35,7 @@ class PixelMap
             for ($x = 0; $x < $width; ++$x) {
                 $color = imagecolorat($image, $x, $y);
                 if ($color === false) {
-                    throw new PixelMapException('Could not read pixel color at ' . $x . '/' . $y . '.');
+                    throw new PixelMapException('Could not read pixel color at ' . $x . '/' . $y . '.'); // @codeCoverageIgnore
                 }
 
                 $pixels[$y][$x] = $color;

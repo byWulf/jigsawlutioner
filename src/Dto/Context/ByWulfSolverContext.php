@@ -11,6 +11,11 @@ use InvalidArgumentException;
 
 class ByWulfSolverContext
 {
+    /**
+     * @var Piece[]
+     */
+    private array $pieces = [];
+
     private Solution $solution;
 
     private int $piecesCount;
@@ -27,10 +32,14 @@ class ByWulfSolverContext
      * @param array<string, array<string, float>> $originalMatchingMap
      */
     public function __construct(
-        private array $pieces,
+        array $pieces,
         private array $originalMatchingMap,
         private ?Closure $stepProgression = null
     ) {
+        foreach ($pieces as $piece) {
+            $this->pieces[$piece->getIndex()] = $piece;
+        }
+
         $this->solution = new Solution();
         $this->piecesCount = count($this->pieces);
         $this->matchingMap = $this->originalMatchingMap;

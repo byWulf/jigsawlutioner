@@ -9,6 +9,9 @@ use Bywulf\Jigsawlutioner\Exception\SideParsingException;
 use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder
+ */
 class ByWulfSideFinderTest extends TestCase
 {
     private ByWulfSideFinder $sideFinder;

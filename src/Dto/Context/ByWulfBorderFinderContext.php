@@ -25,22 +25,8 @@ class ByWulfBorderFinderContext implements BorderFinderContextInterface
         return $this->transparentImage;
     }
 
-    public function setTransparentImage(?GdImage $transparentImage): ByWulfBorderFinderContext
-    {
-        $this->transparentImage = $transparentImage;
-
-        return $this;
-    }
-
     public function getSmallTransparentImage(): ?GdImage
     {
         return $this->smallTransparentImage;
-    }
-
-    public function setSmallTransparentImage(?GdImage $smallTransparentImage): ByWulfBorderFinderContext
-    {
-        $this->smallTransparentImage = $smallTransparentImage;
-
-        return $this;
     }
 }

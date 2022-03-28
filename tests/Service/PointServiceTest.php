@@ -7,8 +7,12 @@ namespace Bywulf\Jigsawlutioner\Tests\Service;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Service\PointService;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Service\PointService
+ */
 class PointServiceTest extends TestCase
 {
     private PointService $pointService;
@@ -41,8 +45,6 @@ class PointServiceTest extends TestCase
             [new Point(-5, 0), new Point(0, 0), new Point(10, 0), 5],
             [new Point(15, 0), new Point(0, 0), new Point(10, 0), 5],
             [new Point(5, 5), new Point(0, 0), new Point(10, 10), 0],
-
-            // TODO
         ];
     }
 
@@ -115,6 +117,83 @@ class PointServiceTest extends TestCase
             [new Point(-1, 0), new Point(-1, 0), new Point(-1, 1), new Point(-1, 1), null],
             [new Point(-1, -1), new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(0, 0)],
             [new Point(-1, 5), new Point(1, 5), new Point(3, -2), new Point(3, -3), new Point(3, 5)],
+        ];
+    }
+
+    /**
+     * @dataProvider normalizeRotationProvider
+     */
+    public function testNormalizeRotation(float $rotation, float $expectedRotation): void
+    {
+        $this->assertEquals($expectedRotation, $this->pointService->normalizeRotation($rotation));
+    }
+
+    public function normalizeRotationProvider(): array
+    {
+        return [
+            [0, 0],
+            [10, 10],
+            [-10, -10],
+            [180, 180],
+            [181, -179],
+            [-179, -179],
+            [-180, 180],
+            [1260, 180],
+            [-1259, -179],
+        ];
+    }
+
+    /**
+     * @dataProvider getAveragePointProvider
+     */
+    public function testGetAveragePoint(array $points, ?Point $expectedPoint): void
+    {
+        if ($expectedPoint === null) {
+            $this->expectException(InvalidArgumentException::class);
+            $this->pointService->getAveragePoint($points);
+        } else {
+            $this->assertEquals($expectedPoint, $this->pointService->getAveragePoint($points));
+        }
+    }
+
+    public function getAveragePointProvider(): array
+    {
+        return [
+            [[], null],
+            [[new Point(5, 3)], new Point(5, 3)],
+            [[new Point(-1, -1), new Point(3, 3)], new Point(1, 1)],
+            [[new Point(-1, -1), new Point(1, 1), new Point(-1, 1), new Point(1, -1)], new Point(0, 0)],
+        ];
+    }
+
+    /**
+     * @dataProvider justifyRotationProvider
+     */
+    public function testJustifyRotation(float $baseRoation, float $rotationToJustify, float $expectedRotation): void
+    {
+        $this->assertEquals($expectedRotation, $this->pointService->justifyRotation($baseRoation, $rotationToJustify));
+    }
+
+    public function justifyRotationProvider(): array
+    {
+        return [
+            [0, 0, 0],
+            [360, 0, 360],
+            [-360, 0, -360],
+            [0, 360, 0],
+            [0, -360, 0],
+            [-360, -360, -360],
+            [-360, 360, -360],
+            [360, -360, 360],
+            [360, 360, 360],
+            [180, 90, 90],
+            [180, -90, 270],
+            [-180, -360, 0],
+            [-180, -270, -270],
+            [-180, -180, -180],
+            [-180, -90, -90],
+            [-180, 0, 0],
+            [-180, 90, -270],
         ];
     }
 }

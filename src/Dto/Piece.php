@@ -84,6 +84,7 @@ class Piece implements JsonSerializable
 
         foreach ($this->sides as $side) {
             $side->setPoints([]);
+            $side->setUnrotatedPoints([]);
         }
 
         return $this;

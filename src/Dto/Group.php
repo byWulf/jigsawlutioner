@@ -210,7 +210,7 @@ class Group implements Stringable
         ;
     }
 
-    public function updateIndexedPlacements(): void
+    private function updateIndexedPlacements(): void
     {
         $this->placementsByPosition = [];
         $this->placementsByPiece = [];
