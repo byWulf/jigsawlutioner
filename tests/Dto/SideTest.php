@@ -164,4 +164,9 @@ class SideTest extends TestCase
             ],
         ], $side->jsonSerialize());
     }
+
+    public function testGetUnserializeClasses(): void
+    {
+        $this->assertIsArray(Side::getUnserializeClasses());
+    }
 }

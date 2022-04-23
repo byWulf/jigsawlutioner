@@ -90,55 +90,35 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
         $this->logger?->debug('Looking at the following points: ', $activeDerivatives);
         $rating = 0;
 
+        $distances = [];
+        for ($i = 0; $i < 4; $i++) {
+            $distances[$i] = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
+        }
+
         // 1. Check that opposite sides are equally long
-        $distance0 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[0], $activeDerivatives[1]);
-        $distance2 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[2], $activeDerivatives[3]);
-        $rating += $this->calculateRating(abs($distance0 - $distance2) / (0.4 * min($distance0, $distance2)));
-        if (abs($distance0 - $distance2) > 0.6 * min($distance0, $distance2)) {
-            $this->logger?->debug(' -> Distance of sides 0 and 2 more than 60% apart', [$distance0, $distance2]);
+        $rating += $this->calculateRating(abs($distances[0] - $distances[2]) / (0.4 * min($distances[0], $distances[2])));
+        if (abs($distances[0] - $distances[2]) > 0.6 * min($distances[0], $distances[2])) {
+            $this->logger?->debug(' -> Distance of sides 0 and 2 more than 60% apart', [$distances[0], $distances[2]]);
 
             return null;
         }
 
-        $distance1 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[1], $activeDerivatives[2]);
-        $distance3 = $this->pointService->getDistanceBetweenPoints($activeDerivatives[3], $activeDerivatives[0]);
-        $rating += $this->calculateRating(abs($distance1 - $distance3) / (0.4 * min($distance1, $distance3)));
-        if (abs($distance1 - $distance3) > 0.6 * min($distance1, $distance3)) {
-            $this->logger?->debug(' -> Distance of sides 1 and 3 more than 60% apart', [$distance1, $distance3]);
+        $rating += $this->calculateRating(abs($distances[1] - $distances[3]) / (0.4 * min($distances[1], $distances[3])));
+        if (abs($distances[1] - $distances[3]) > 0.6 * min($distances[1], $distances[3])) {
+            $this->logger?->debug(' -> Distance of sides 1 and 3 more than 60% apart', [$distances[1], $distances[3]]);
 
             return null;
         }
 
-        // 2. Check that opposite sides are equally rotated
-        $rotation0 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[1]);
-        $rotation2 = $this->pointService->getRotation($activeDerivatives[3], $activeDerivatives[2]);
-        $rotationDiff0 = abs($this->pointService->normalizeRotation($rotation0 - $rotation2));
-        $rating += $this->calculateRating($rotationDiff0 / 30);
-        if ($rotationDiff0 > 40) {
-            $this->logger?->debug(' -> Rotation of sides 0 and 2 more than 40° apart', [$rotation0, $rotation2]);
+        // 2. Check that the sides are in their length not too far away from another
+        $rating += $this->calculateRating(abs(min($distances[0], $distances[2]) - min($distances[1], $distances[3])) / (0.5 * min($distances)));
+        if (abs(min($distances[0], $distances[2]) - min($distances[1], $distances[3])) > 0.75 * min($distances)) {
+            $this->logger?->debug(' -> Too narrow rectangle', $distances);
 
             return null;
         }
 
-        $rotation1 = $this->pointService->getRotation($activeDerivatives[1], $activeDerivatives[2]);
-        $rotation3 = $this->pointService->getRotation($activeDerivatives[0], $activeDerivatives[3]);
-        $rotationDiff1 = abs($this->pointService->normalizeRotation($rotation1 - $rotation3));
-        $rating += $this->calculateRating($rotationDiff1 / 30);
-        if ($rotationDiff1 > 40) {
-            $this->logger?->debug(' -> Rotation of sides 1 and 3 more than 40° apart', [$rotation1, $rotation3]);
-
-            return null;
-        }
-
-        // 4. Check that the sides are in their length not too far away from another
-        $rating += $this->calculateRating(abs(min($distance0, $distance2) - min($distance1, $distance3)) / (0.5 * min($distance0, $distance1, $distance2, $distance3)));
-        if (abs(min($distance0, $distance2) - min($distance1, $distance3)) > 0.75 * min($distance0, $distance1, $distance2, $distance3)) {
-            $this->logger?->debug(' -> Too narrow rectangle', [$distance0, $distance1, $distance2, $distance3]);
-
-            return null;
-        }
-
-        // 5. Check that the first 10% are straight to the side
+        // 3. Check that the first 10% are straight to the side
         if (!$this->areLineStartsStraight($activeDerivatives, $borderPoints, $rating)) {
             return null;
         }
@@ -152,14 +132,16 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
      */
     private function areLineStartsStraight(array $activeDerivatives, array $borderPoints, float &$rating): bool
     {
+        $dividedCount = 100;
+
         for ($i = 0; $i < 4; ++$i) {
             $sideDistance = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
             $extendedPoints = $this->pathService->extendPointsByCount(
                 $this->getPointsBetweenIndexes($borderPoints, $activeDerivatives[$i]->getIndex(), $activeDerivatives[($i + 1) % 4]->getIndex()),
-                100
+                $dividedCount
             );
 
-            for ($j = 0; $j < 10; ++$j) {
+            for ($j = 0; $j < $dividedCount * 0.1; ++$j) {
                 $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
                 $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
                 if ($distanceToLine > 0.075 * $sideDistance) {
@@ -168,7 +150,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
                     return false;
                 }
             }
-            for ($j = 90; $j < 100; ++$j) {
+            for ($j = $dividedCount * 0.9; $j < $dividedCount; ++$j) {
                 $distanceToLine = $this->pointService->getDistanceToLine($extendedPoints[$j], $activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
                 $rating += $this->calculateRating($distanceToLine / (0.06 * $sideDistance)) * 0.1;
                 if ($distanceToLine > 0.075 * $sideDistance) {

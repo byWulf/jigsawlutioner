@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Tests\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
+use Bywulf\Jigsawlutioner\Exception\PathServiceException;
 use Bywulf\Jigsawlutioner\Service\PathService;
 use PHPUnit\Framework\TestCase;
 
@@ -108,6 +109,38 @@ class PathServiceTest extends TestCase
             [[new Point(1, 1), new Point(2, 0), new Point(3, 1)], [new Point(-1, 0), new Point(0, -1), new Point(1, 0)]],
             [[new Point(1, 1), new Point(2, 2), new Point(1, 3)], [new Point(-1, 0), new Point(0, -1), new Point(1, 0)]],
             [[new Point(1, 1), new Point(0, 2), new Point(1, 3)], [new Point(-1, 0), new Point(0, 1), new Point(1, 0)]],
+        ];
+    }
+
+    /**
+     * @param Point[] $points
+     *
+     * @dataProvider getPointOnPolylineProvider
+     */
+    public function testGetPointOnPolyline(array $points, int $fromPointIndex, float $length, ?Point $expectedPoint, ?string $expectedException = null): void
+    {
+        if ($expectedPoint === null) {
+            $this->expectExceptionMessage($expectedException);
+            $expectedPoint = new Point(0.01234, 0.56789);
+        }
+
+        $this->assertEquals($expectedPoint, $this->pathService->getPointOnPolyline($points, $fromPointIndex, $length));
+    }
+
+    public function getPointOnPolylineProvider(): array
+    {
+        return [
+            [[], 0, 1, null, 'At least two points must be given.'],
+            [[new Point(0, 0)], 0, 1, null, 'At least two points must be given.'],
+            [[new Point(0, 0), new Point(0, 1)], 2, 1, null, 'Given index out of range of the given points.'],
+            [[new Point(0, 0), new Point(0, 1)], 0, 0, new Point(0, 0)],
+            [[new Point(0, 0), new Point(0, 1)], 0, 1, new Point(0, 1)],
+            [[new Point(0, 0), new Point(0, 1)], 0, 2, new Point(0, 0)],
+            [[new Point(0, 0), new Point(0, 1)], 0, 1.5, new Point(0, 0.5)],
+            [[new Point(0, 0), new Point(0, 1), new Point(1, 1), new Point(1, 0)], 0, 5.5, new Point(0.5, 1)],
+            [[new Point(0, 0), new Point(0, 1), new Point(1, 1), new Point(1, 0)], 0, -5.5, new Point(1, 0.5)],
+            [[new Point(0, 0), new Point(0, 1), new Point(1, 1), new Point(1, 0)], 2, 5.5, new Point(0.5, 0)],
+            [[new Point(0, 0), new Point(0, 1), new Point(1, 1), new Point(1, 0)], 2, -5.5, new Point(0, 0.5)],
         ];
     }
 }

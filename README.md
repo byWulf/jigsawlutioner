@@ -38,7 +38,7 @@ Currently only standard rectangle puzzles are supported by the algorithm. Althou
 ### PieceAnalyzer
 You need a high definition image of your puzzle piece. It should be 1000px wide and its borders should be distinct. Best practice: use a backlight when taking the images, so it becomes black/white and the borders really stand out.
 
-If you want to get an image returned where the background got transparent (f.e. to display it somewhere connected to other pieces), specify it also. Best practice: take two images of the piece in the same position. First with backlight for better border detection, and one with normal light for the colored piece becoming transparent.
+If you want to get an image returned where the background got transparent (f.e. to display it somewhere connected to other pieces), specify it also. Best practice: take two images of the piece in the same position. First with backlight for better border detection, and one with normal light for the colored piece becoming transparent. You can request multiple images to become transparent and the size of these image doesn't have to be the same as the original (10 times smaller transparent images are good for displaying the solution to the user instead of the original high definition sized images).
 ```injectablephp
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
@@ -54,7 +54,7 @@ $transparentImage = imagecreatefromjpeg('piece_color.jpg');
 
 $piece = $pieceAnalyzer->getPieceFromImage(1, $image, new ByWulfBorderFinderContext(
     threshold: 0.65,
-    transparentImage: $transparentImage,
+    transparentImages: [$transparentImage],
 ));
 ```
 

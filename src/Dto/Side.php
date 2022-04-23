@@ -5,8 +5,14 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Dto;
 
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
+use Bywulf\Jigsawlutioner\SideClassifier\BigWidthClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\CornerDistanceClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\DepthClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
+use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
+use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
+use InvalidArgumentException;
 use JsonSerializable;
 
 class Side implements JsonSerializable
@@ -127,6 +133,25 @@ class Side implements JsonSerializable
             ),
             'startPoint' => $this->startPoint->jsonSerialize(),
             'endPoint' => $this->endPoint->jsonSerialize(),
+        ];
+    }
+
+    /**
+     * @return class-string[]
+     */
+    public static function getUnserializeClasses(): array
+    {
+        return [
+            Side::class,
+            Point::class,
+            DerivativePoint::class,
+            SideMetadata::class,
+            BigWidthClassifier::class,
+            CornerDistanceClassifier::class,
+            DepthClassifier::class,
+            DirectionClassifier::class,
+            SmallWidthClassifier::class,
+            LineDistanceClassifier::class,
         ];
     }
 }

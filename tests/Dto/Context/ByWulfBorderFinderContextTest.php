@@ -18,10 +18,9 @@ class ByWulfBorderFinderContextTest extends TestCase
         $transparentImage = imagecreatetruecolor(10, 10);
         $smallTransparentImage = imagecreatetruecolor(1, 1);
 
-        $context = new ByWulfBorderFinderContext($threshold, $transparentImage, $smallTransparentImage);
+        $context = new ByWulfBorderFinderContext($threshold, [$transparentImage, $smallTransparentImage]);
 
         $this->assertEquals($threshold, $context->getThreshold());
-        $this->assertEquals($transparentImage, $context->getTransparentImage());
-        $this->assertEquals($smallTransparentImage, $context->getSmallTransparentImage());
+        $this->assertEquals([$transparentImage, $smallTransparentImage], $context->getTransparentImages());
     }
 }

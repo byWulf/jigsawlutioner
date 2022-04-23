@@ -111,19 +111,14 @@ class Piece implements JsonSerializable
     {
         $piece = unserialize(
             $serializedContent,
-            ['allowed_classes' => [
-                DerivativePoint::class,
-                Piece::class,
-                Point::class,
-                Side::class,
-                SideMetadata::class,
-                BigWidthClassifier::class,
-                CornerDistanceClassifier::class,
-                DepthClassifier::class,
-                DirectionClassifier::class,
-                SmallWidthClassifier::class,
-                LineDistanceClassifier::class,
-            ]]
+            ['allowed_classes' => array_merge(
+                [
+                    Piece::class,
+                    DerivativePoint::class,
+                    Point::class,
+                ],
+                Side::getUnserializeClasses(),
+            )]
         );
 
         if (!$piece instanceof Piece) {

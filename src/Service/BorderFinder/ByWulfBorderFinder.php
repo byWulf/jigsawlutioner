@@ -45,7 +45,6 @@ class ByWulfBorderFinder implements BorderFinderInterface
         GdImage $image,
         BorderFinderContextInterface $context
     ): array {
-        /** @noinspection PhpConditionAlreadyCheckedInspection */
         if (!$context instanceof ByWulfBorderFinderContext) {
             throw new InvalidArgumentException('Expected context of type ' . ByWulfBorderFinderContext::class . ', got ' . $context::class);
         }
@@ -87,11 +86,9 @@ class ByWulfBorderFinder implements BorderFinderInterface
             throw new BorderParsingException('Piece is cut off');
         }
 
-        if ($context->getTransparentImage() !== null) {
-            $this->createTransparentImage($context->getTransparentImage(), $pixelMap, $biggestObjectColor);
-        }
-        if ($context->getSmallTransparentImage() !== null) {
-            $this->createSmallTransparentImage($context->getSmallTransparentImage(), $pixelMap, $biggestObjectColor);
+        // Make given images transparent if wished
+        foreach ($context->getTransparentImages() as $transparentImage) {
+            $this->transparencifyImage($transparentImage, $pixelMap, $biggestObjectColor);
         }
 
         return $this->pointParser->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
@@ -100,9 +97,14 @@ class ByWulfBorderFinder implements BorderFinderInterface
     /**
      * @throws BorderParsingException
      */
-    private function allocateColor(GdImage $image, int $red, int $green, int $blue): int
+    private function allocateColor(GdImage $image, int $red, int $green, int $blue, ?int $alpha = null): int
     {
-        $color = imagecolorallocate($image, $red, $green, $blue);
+        if ($alpha !== null) {
+            $color = imagecolorallocatealpha($image, $red, $green, $blue, $alpha);
+        } else {
+            $color = imagecolorallocate($image, $red, $green, $blue);
+        }
+
         if ($color === false) {
             throw new BorderParsingException('Could not allocate color ' . $red . '/' . $green . '/' . $blue . '.');
         }
@@ -148,39 +150,18 @@ class ByWulfBorderFinder implements BorderFinderInterface
     /**
      * @throws BorderParsingException
      */
-    private function createTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
+    private function transparencifyImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
     {
-        $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
-        if ($transparentColor === false) {
-            throw new BorderParsingException('Color could not be created.');
-        }
+        $transparentColor = $this->allocateColor($transparentImage, 255, 255, 255, 0);
 
         imagecolortransparent($transparentImage, $transparentColor);
 
-        for ($y = 0; $y < imagesy($transparentImage); ++$y) {
-            for ($x = 0; $x < imagesx($transparentImage); ++$x) {
-                if ($pixelMap->getColor($x, $y) !== $opaqueColor) {
-                    imagesetpixel($transparentImage, $x, $y, $transparentColor);
-                }
-            }
-        }
-    }
-
-    /**
-     * @throws BorderParsingException
-     */
-    private function createSmallTransparentImage(GdImage $transparentImage, PixelMap $pixelMap, int $opaqueColor): void
-    {
-        $transparentColor = imagecolorallocatealpha($transparentImage, 255, 255, 255, 0);
-        if ($transparentColor === false) {
-            throw new BorderParsingException('Color could not be created.');
-        }
-
-        imagecolortransparent($transparentImage, $transparentColor);
+        $xFactor = $pixelMap->getWidth() / imagesx($transparentImage);
+        $yFactor = $pixelMap->getHeight() / imagesy($transparentImage);
 
         for ($y = 0; $y < imagesy($transparentImage); ++$y) {
             for ($x = 0; $x < imagesx($transparentImage); ++$x) {
-                if ($pixelMap->getColor($x * 10, $y * 10) !== $opaqueColor) {
+                if ($pixelMap->getColor((int) ($x * $xFactor), (int) ($y * $yFactor)) !== $opaqueColor) {
                     imagesetpixel($transparentImage, $x, $y, $transparentColor);
                 }
             }

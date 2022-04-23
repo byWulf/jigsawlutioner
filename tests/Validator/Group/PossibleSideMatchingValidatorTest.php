@@ -18,6 +18,9 @@ use stdClass;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatchingValidator
+ */
 class PossibleSideMatchingValidatorTest extends TestCase
 {
     private PossibleSideMatchingValidator $validator;
