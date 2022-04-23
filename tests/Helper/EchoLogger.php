@@ -6,7 +6,6 @@ namespace Bywulf\Jigsawlutioner\Tests\Helper;
 
 use DateTimeImmutable;
 use Psr\Log\LoggerInterface;
-use Stringable;
 
 class EchoLogger implements LoggerInterface
 {

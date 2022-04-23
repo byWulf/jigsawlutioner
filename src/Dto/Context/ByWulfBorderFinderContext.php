@@ -9,7 +9,7 @@ use GdImage;
 class ByWulfBorderFinderContext implements BorderFinderContextInterface
 {
     /**
-     * @param GdImage $transparentImages
+     * @param GdImage[] $transparentImages
      */
     public function __construct(
         private float $threshold,
@@ -22,6 +22,9 @@ class ByWulfBorderFinderContext implements BorderFinderContextInterface
         return $this->threshold;
     }
 
+    /**
+     * @return GdImage[]
+     */
     public function getTransparentImages(): array
     {
         return $this->transparentImages;

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Tests\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
-use Bywulf\Jigsawlutioner\Exception\PathServiceException;
 use Bywulf\Jigsawlutioner\Service\PathService;
 use PHPUnit\Framework\TestCase;
 

@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Tests\Service;
 
-use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\DerivativePoint;
 use Bywulf\Jigsawlutioner\Dto\Piece;
-use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\BorderFinderInterface;
-use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 use Bywulf\Jigsawlutioner\Service\PieceAnalyzer;
-use Bywulf\Jigsawlutioner\Service\SideFinder\ByWulfSideFinder;
 use Bywulf\Jigsawlutioner\Service\SideFinder\SideFinderInterface;
 use Bywulf\Jigsawlutioner\Tests\Helper\WrongBorderFinderContext;
 use PHPUnit\Framework\TestCase;

@@ -79,7 +79,7 @@ class ByWulfSideFinderTest extends TestCase
     public function testGetSidesUnsolvableCircle(): void
     {
         $points = [];
-        for ($i = 0; $i < 360; $i++) {
+        for ($i = 0; $i < 360; ++$i) {
             $points[] = new Point(cos(deg2rad($i)), sin(deg2rad($i)));
         }
 
@@ -109,7 +109,7 @@ class ByWulfSideFinderTest extends TestCase
             'Too narrow rectangle (horizontal)' => [new Point(0, 0), new Point(0, 100), new Point(50, 100), new Point(50, 0)],
             'Too narrow rectangle (vertical)' => [new Point(50, 0), new Point(0, 0), new Point(0, 100), new Point(50, 100)],
             'Distance of sides 0 and 2 more than 60% apart' => [new Point(0, 0), new Point(0, 100), new Point(100, 70), new Point(100, 30)],
-            'Distance of sides 1 and 3 more than 60% apart' => [new Point(0, 0), new Point(0, 100), new Point(100, 140), new Point(100, 100), ],
+            'Distance of sides 1 and 3 more than 60% apart' => [new Point(0, 0), new Point(0, 100), new Point(100, 140), new Point(100, 100)],
             'Starting part not straight' => [new Point(0, 0), new Point(0, 100), new Point(100, 100), new Point(100, 0), new Point(70, 30)],
             'Ending part not straight' => [new Point(0, 0), new Point(0, 100), new Point(100, 100), new Point(100, 0), new Point(30, 30)],
         ];

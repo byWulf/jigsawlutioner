@@ -8,5 +8,4 @@ use Bywulf\Jigsawlutioner\Dto\Context\BorderFinderContextInterface;
 
 class WrongBorderFinderContext implements BorderFinderContextInterface
 {
-
 }

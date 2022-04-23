@@ -91,7 +91,7 @@ class ByWulfSideFinder implements SideFinderInterface, LoggerAwareInterface
         $rating = 0;
 
         $distances = [];
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 4; ++$i) {
             $distances[$i] = $this->pointService->getDistanceBetweenPoints($activeDerivatives[$i], $activeDerivatives[($i + 1) % 4]);
         }
 

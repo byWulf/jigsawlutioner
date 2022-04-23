@@ -12,7 +12,6 @@ use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\LineDistanceClassifier;
 use Bywulf\Jigsawlutioner\SideClassifier\SideClassifierInterface;
 use Bywulf\Jigsawlutioner\SideClassifier\SmallWidthClassifier;
-use InvalidArgumentException;
 use JsonSerializable;
 
 class Side implements JsonSerializable
