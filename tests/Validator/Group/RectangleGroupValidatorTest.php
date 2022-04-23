@@ -18,6 +18,9 @@ use stdClass;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Validator\Group\RectangleGroupValidator
+ */
 class RectangleGroupValidatorTest extends TestCase
 {
     private RectangleGroupValidator $validator;

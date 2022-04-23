@@ -196,4 +196,24 @@ class PointServiceTest extends TestCase
             [-180, 90, -270],
         ];
     }
+
+    /**
+     * @dataProvider getDistanceBetweenPointsProvider
+     */
+    public function testGetDistanceBetweenPoints(Point $point1, Point $point2, float $expectedDistance): void
+    {
+        $this->assertEquals($expectedDistance, $this->pointService->getDistanceBetweenPoints($point1, $point2));
+    }
+
+    public function getDistanceBetweenPointsProvider(): array
+    {
+        return [
+            [new Point(0, 0), new Point(0, 0), 0],
+            [new Point(0, 0), new Point(0, 1), 1],
+            [new Point(0, 1), new Point(0, 0), 1],
+            [new Point(0, 0), new Point(1, 0), 1],
+            [new Point(1, 0), new Point(0, 0), 1],
+            [new Point(-1, -1), new Point(2, 3), 5],
+        ];
+    }
 }

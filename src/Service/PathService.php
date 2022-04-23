@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Point;
+use Bywulf\Jigsawlutioner\Exception\PathServiceException;
 
 class PathService
 {
@@ -72,29 +73,37 @@ class PathService
     /**
      * @param Point[] $points
      */
-    public function getPointOnPolyline(array $points, int $index, float $length): Point
+    public function getPointOnPolyline(array $points, int $fromPointIndex, float $length): Point
     {
+        if (count($points) < 2) {
+            throw new PathServiceException('At least two points must be given.');
+        }
+
+        if (!isset($points[$fromPointIndex])) {
+            throw new PathServiceException('Given index out of range of the given points.');
+        }
+
         $indexDirection = $length < 0 ? -1 : 1;
         $movedLength = 0;
         /** @noinspection CallableParameterUseCaseInTypeContextInspection */
         $length = abs($length);
         $point = null;
         while ($point === null) {
-            $nextIndex = $index + $indexDirection;
+            $nextIndex = $fromPointIndex + $indexDirection;
             $nextIndex = $nextIndex < 0 ? count($points) - 1 : $nextIndex;
             $nextIndex = $nextIndex >= count($points) ? 0 : $nextIndex;
-            $lineLength = $this->pointService->getDistanceBetweenPoints($points[$index], $points[$nextIndex]);
+            $lineLength = $this->pointService->getDistanceBetweenPoints($points[$fromPointIndex], $points[$nextIndex]);
 
             if ($movedLength + $lineLength >= $length) {
                 $offset = $length - $movedLength;
 
                 $point = new Point(
-                    $points[$index]->getX() + ($points[$nextIndex]->getX() - $points[$index]->getX()) / $lineLength * $offset,
-                    $points[$index]->getY() + ($points[$nextIndex]->getY() - $points[$index]->getY()) / $lineLength * $offset,
+                    $points[$fromPointIndex]->getX() + ($points[$nextIndex]->getX() - $points[$fromPointIndex]->getX()) / $lineLength * $offset,
+                    $points[$fromPointIndex]->getY() + ($points[$nextIndex]->getY() - $points[$fromPointIndex]->getY()) / $lineLength * $offset,
                 );
             }
             $movedLength += $lineLength;
-            $index = $nextIndex;
+            $fromPointIndex = $nextIndex;
         }
 
         return $point;

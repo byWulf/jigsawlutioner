@@ -15,6 +15,9 @@ use stdClass;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
+/**
+ * @covers \Bywulf\Jigsawlutioner\Validator\Group\UniquePlacementValidator
+ */
 class UniquePlacementValidatorTest extends TestCase
 {
     private UniquePlacementValidator $validator;
