@@ -16,9 +16,9 @@ class FillBlanksWithSinglePiecesStrategy
 {
     use ByWulfSolverTrait;
 
-    public function execute(ByWulfSolverContext $context, Group $group, float $variationFactor = 0): void
+    public function execute(ByWulfSolverContext $context, Group $group, bool $canPlaceAboveExistingPlacement, float $variationFactor = 0): void
     {
-        $outputMessage = 'Trying to fit single pieces to the biggest group (using a variationFactor of ' . $variationFactor . '...';
+        $outputMessage = 'Trying to fit single pieces to the biggest group (using a variationFactor of ' . $variationFactor . '; ' . ($canPlaceAboveExistingPlacement ? 'overwriting enabled' : 'overwriting disabled') . ')...';
         $this->outputProgress($context, $outputMessage);
 
         $singlePieces = [];
@@ -32,9 +32,14 @@ class FillBlanksWithSinglePiecesStrategy
         $singlePieces = array_filter($singlePieces);
 
         do {
-            $bestPlacement = $this->getBestPlacement($singlePieces, $group, $context, $variationFactor);
+            $bestPlacement = $this->getBestPlacement($singlePieces, $group, $context, $variationFactor, $canPlaceAboveExistingPlacement);
 
             if ($bestPlacement !== null) {
+                $existingPlacement = $group->getPlacementByPosition($bestPlacement->getX(), $bestPlacement->getY());
+                if ($existingPlacement !== null) {
+                    $group->removePlacement($existingPlacement);
+                }
+
                 $group->addPlacement($bestPlacement);
 
                 $index = array_search($bestPlacement->getPiece(), $singlePieces, true);
@@ -50,7 +55,7 @@ class FillBlanksWithSinglePiecesStrategy
     /**
      * @param Piece[] $singlePieces
      */
-    private function getBestPlacement(array $singlePieces, Group $group, ByWulfSolverContext $context, float $variationFactor): ?Placement
+    private function getBestPlacement(array $singlePieces, Group $group, ByWulfSolverContext $context, float $variationFactor, bool $canPlaceAboveExistingPlacement): ?Placement
     {
         $bestRating = 0;
         $bestPlacement = null;
@@ -62,7 +67,7 @@ class FillBlanksWithSinglePiecesStrategy
 
                 $x = $existingPlacement->getX() + $offset['x'];
                 $y = $existingPlacement->getY() + $offset['y'];
-                if ($group->getPlacementByPosition($x, $y) !== null) {
+                if (!$canPlaceAboveExistingPlacement && $group->getPlacementByPosition($x, $y) !== null) {
                     continue;
                 }
 
@@ -93,7 +98,7 @@ class FillBlanksWithSinglePiecesStrategy
 
             $placement = new Placement($x, $y, $piece, $rotation);
             $group->addPlacement($placement);
-            $isValidGroup = $this->isGroupValid($group, 0, $context->getPiecesCount());
+            $isValidGroup = $this->isGroupValid($group, 1, $context->getPiecesCount());
             $checkRating = $checkRating + (mt_rand() / mt_getrandmax()) * $variationFactor;
 
             if ($checkRating > $bestRating && $isValidGroup) {

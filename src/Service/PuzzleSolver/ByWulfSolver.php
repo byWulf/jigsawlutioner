@@ -139,30 +139,49 @@ class ByWulfSolver implements PuzzleSolverInterface
             return;
         }
 
-        // First try to assign all pieces that are still single to the biggest group
         $this->removeSmallGroupsStrategy->execute($context, $biggestGroup);
-        $this->createMissingGroupsStrategy->execute($context);
-        $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup);
 
-        if (count($biggestGroup->getPlacements()) === $context->getPiecesCount()) {
+        // First try to assign all pieces that are still single to the biggest group
+        if ($this->executeSinglePieceAssignment($context, $biggestGroup, null, null, false, 0)) {
             return;
         }
 
         // Then try to remove all bad connections and do it again
-        $this->removeBadPiecesStrategy->execute($context, 0.5, 2);
-        $this->createMissingGroupsStrategy->execute($context);
-        $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup);
+        if ($this->executeSinglePieceAssignment($context, $biggestGroup, 0.5, 2, false, 0)) {
+            return;
+        }
 
-        if (count($biggestGroup->getPlacements()) === $context->getPiecesCount()) {
+        // Now try to overwrite existing pieces if they fit there better
+        if ($this->executeSinglePieceAssignment($context, $biggestGroup, null, null, true, 0)) {
             return;
         }
 
         // If there are still pieces missing, do it a few times with a bit of variance
         for ($i = 0; $i < 5; ++$i) {
-            $this->removeBadPiecesStrategy->execute($context, 0.5, 2);
-            $this->createMissingGroupsStrategy->execute($context);
-            $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup, 0.2);
+            if ($this->executeSinglePieceAssignment($context, $biggestGroup, 0.5, 2, false, 0.2)) {
+                return;
+            }
         }
+    }
+
+    /**
+     * @
+     */
+    private function executeSinglePieceAssignment(ByWulfSolverContext $context, Group $biggestGroup, ?float $removeMaxProbability, ?int $removeMinimumSidesBelow, bool $canPlaceAboveExistingPlacement, float $variationFactor): bool
+    {
+        if ($removeMaxProbability !== null && $removeMinimumSidesBelow !== null) {
+            $this->removeBadPiecesStrategy->execute($context, 0.5, 2);
+        }
+
+        if ($canPlaceAboveExistingPlacement) {
+            $this->createMissingGroupsStrategy->execute($context);
+            $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup, true, $variationFactor);
+        }
+
+        $this->createMissingGroupsStrategy->execute($context);
+        $this->fillBlanksWithSinglePiecesStrategy->execute($context, $biggestGroup, false, $variationFactor);
+
+        return count($biggestGroup->getPlacements()) === $context->getPiecesCount();
     }
 
     /**
