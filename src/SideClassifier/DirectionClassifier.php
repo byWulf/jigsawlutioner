@@ -6,9 +6,8 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use InvalidArgumentException;
-use Stringable;
 
-class DirectionClassifier implements SideClassifierInterface, Stringable
+class DirectionClassifier implements SideClassifierInterface
 {
     public const NOP_STRAIGHT = 0;
 

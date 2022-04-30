@@ -7,9 +7,8 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Stringable;
 
-class BigWidthClassifier extends ModelBasedClassifier implements Stringable
+class BigWidthClassifier extends ModelBasedClassifier
 {
     public function __construct(
         private int $direction,
