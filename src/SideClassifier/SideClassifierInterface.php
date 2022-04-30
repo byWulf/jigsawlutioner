@@ -7,8 +7,9 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
 use JsonSerializable;
+use Stringable;
 
-interface SideClassifierInterface extends JsonSerializable
+interface SideClassifierInterface extends JsonSerializable, Stringable
 {
     /**
      * @throws SideClassifierException

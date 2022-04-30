@@ -6,9 +6,8 @@ namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
 use Bywulf\Jigsawlutioner\Exception\SideClassifierException;
-use Stringable;
 
-class DepthClassifier extends ModelBasedClassifier implements Stringable
+class DepthClassifier extends ModelBasedClassifier
 {
     public function __construct(
         private int $direction,

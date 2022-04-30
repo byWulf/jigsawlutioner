@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\SideClassifier;
 
 use Bywulf\Jigsawlutioner\Dto\SideMetadata;
-use Stringable;
 
-class CornerDistanceClassifier extends ModelBasedClassifier implements Stringable
+class CornerDistanceClassifier extends ModelBasedClassifier
 {
     public function __construct(
         private float $width

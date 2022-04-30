@@ -91,6 +91,8 @@ class ByWulfBorderFinder implements BorderFinderInterface
             $this->transparencifyImage($transparentImage, $pixelMap, $biggestObjectColor);
         }
 
+        $pixelMap->applyToImage();
+
         return $this->pointParser->getOrderedBorderPoints($pixelMap, $biggestObjectColor);
     }
 
