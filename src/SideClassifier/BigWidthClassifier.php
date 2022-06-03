@@ -68,14 +68,15 @@ class BigWidthClassifier extends ModelBasedClassifier
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        $insideClassifier = $this->direction === DirectionClassifier::NOP_INSIDE ? $this : $classifier;
-        $outsideClassifier = $this->direction === DirectionClassifier::NOP_OUTSIDE ? $this : $classifier;
+        $xDiff = abs($this->getCenterPoint()->getX() - $classifier->getCenterPoint()->getX()); // range 0 - 150
+        $yDiff = abs($this->getCenterPoint()->getY() - $classifier->getCenterPoint()->getY()); // range 0 - 110
+        $widthDiff = abs($this->getWidth() - $classifier->getWidth()); // range 0 - 100
 
-        $xDiff = $insideClassifier->getCenterPoint()->getX() - $outsideClassifier->getCenterPoint()->getX();
-        $yDiff = $insideClassifier->getCenterPoint()->getY() - $outsideClassifier->getCenterPoint()->getY();
-        $widthDiff = $insideClassifier->getWidth() - $outsideClassifier->getWidth();
+        $xRating = $xDiff > 50 ? 0 : 1 - ($xDiff / 50);
+        $yRating = $yDiff > 35 ? 0 : 1 - ($yDiff / 35);
+        $widthRating = $widthDiff > 30 ? 0 : 1 - ($widthDiff / 30);
 
-        return 1 - ((min(1, abs($xDiff) / 10) + min(1, abs($yDiff) / 10) + min(1, abs($widthDiff) / 10)) / 3);
+        return ($xRating + $yRating + $widthRating) / 3;
     }
 
     public function getWidth(): float

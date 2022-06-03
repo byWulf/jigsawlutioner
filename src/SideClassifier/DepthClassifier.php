@@ -45,7 +45,7 @@ class DepthClassifier extends ModelBasedClassifier
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        return max(0, 1 - (abs($this->depth - $classifier->getDepth()) / 12));
+        return max(0, 1 - (abs($this->depth - $classifier->getDepth()) / 25)); // range 0 - 70
     }
 
     public function getDepth(): float
