@@ -140,7 +140,15 @@ class LineDistanceClassifier extends ModelBasedClassifier
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        return 0;
+        $minDiff = abs($this->getMinLineDistance() - $classifier->getMinLineDistance()); // range 0 - 100
+        $maxDiff = abs($this->getMaxLineDistance() - $classifier->getMaxLineDistance()); // range 0 - 30
+        $averageDiff = abs($this->getAverageLineDistance() - $classifier->getAverageLineDistance()); // range 0 - 50
+
+        $minRating = $minDiff > 30 ? 0 : 1 - ($minDiff / 30);
+        $maxRating = $maxDiff > 10 ? 0 : 1 - ($maxDiff / 10);
+        $averageRating = $averageDiff > 15 ? 0 : 1 - ($averageDiff / 15);
+
+        return ($minRating + $maxRating + $averageRating) / 3;
     }
 
     public function getDirection(): int

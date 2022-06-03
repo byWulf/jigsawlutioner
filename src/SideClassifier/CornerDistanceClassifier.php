@@ -36,7 +36,7 @@ class CornerDistanceClassifier extends ModelBasedClassifier
      */
     public function compareSameSide(SideClassifierInterface $classifier): float
     {
-        return max(0, 1 - (abs($this->width - $classifier->getWidth()) / 20));
+        return max(0, 1 - (abs($this->width - $classifier->getWidth()) / 45)); // range 0 - 140
     }
 
     public function getWidth(): float

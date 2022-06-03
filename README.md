@@ -100,3 +100,18 @@ Each `Placement` has the following information:
 * `$placement->getPiece()`: the piece described in this placement
 * `$placement->getX()` / `$placement->getY()`: the position of the piece in the pattern of the group. One unit means one piece row/column. 
 * `$placement->getTopSideIndex()`: specifies the side array index of the piece, that points to the top of the group (so the piece must be rotated, that this side is at the top).
+
+### PieceRecognizer
+If you want to find a newly scanned piece within a list of already scanned pieces, you can use the `PieceRecognizer` service.
+
+```php
+use Bywulf\Jigsawlutioner\Service\PieceRecognizer;
+
+// $existingPieces = [...];
+// $newlyScannedPiece = new Piece(...);
+
+$recognizer = new PieceRecognizer();
+$piece = $recognizer->findExistingPiece($newlyScannedPiece, $existingPieces);
+```
+
+The returned `$piece` is the cloned `$newlyScannedPiece` with the correctly set index and its sides reordered so the first side of the newly scanned pieces matches the first side of the existing piece.
