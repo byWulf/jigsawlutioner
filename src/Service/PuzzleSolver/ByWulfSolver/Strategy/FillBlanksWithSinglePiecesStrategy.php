@@ -78,6 +78,7 @@ class FillBlanksWithSinglePiecesStrategy
                         $bestPlacement = $targetPlacement;
                     }
                 }
+
             }
         }
 
