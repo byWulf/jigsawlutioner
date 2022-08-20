@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
+use Bywulf\Jigsawlutioner\Dto\Context\SolutionReport;
 use Bywulf\Jigsawlutioner\Dto\Group;
+use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSize;
@@ -89,6 +91,6 @@ trait ByWulfSolverTrait
             return;
         }
 
-        $context->getSolutionReporter()($context);
+        $context->getSolutionReporter()(new SolutionReport($context->getSolution(), $context->getMatchingMap()));
     }
 }
