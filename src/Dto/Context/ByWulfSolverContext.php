@@ -16,8 +16,6 @@ class ByWulfSolverContext
      */
     private array $pieces = [];
 
-    private Solution $solution;
-
     private int $piecesCount;
 
     /**
@@ -32,31 +30,32 @@ class ByWulfSolverContext
     /**
      * @param ReducedPiece[]                      $pieces
      * @param array<string, array<string, float>> $originalMatchingMap
+     * @param array<int, string>                  $removedMatchingKeys
      */
     public function __construct(
         array $pieces,
+        private readonly Solution $solution,
         private readonly array $originalMatchingMap,
         private readonly ?Closure $stepProgression = null,
         private readonly ?Closure $solutionReporter = null,
         private readonly int $startFromSolutionStep = 0,
+        private array $removedMatchingKeys = [],
     ) {
         foreach ($pieces as $piece) {
             $this->pieces[$piece->getIndex()] = $piece;
         }
 
-        $this->solution = new Solution();
         $this->piecesCount = count($this->pieces);
         $this->matchingMap = $this->originalMatchingMap;
+
+        foreach ($this->removedMatchingKeys as $key) {
+            unset($this->matchingMap[$key]);
+        }
     }
 
     public function getSolution(): Solution
     {
         return $this->solution;
-    }
-
-    public function setSolution(Solution $solution): void
-    {
-        $this->solution = $solution;
     }
 
     public function getCurrentSolutionStep(): int
@@ -66,7 +65,7 @@ class ByWulfSolverContext
 
     public function increaseCurrentSolutionStep(): void
     {
-        $this->currentSolutionStep++;
+        ++$this->currentSolutionStep;
     }
 
     public function getStartFromSolutionStep(): int
@@ -117,19 +116,16 @@ class ByWulfSolverContext
         return $this->matchingMap[$key1][$key2] ?? 0;
     }
 
-    /**
-     * @param array<string, array<string, float>> $matchingMap
-     */
-    public function setMatchingMap(array $matchingMap): ByWulfSolverContext
+    public function resetMatchingMap(): void
     {
-        $this->matchingMap = $matchingMap;
-
-        return $this;
+        $this->matchingMap = $this->originalMatchingMap;
+        $this->removedMatchingKeys = [];
     }
 
     public function unsetMatchingMapKey(string $key): ByWulfSolverContext
     {
         unset($this->matchingMap[$key]);
+        $this->removedMatchingKeys[] = $key;
 
         return $this;
     }
@@ -167,5 +163,13 @@ class ByWulfSolverContext
     public function getSolutionReporter(): ?Closure
     {
         return $this->solutionReporter;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getRemovedMatchingKeys(): array
+    {
+        return $this->removedMatchingKeys;
     }
 }

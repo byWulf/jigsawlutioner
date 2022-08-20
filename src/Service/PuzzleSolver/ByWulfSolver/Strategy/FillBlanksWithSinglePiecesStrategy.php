@@ -38,7 +38,7 @@ class FillBlanksWithSinglePiecesStrategy
 
         $count = count($singlePieces);
 
-        for ($i = 0; $i < $count; $i++) {
+        for ($i = 0; $i < $count; ++$i) {
             $bestPlacement = $this->getBestPlacement($singlePieces, $group, $context, $variationFactor, $canPlaceAboveExistingPlacement);
             if ($bestPlacement === null) {
                 break;
@@ -54,6 +54,7 @@ class FillBlanksWithSinglePiecesStrategy
             foreach ($singlePieces as $index => $piece) {
                 if ($piece->getIndex() === $bestPlacement->getPiece()->getIndex()) {
                     unset($singlePieces[$index]);
+
                     break;
                 }
             }
@@ -90,7 +91,6 @@ class FillBlanksWithSinglePiecesStrategy
                         $bestPlacement = $targetPlacement;
                     }
                 }
-
             }
         }
 

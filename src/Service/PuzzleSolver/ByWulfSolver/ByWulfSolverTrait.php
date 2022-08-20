@@ -7,7 +7,6 @@ namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
 use Bywulf\Jigsawlutioner\Dto\Context\SolutionReport;
 use Bywulf\Jigsawlutioner\Dto\Group;
-use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
 use Bywulf\Jigsawlutioner\Validator\Group\RealisticSize;
@@ -89,6 +88,7 @@ trait ByWulfSolverTrait
     {
         if ($context->getCurrentSolutionStep() < $context->getStartFromSolutionStep()) {
             $context->increaseCurrentSolutionStep();
+
             return true;
         }
 
@@ -98,6 +98,9 @@ trait ByWulfSolverTrait
     private function reportSolution(ByWulfSolverContext $context): void
     {
         $context->increaseCurrentSolutionStep();
-        $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep(), $context->getSolution(), $context->getMatchingMap()));
+
+        if ($context->getSolutionReporter() !== null) {
+            $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep(), $context->getSolution(), $context->getRemovedMatchingKeys()));
+        }
     }
 }

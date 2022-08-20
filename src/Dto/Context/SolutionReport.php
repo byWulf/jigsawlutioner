@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bywulf\Jigsawlutioner\Dto\Context;
 
 use Bywulf\Jigsawlutioner\Dto\Solution;
@@ -7,14 +9,13 @@ use Bywulf\Jigsawlutioner\Dto\Solution;
 class SolutionReport
 {
     /**
-     * @param array<string, array<string, float>>    $matchingMap
+     * @param array<int, string> $removedMatchingKeys
      */
     public function __construct(
         private readonly int $solutionStep,
         private readonly Solution $solution,
-        private readonly array $matchingMap,
-    )
-    {
+        private readonly array $removedMatchingKeys,
+    ) {
     }
 
     public function getSolutionStep(): int
@@ -28,11 +29,10 @@ class SolutionReport
     }
 
     /**
-     * @return array<string, array<string, float>>
+     * @return array<int, string>
      */
-    public function getMatchingMap(): array
+    public function getRemovedMatchingKeys(): array
     {
-        return $this->matchingMap;
+        return $this->removedMatchingKeys;
     }
-
 }

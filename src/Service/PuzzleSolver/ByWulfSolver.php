@@ -36,8 +36,6 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private ?SolutionReport $solutionReport = null;
 
-    private int $solutionCount = 0;
-
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
 
     private MergeGroupsStrategy $mergeGroupsStrategy;
@@ -85,16 +83,13 @@ class ByWulfSolver implements PuzzleSolverInterface
     {
         $context = new ByWulfSolverContext(
             $reducedPieces,
+            $this->solutionReport?->getSolution() ?? new Solution(),
             $matchingMap,
             $this->stepProgressionCallback,
             $this->reportSolutionCallback,
-            $this->solutionReport?->getSolutionStep() ?? 0
+            $this->solutionReport?->getSolutionStep() ?? 0,
+            $this->solutionReport?->getRemovedMatchingKeys() ?? [],
         );
-
-        if ($this->solutionReport !== null) {
-            $context->setSolution($this->solutionReport->getSolution());
-            $context->setMatchingMap($this->solutionReport->getMatchingMap());
-        }
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
         $this->mergeGroupsStrategy->execute($context, 0.8);
@@ -218,7 +213,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         $lastPieceCount = $context->getSolution()->getPieceCount();
         $lastGroupCount = count($context->getSolution()->getGroups());
         for ($i = 0; $i < 5; ++$i) {
-            $context->setMatchingMap($context->getOriginalMatchingMap());
+            $context->resetMatchingMap();
             $this->addBestSinglePieceStrategy->execute($context, $minProbability, $minDifference);
             $this->mergeGroupsStrategy->execute($context, $minProbability);
 
