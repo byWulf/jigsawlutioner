@@ -14,6 +14,8 @@ class ReducedPiece implements JsonSerializable
     public function __construct(
         private int $index,
         private array $sides,
+        private readonly int $imageWidth,
+        private readonly int $imageHeight
     ) {
     }
 
@@ -22,6 +24,8 @@ class ReducedPiece implements JsonSerializable
         return new self(
             $piece->getIndex(),
             array_map(fn (Side $side): ReducedSide => ReducedSide::fromSide($side), $piece->getSides()),
+            $piece->getImageWidth(),
+            $piece->getImageHeight(),
         );
     }
 
@@ -47,6 +51,16 @@ class ReducedPiece implements JsonSerializable
         return $this->sides[$sideIndex % 4];
     }
 
+    public function getImageWidth(): int
+    {
+        return $this->imageWidth;
+    }
+
+    public function getImageHeight(): int
+    {
+        return $this->imageHeight;
+    }
+
     public function jsonSerialize(): array
     {
         return [
@@ -55,6 +69,8 @@ class ReducedPiece implements JsonSerializable
                 static fn (ReducedSide $side): array => $side->jsonSerialize(),
                 $this->sides
             ),
+            'imageWidth' => $this->imageWidth,
+            'imageHeight' => $this->imageHeight,
         ];
     }
 }
