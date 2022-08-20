@@ -31,6 +31,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
     private ?Closure $stepProgressionCallback = null;
 
+    private ?Closure $reportSolutionCallback = null;
+
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
 
     private MergeGroupsStrategy $mergeGroupsStrategy;
@@ -58,6 +60,11 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->stepProgressionCallback = $stepProgressionCallback;
     }
 
+    public function setReportSolutionCallback(Closure $reportSolutionCallback): void
+    {
+        $this->reportSolutionCallback = $reportSolutionCallback;
+    }
+
     /**
      * @param ReducedPiece[]                      $reducedPieces
      * @param array<string, array<string, float>> $matchingMap
@@ -69,7 +76,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         $context = new ByWulfSolverContext(
             $reducedPieces,
             $matchingMap,
-            $this->stepProgressionCallback
+            $this->stepProgressionCallback,
+            $this->reportSolutionCallback,
         );
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
