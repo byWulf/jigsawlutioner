@@ -88,6 +88,7 @@ class ByWulfSolver implements PuzzleSolverInterface
             $matchingMap,
             $this->stepProgressionCallback,
             $this->reportSolutionCallback,
+            $this->solutionReport?->getSolutionStep() ?? 0
         );
 
         if ($this->solutionReport !== null) {
