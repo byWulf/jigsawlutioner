@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
+use Bywulf\Jigsawlutioner\Dto\Context\SolutionReport;
 use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Dto\Solution;
@@ -32,6 +33,10 @@ class ByWulfSolver implements PuzzleSolverInterface
     private ?Closure $stepProgressionCallback = null;
 
     private ?Closure $reportSolutionCallback = null;
+
+    private ?SolutionReport $solutionReport = null;
+
+    private int $solutionCount = 0;
 
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
 
@@ -65,6 +70,11 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->reportSolutionCallback = $reportSolutionCallback;
     }
 
+    public function setSolutionReport(SolutionReport $solutionReport): void
+    {
+        $this->solutionReport = $solutionReport;
+    }
+
     /**
      * @param ReducedPiece[]                      $reducedPieces
      * @param array<string, array<string, float>> $matchingMap
@@ -79,6 +89,11 @@ class ByWulfSolver implements PuzzleSolverInterface
             $this->stepProgressionCallback,
             $this->reportSolutionCallback,
         );
+
+        if ($this->solutionReport !== null) {
+            $context->setSolution($this->solutionReport->getSolution());
+            $context->setMatchingMap($this->solutionReport->getMatchingMap());
+        }
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
         $this->mergeGroupsStrategy->execute($context, 0.8);

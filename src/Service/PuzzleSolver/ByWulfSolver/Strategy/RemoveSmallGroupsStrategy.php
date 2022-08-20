@@ -14,6 +14,10 @@ class RemoveSmallGroupsStrategy
 
     public function execute(ByWulfSolverContext $context, Group $biggestGroup): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         foreach ($context->getSolution()->getGroups() as $group) {
             if ($group === $biggestGroup) {
                 continue;

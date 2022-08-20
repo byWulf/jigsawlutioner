@@ -15,6 +15,10 @@ class CreateMissingGroupsStrategy
 
     public function execute(ByWulfSolverContext $context): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         foreach ($context->getPieces() as $piece) {
             if ($context->getSolution()->getGroupByPiece($piece)) {
                 continue;

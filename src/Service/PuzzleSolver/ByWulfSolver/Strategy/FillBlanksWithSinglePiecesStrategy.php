@@ -18,6 +18,10 @@ class FillBlanksWithSinglePiecesStrategy
 
     public function execute(ByWulfSolverContext $context, Group $group, bool $canPlaceAboveExistingPlacement, float $variationFactor = 0): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         $outputMessage = 'Trying to fit single pieces to the biggest group (using a variationFactor of ' . $variationFactor . '; ' . ($canPlaceAboveExistingPlacement ? 'overwriting enabled' : 'overwriting disabled') . ')...';
         $this->outputProgress($context, $outputMessage);
 

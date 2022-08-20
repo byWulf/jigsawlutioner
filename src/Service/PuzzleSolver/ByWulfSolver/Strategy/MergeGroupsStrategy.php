@@ -29,6 +29,10 @@ class MergeGroupsStrategy
      */
     public function execute(ByWulfSolverContext $context, float $minProbability): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         $outputMessage = 'Merging groups with minProbability of ' . $minProbability . '...';
         $this->outputProgress($context, $outputMessage);
 

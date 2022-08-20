@@ -16,6 +16,10 @@ class RemoveBadPiecesStrategy
 
     public function execute(ByWulfSolverContext $context, float $maxProbability, int $minimumSidesBelow = 1): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         $outputMessage = 'Removing all pieces from solution, that have a connecting probability of ' . $maxProbability . ' or less on ' . $minimumSidesBelow . ' sides or more...';
         $this->outputProgress($context, $outputMessage);
 

@@ -27,6 +27,10 @@ class ByWulfSolverContext
 
     private bool $removingAllowed = true;
 
+    private int $currentSolutionStep = 0;
+
+    private Closure $solutionReporter;
+
     /**
      * @param ReducedPiece[]                      $pieces
      * @param array<string, array<string, float>> $originalMatchingMap
@@ -35,7 +39,8 @@ class ByWulfSolverContext
         array $pieces,
         private readonly array $originalMatchingMap,
         private readonly ?Closure $stepProgression = null,
-        private readonly ?Closure $solutionReporter = null,
+        ?Closure $solutionReporter = null,
+        private readonly int $startFromSolutionStep = 0,
     ) {
         foreach ($pieces as $piece) {
             $this->pieces[$piece->getIndex()] = $piece;
@@ -44,11 +49,34 @@ class ByWulfSolverContext
         $this->solution = new Solution();
         $this->piecesCount = count($this->pieces);
         $this->matchingMap = $this->originalMatchingMap;
+
+        $this->solutionReporter = function (SolutionReport $report) use ($solutionReporter): void {
+            $this->currentSolutionStep++;
+
+            if ($solutionReporter !== null) {
+                $solutionReporter($report);
+            }
+        };
     }
 
     public function getSolution(): Solution
     {
         return $this->solution;
+    }
+
+    public function setSolution(Solution $solution): void
+    {
+        $this->solution = $solution;
+    }
+
+    public function getCurrentSolutionStep(): int
+    {
+        return $this->currentSolutionStep;
+    }
+
+    public function getStartFromSolutionStep(): int
+    {
+        return $this->startFromSolutionStep;
     }
 
     /**

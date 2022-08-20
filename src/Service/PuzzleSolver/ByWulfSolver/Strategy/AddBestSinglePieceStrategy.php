@@ -20,6 +20,10 @@ class AddBestSinglePieceStrategy
      */
     public function execute(ByWulfSolverContext $context, float $minProbability, float $minDifference): void
     {
+        if ($this->shouldSkipStep($context)) {
+            return;
+        }
+
         $outputMessage = 'Adding new pieces with minProbability of ' . $minProbability . '/' . $minDifference . '...';
         $this->outputProgress($context, $outputMessage);
 

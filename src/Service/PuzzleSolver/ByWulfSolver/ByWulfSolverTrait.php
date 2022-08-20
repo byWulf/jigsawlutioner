@@ -85,12 +85,13 @@ trait ByWulfSolverTrait
         );
     }
 
+    private function shouldSkipStep(ByWulfSolverContext $context): bool
+    {
+        return $context->getCurrentSolutionStep() < $context->getStartFromSolutionStep();
+    }
+
     private function reportSolution(ByWulfSolverContext $context): void
     {
-        if ($context->getSolutionReporter() === null) {
-            return;
-        }
-
-        $context->getSolutionReporter()(new SolutionReport($context->getSolution(), $context->getMatchingMap()));
+        $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep() + 1, $context->getSolution(), $context->getMatchingMap()));
     }
 }
