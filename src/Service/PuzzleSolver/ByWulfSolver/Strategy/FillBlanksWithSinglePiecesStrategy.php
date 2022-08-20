@@ -59,14 +59,13 @@ class FillBlanksWithSinglePiecesStrategy
     {
         $bestRating = 0;
         $bestPlacement = null;
-        foreach ($group->getPlacements() as $existingPlacement) {
-            foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
-                if ($existingPlacement->getPiece()->getSide($existingPlacement->getTopSideIndex() + $direction)->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+
+        for ($x = $group->getMinX() - 1; $x <= $group->getMaxX() + 1; $x++) {
+            for ($y = $group->getMinY() - 1; $y <= $group->getMaxY() + 1; $y++) {
+                if (!$group->hasConnectingPlacement($x, $y)) {
                     continue;
                 }
 
-                $x = $existingPlacement->getX() + $offset['x'];
-                $y = $existingPlacement->getY() + $offset['y'];
                 if (!$canPlaceAboveExistingPlacement && $group->getPlacementByPosition($x, $y) !== null) {
                     continue;
                 }
