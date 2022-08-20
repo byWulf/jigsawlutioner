@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto\Context;
 
-use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Closure;
 use InvalidArgumentException;
@@ -12,11 +12,9 @@ use InvalidArgumentException;
 class ByWulfSolverContext
 {
     /**
-     * @var Piece[]
+     * @var ReducedPiece[]
      */
     private array $pieces = [];
-
-    private Solution $solution;
 
     private int $piecesCount;
 
@@ -27,22 +25,32 @@ class ByWulfSolverContext
 
     private bool $removingAllowed = true;
 
+    private int $currentSolutionStep = 0;
+
     /**
-     * @param Piece[]                             $pieces
+     * @param ReducedPiece[]                      $pieces
      * @param array<string, array<string, float>> $originalMatchingMap
+     * @param array<int, string>                  $removedMatchingKeys
      */
     public function __construct(
         array $pieces,
-        private array $originalMatchingMap,
-        private ?Closure $stepProgression = null
+        private readonly Solution $solution,
+        private readonly array $originalMatchingMap,
+        private readonly ?Closure $stepProgression = null,
+        private readonly ?Closure $solutionReporter = null,
+        private readonly int $startFromSolutionStep = 0,
+        private array $removedMatchingKeys = [],
     ) {
         foreach ($pieces as $piece) {
             $this->pieces[$piece->getIndex()] = $piece;
         }
 
-        $this->solution = new Solution();
         $this->piecesCount = count($this->pieces);
         $this->matchingMap = $this->originalMatchingMap;
+
+        foreach ($this->removedMatchingKeys as $key) {
+            unset($this->matchingMap[$key]);
+        }
     }
 
     public function getSolution(): Solution
@@ -50,15 +58,30 @@ class ByWulfSolverContext
         return $this->solution;
     }
 
+    public function getCurrentSolutionStep(): int
+    {
+        return $this->currentSolutionStep;
+    }
+
+    public function increaseCurrentSolutionStep(): void
+    {
+        ++$this->currentSolutionStep;
+    }
+
+    public function getStartFromSolutionStep(): int
+    {
+        return $this->startFromSolutionStep;
+    }
+
     /**
-     * @return Piece[]
+     * @return ReducedPiece[]
      */
     public function getPieces(): array
     {
         return $this->pieces;
     }
 
-    public function getPiece(int $pieceNumber): Piece
+    public function getPiece(int $pieceNumber): ReducedPiece
     {
         if (!isset($this->pieces[$pieceNumber])) {
             throw new InvalidArgumentException('Piece with number ' . $pieceNumber . ' not found.');
@@ -93,19 +116,16 @@ class ByWulfSolverContext
         return $this->matchingMap[$key1][$key2] ?? 0;
     }
 
-    /**
-     * @param array<string, array<string, float>> $matchingMap
-     */
-    public function setMatchingMap(array $matchingMap): ByWulfSolverContext
+    public function resetMatchingMap(): void
     {
-        $this->matchingMap = $matchingMap;
-
-        return $this;
+        $this->matchingMap = $this->originalMatchingMap;
+        $this->removedMatchingKeys = [];
     }
 
     public function unsetMatchingMapKey(string $key): ByWulfSolverContext
     {
         unset($this->matchingMap[$key]);
+        $this->removedMatchingKeys[] = $key;
 
         return $this;
     }
@@ -138,5 +158,18 @@ class ByWulfSolverContext
     public function getStepProgression(): ?Closure
     {
         return $this->stepProgression;
+    }
+
+    public function getSolutionReporter(): ?Closure
+    {
+        return $this->solutionReporter;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getRemovedMatchingKeys(): array
+    {
+        return $this->removedMatchingKeys;
     }
 }

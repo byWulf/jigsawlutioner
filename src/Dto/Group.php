@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto;
 
+use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
+use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
 use LogicException;
 use Stringable;
 
@@ -95,7 +97,7 @@ class Group implements Stringable
         return $this;
     }
 
-    public function getPlacementByPiece(Piece $piece): ?Placement
+    public function getPlacementByPiece(ReducedPiece $piece): ?Placement
     {
         return $this->placementsByPiece[$piece->getIndex()] ?? null;
     }
@@ -184,17 +186,49 @@ class Group implements Stringable
         $this->updateIndexedPlacements();
     }
 
+    public function getMinX(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+
+        return min(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements));
+    }
+
+    public function getMaxX(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+
+        return max(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements));
+    }
+
     public function getWidth(): int
     {
         if (count($this->placements) === 0) {
             return 0;
         }
 
-        return
-            max(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) -
-            min(array_map(static fn (Placement $placement): int => $placement->getX(), $this->placements)) +
-            1
-        ;
+        return $this->getMaxX() - $this->getMinX() + 1;
+    }
+
+    public function getMinY(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+
+        return min(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements));
+    }
+
+    public function getMaxY(): int
+    {
+        if (count($this->placements) === 0) {
+            return 0;
+        }
+
+        return max(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements));
     }
 
     public function getHeight(): int
@@ -203,11 +237,7 @@ class Group implements Stringable
             return 0;
         }
 
-        return
-            max(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements)) -
-            min(array_map(static fn (Placement $placement): int => $placement->getY(), $this->placements)) +
-            1
-        ;
+        return $this->getMaxY() - $this->getMinY() + 1;
     }
 
     private function updateIndexedPlacements(): void
@@ -218,6 +248,24 @@ class Group implements Stringable
             $this->placementsByPosition[$placement->getY()][$placement->getX()][] = $placement;
             $this->placementsByPiece[$placement->getPiece()->getIndex()] = $placement;
         }
+    }
+
+    public function hasConnectingPlacement(int $x, int $y): bool
+    {
+        foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
+            $placement = $this->getPlacementByPosition($x + $offset['x'], $y + $offset['y']);
+            if ($placement === null) {
+                continue;
+            }
+
+            if ($placement->getPiece()->getSide($placement->getTopSideIndex() + $direction + 2)->getDirection() === DirectionClassifier::NOP_STRAIGHT) {
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     public function __toString(): string

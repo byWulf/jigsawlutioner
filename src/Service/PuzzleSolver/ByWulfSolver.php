@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
+use Bywulf\Jigsawlutioner\Dto\Context\SolutionReport;
 use Bywulf\Jigsawlutioner\Dto\Group;
-use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
@@ -30,6 +31,10 @@ class ByWulfSolver implements PuzzleSolverInterface
     ];
 
     private ?Closure $stepProgressionCallback = null;
+
+    private ?Closure $reportSolutionCallback = null;
+
+    private ?SolutionReport $solutionReport = null;
 
     private AddBestSinglePieceStrategy $addBestSinglePieceStrategy;
 
@@ -58,18 +63,32 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->stepProgressionCallback = $stepProgressionCallback;
     }
 
+    public function setReportSolutionCallback(Closure $reportSolutionCallback): void
+    {
+        $this->reportSolutionCallback = $reportSolutionCallback;
+    }
+
+    public function setSolutionReport(SolutionReport $solutionReport): void
+    {
+        $this->solutionReport = $solutionReport;
+    }
+
     /**
-     * @param Piece[]                             $pieces
+     * @param ReducedPiece[]                      $reducedPieces
      * @param array<string, array<string, float>> $matchingMap
      *
      * @throws PuzzleSolverException
      */
-    public function findSolution(array $pieces, array $matchingMap): Solution
+    public function findSolution(array $reducedPieces, array $matchingMap): Solution
     {
         $context = new ByWulfSolverContext(
-            $pieces,
+            $reducedPieces,
+            $this->solutionReport?->getSolution() ?? new Solution(),
             $matchingMap,
-            $this->stepProgressionCallback
+            $this->stepProgressionCallback,
+            $this->reportSolutionCallback,
+            $this->solutionReport?->getSolutionStep() ?? 0,
+            $this->solutionReport?->getRemovedMatchingKeys() ?? [],
         );
 
         $this->addBestSinglePieceStrategy->execute($context, 0.8, 0.5);
@@ -118,6 +137,8 @@ class ByWulfSolver implements PuzzleSolverInterface
         $context->getSolution()->setGroups($groups);
 
         $this->setPlacementContexts($context->getSolution(), $context->getOriginalMatchingMap());
+
+        $this->reportSolution($context);
 
         return $context->getSolution();
     }
@@ -192,7 +213,7 @@ class ByWulfSolver implements PuzzleSolverInterface
         $lastPieceCount = $context->getSolution()->getPieceCount();
         $lastGroupCount = count($context->getSolution()->getGroups());
         for ($i = 0; $i < 5; ++$i) {
-            $context->setMatchingMap($context->getOriginalMatchingMap());
+            $context->resetMatchingMap();
             $this->addBestSinglePieceStrategy->execute($context, $minProbability, $minDifference);
             $this->mergeGroupsStrategy->execute($context, $minProbability);
 

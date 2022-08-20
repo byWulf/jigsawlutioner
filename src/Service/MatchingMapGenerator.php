@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service;
 
 use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Parallel\TaskExecutor;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
+use Bywulf\Jigsawlutioner\Task\MatchingMapGeneratorTask;
 
 class MatchingMapGenerator
 {
+    private TaskExecutor $taskExecutor;
+
     public function __construct(
-        private SideMatcherInterface $sideMatcher
+        private readonly SideMatcherInterface $sideMatcher,
+        private readonly int $parallelTasks = 10,
     ) {
+        $this->taskExecutor = new TaskExecutor();
     }
 
     /**
@@ -21,7 +27,10 @@ class MatchingMapGenerator
      */
     public function getMatchingMap(array $pieces): array
     {
-        $matchingMap = [];
+        $piecesCount = count($pieces);
+        if ($piecesCount === 0) {
+            return [];
+        }
 
         $allSides = [];
         foreach ($pieces as $piece) {
@@ -30,20 +39,15 @@ class MatchingMapGenerator
             }
         }
 
-        foreach ($pieces as $piece) {
-            foreach ($piece->getSides() as $sideIndex => $side) {
-                $probabilities = $this->sideMatcher->getMatchingProbabilities($side, $allSides);
-                arsort($probabilities);
-                $matchingMap[$this->getKey($piece->getIndex(), $sideIndex)] = $probabilities;
-
-                // Remove own sides from map, because the puzzle must not be matched with itself
-                for ($i = 0; $i < 4; ++$i) {
-                    unset($matchingMap[$this->getKey($piece->getIndex(), $sideIndex)][$this->getKey($piece->getIndex(), $i)]);
-                }
-            }
+        $tasks = [];
+        foreach (array_chunk($pieces, 50) as $piecesBatch) {
+            $tasks[] = new MatchingMapGeneratorTask($this->sideMatcher, $piecesBatch, $allSides);
         }
 
-        return $matchingMap;
+        /** @var array<int, float[][]> $results */
+        $results = $this->taskExecutor->execute($tasks, $this->parallelTasks);
+
+        return array_merge(...$results);
     }
 
     private function getKey(int $pieceNumber, int $sideIndex): string

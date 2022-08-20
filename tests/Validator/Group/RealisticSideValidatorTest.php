@@ -11,23 +11,23 @@ use Bywulf\Jigsawlutioner\Dto\Point;
 use Bywulf\Jigsawlutioner\Dto\Side;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
-use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
-use Bywulf\Jigsawlutioner\Validator\Group\RealisticSideValidator;
+use Bywulf\Jigsawlutioner\Validator\Group\RealisticSize;
+use Bywulf\Jigsawlutioner\Validator\Group\RealisticSizeValidator;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 /**
- * @covers \Bywulf\Jigsawlutioner\Validator\Group\RealisticSideValidator
+ * @covers \Bywulf\Jigsawlutioner\Validator\Group\RealisticSizeValidator
  */
 class RealisticSideValidatorTest extends TestCase
 {
-    private RealisticSideValidator $validator;
+    private RealisticSizeValidator $validator;
 
     protected function setUp(): void
     {
-        $this->validator = new RealisticSideValidator();
+        $this->validator = new RealisticSizeValidator();
     }
 
     public function testValidateWrongConstraint(): void
@@ -41,7 +41,7 @@ class RealisticSideValidatorTest extends TestCase
     {
         $this->expectException(UnexpectedTypeException::class);
 
-        $this->validator->validate(new stdClass(), new RealisticSide(['piecesCount' => 500]));
+        $this->validator->validate(new stdClass(), new RealisticSize(['piecesCount' => 500]));
     }
 
     /**
@@ -60,7 +60,7 @@ class RealisticSideValidatorTest extends TestCase
             $this->assertNull(null);
         }
 
-        $this->validator->validate($value, new RealisticSide(['piecesCount' => $piecesCount]));
+        $this->validator->validate($value, new RealisticSize(['piecesCount' => $piecesCount]));
     }
 
     public function validateProvider(): iterable

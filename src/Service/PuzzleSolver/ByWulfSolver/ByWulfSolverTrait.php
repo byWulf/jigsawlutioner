@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
+use Bywulf\Jigsawlutioner\Dto\Context\SolutionReport;
 use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
-use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
+use Bywulf\Jigsawlutioner\Validator\Group\RealisticSize;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
 use Symfony\Component\Validator\Validation;
@@ -42,7 +43,7 @@ trait ByWulfSolverTrait
         try {
             $this->validator->validate($group, [
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
-                new RealisticSide(['piecesCount' => $piecesCount]),
+                new RealisticSize(['piecesCount' => $piecesCount]),
                 new RectangleGroup(),
                 new PossibleSideMatching(),
             ]);
@@ -53,14 +54,53 @@ trait ByWulfSolverTrait
         }
     }
 
+    private function isValidRectangle(Group $group): bool
+    {
+        if ($this->validator === null) {
+            $this->validator = Validation::createValidator();
+        }
+
+        try {
+            $this->validator->validate($group, [
+                new RectangleGroup(),
+            ]);
+
+            return true;
+        } /** @noinspection PhpRedundantCatchClauseInspection */ catch (GroupInvalidException) {
+            return false;
+        }
+    }
+
     private function outputProgress(ByWulfSolverContext $context, string $description): void
     {
-        if ($context->getStepProgression() !== null) {
-            $context->getStepProgression()(
-                $description,
-                count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
-                count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
-            );
+        if ($context->getStepProgression() === null) {
+            return;
+        }
+
+        $context->getStepProgression()(
+            'Step ' . ($context->getCurrentSolutionStep() + 1) . ' - ' . $description,
+            count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
+            count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
+        );
+    }
+
+    private function shouldSkipStep(ByWulfSolverContext $context): bool
+    {
+        if ($context->getCurrentSolutionStep() < $context->getStartFromSolutionStep()) {
+            $context->increaseCurrentSolutionStep();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function reportSolution(ByWulfSolverContext $context): void
+    {
+        $context->increaseCurrentSolutionStep();
+
+        if ($context->getSolutionReporter() !== null) {
+            $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep(), $context->getSolution(), $context->getRemovedMatchingKeys()));
         }
     }
 }

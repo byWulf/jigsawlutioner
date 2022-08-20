@@ -64,7 +64,7 @@ class Solution
         return $this;
     }
 
-    public function getGroupByPiece(Piece $piece): ?Group
+    public function getGroupByPiece(ReducedPiece $piece): ?Group
     {
         foreach ($this->groups as $group) {
             if ($group->getPlacementByPiece($piece) !== null) {

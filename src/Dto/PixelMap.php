@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Dto;
 
 use Bywulf\Jigsawlutioner\Exception\PixelMapException;
+
 use function count;
+
 use GdImage;
 
 class PixelMap

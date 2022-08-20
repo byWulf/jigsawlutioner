@@ -22,7 +22,7 @@ class ByWulfSideFinderTest extends TestCase
     {
         $this->sideFinder = new ByWulfSideFinder();
         $this->sideFinder->setLogger(new NullLogger());
-        //$this->sideFinder->setLogger(new \Bywulf\Jigsawlutioner\Tests\Helper\EchoLogger());
+        // $this->sideFinder->setLogger(new \Bywulf\Jigsawlutioner\Tests\Helper\EchoLogger());
     }
 
     /**

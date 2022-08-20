@@ -80,7 +80,7 @@ class WeightedMatcher implements SideMatcherInterface
             }
         }
 
-        return $weightSum > 0 ? $sum / $weightSum : 0;
+        return $weightSum > 0 ? round($sum / $weightSum, 3) : 0;
     }
 
     private function getWeightForClassifier(string $classifierName): ?float
