@@ -78,7 +78,7 @@ trait ByWulfSolverTrait
         }
 
         $context->getStepProgression()(
-            $description,
+            $context->getCurrentSolutionStep() . ' - ' . $description,
             count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
             count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
         );
