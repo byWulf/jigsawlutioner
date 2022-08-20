@@ -4,20 +4,27 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service;
 
+use Amp\Loop;
 use Amp\Parallel\Worker\DefaultPool;
+use Amp\Parallel\Worker\Worker;
 use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Parallel\TaskExecutor;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Task\MatchingMapGeneratorTask;
 use function Amp\call;
+use function Amp\Parallel\Worker\pool;
 use function Amp\Promise\all;
 use function Amp\Promise\wait;
 
 class MatchingMapGenerator
 {
+    private TaskExecutor $taskExecutor;
+
     public function __construct(
         private readonly SideMatcherInterface $sideMatcher,
         private readonly int $parallelTasks = 10,
     ) {
+        $this->taskExecutor = new TaskExecutor();
     }
 
     /**
@@ -39,15 +46,13 @@ class MatchingMapGenerator
             }
         }
 
-        $pool = new DefaultPool($this->parallelTasks);
-
-        $coroutines = [];
+        $tasks = [];
         foreach (array_chunk($pieces, 50) as $piecesBatch) {
-            $coroutines[] = call(fn() => yield $pool->enqueue(new MatchingMapGeneratorTask($this->sideMatcher, $piecesBatch, $allSides)));
+            $tasks[] = new MatchingMapGeneratorTask($this->sideMatcher, $piecesBatch, $allSides);
         }
 
         /** @var array<int, float[][]> $results */
-        $results = wait(all($coroutines));
+        $results = $this->taskExecutor->execute($tasks, $this->parallelTasks);
 
         return array_merge(...$results);
     }
