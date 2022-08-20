@@ -33,8 +33,9 @@ class ByWulfSolverContext
      */
     public function __construct(
         array $pieces,
-        private array $originalMatchingMap,
-        private ?Closure $stepProgression = null
+        private readonly array $originalMatchingMap,
+        private readonly ?Closure $stepProgression = null,
+        private readonly ?Closure $solutionReporter = null,
     ) {
         foreach ($pieces as $piece) {
             $this->pieces[$piece->getIndex()] = $piece;
@@ -138,5 +139,10 @@ class ByWulfSolverContext
     public function getStepProgression(): ?Closure
     {
         return $this->stepProgression;
+    }
+
+    public function getSolutionReporter(): ?Closure
+    {
+        return $this->solutionReporter;
     }
 }

@@ -35,6 +35,8 @@ class MergeGroupsStrategy
         while ($this->addNextPlacement($context, $minProbability)) {
             $this->outputProgress($context, $outputMessage);
         }
+
+        $this->reportSolution($context);
     }
 
     /**

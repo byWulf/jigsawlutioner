@@ -36,6 +36,8 @@ class RemoveBadPiecesStrategy
                 $this->outputProgress($context, $outputMessage);
             }
         }
+
+        $this->reportSolution($context);
     }
 
     /**

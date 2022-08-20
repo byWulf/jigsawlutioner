@@ -72,12 +72,23 @@ trait ByWulfSolverTrait
 
     private function outputProgress(ByWulfSolverContext $context, string $description): void
     {
-        if ($context->getStepProgression() !== null) {
-            $context->getStepProgression()(
-                $description,
-                count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
-                count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
-            );
+        if ($context->getStepProgression() === null) {
+            return;
         }
+
+        $context->getStepProgression()(
+            $description,
+            count($context->getSolution()->getGroups()) + ($context->getPiecesCount() - $context->getSolution()->getPieceCount()),
+            count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? [])
+        );
+    }
+
+    private function reportSolution(ByWulfSolverContext $context): void
+    {
+        if ($context->getSolutionReporter() === null) {
+            return;
+        }
+
+        $context->getSolutionReporter()($context);
     }
 }

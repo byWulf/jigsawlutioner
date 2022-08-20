@@ -21,6 +21,7 @@ class FillBlanksWithSinglePiecesStrategy
         $outputMessage = 'Trying to fit single pieces to the biggest group (using a variationFactor of ' . $variationFactor . '; ' . ($canPlaceAboveExistingPlacement ? 'overwriting enabled' : 'overwriting disabled') . ')...';
         $this->outputProgress($context, $outputMessage);
 
+        /** @var ReducedPiece[] $singlePieces */
         $singlePieces = [];
 
         foreach ($context->getSolution()->getGroups() as $singleGroup) {
@@ -31,25 +32,32 @@ class FillBlanksWithSinglePiecesStrategy
         }
         $singlePieces = array_filter($singlePieces);
 
-        do {
+        $count = count($singlePieces);
+
+        for ($i = 0; $i < $count; $i++) {
             $bestPlacement = $this->getBestPlacement($singlePieces, $group, $context, $variationFactor, $canPlaceAboveExistingPlacement);
-
-            if ($bestPlacement !== null) {
-                $existingPlacement = $group->getPlacementByPosition($bestPlacement->getX(), $bestPlacement->getY());
-                if ($existingPlacement !== null) {
-                    $group->removePlacement($existingPlacement);
-                }
-
-                $group->addPlacement($bestPlacement);
-
-                $index = array_search($bestPlacement->getPiece(), $singlePieces, true);
-                if ($index !== false) {
-                    unset($singlePieces[$index]);
-                }
-
-                $this->outputProgress($context, $outputMessage);
+            if ($bestPlacement === null) {
+                break;
             }
-        } while ($bestPlacement !== null);
+
+            $existingPlacement = $group->getPlacementByPosition($bestPlacement->getX(), $bestPlacement->getY());
+            if ($existingPlacement !== null) {
+                $group->removePlacement($existingPlacement);
+            }
+
+            $group->addPlacement($bestPlacement);
+
+            foreach ($singlePieces as $index => $piece) {
+                if ($piece->getIndex() === $bestPlacement->getPiece()->getIndex()) {
+                    unset($singlePieces[$index]);
+                    break;
+                }
+            }
+
+            $this->outputProgress($context, $outputMessage);
+        }
+
+        $this->reportSolution($context);
     }
 
     /**

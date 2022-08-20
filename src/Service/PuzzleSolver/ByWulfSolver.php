@@ -119,6 +119,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
         $this->setPlacementContexts($context->getSolution(), $context->getOriginalMatchingMap());
 
+        $this->reportSolution($context);
+
         return $context->getSolution();
     }
 

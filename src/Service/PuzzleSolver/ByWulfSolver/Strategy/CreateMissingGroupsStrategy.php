@@ -26,5 +26,7 @@ class CreateMissingGroupsStrategy
 
             $this->outputProgress($context, 'Creating single groups of all pieces that were not yet placed...');
         }
+
+        $this->reportSolution($context);
     }
 }

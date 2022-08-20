@@ -26,6 +26,8 @@ class AddBestSinglePieceStrategy
         while ($this->addNextPlacement($context, $minProbability, $minDifference)) {
             $this->outputProgress($context, $outputMessage);
         }
+
+        $this->reportSolution($context);
     }
 
     /**
