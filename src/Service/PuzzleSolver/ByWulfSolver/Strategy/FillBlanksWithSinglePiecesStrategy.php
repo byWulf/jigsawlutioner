@@ -104,7 +104,7 @@ class FillBlanksWithSinglePiecesStrategy
         for ($rotation = 0; $rotation < 4; ++$rotation) {
             $connectedSides = 0;
             $checkRating = $this->getConnectionRating($piece, $group, $x, $y, $rotation, $context, $connectedSides);
-            if ($checkRating === 0.0 || $connectedSides < 2) {
+            if ($checkRating === null || $connectedSides < 2) {
                 continue;
             }
 
@@ -126,9 +126,9 @@ class FillBlanksWithSinglePiecesStrategy
         return $bestPlacement;
     }
 
-    private function getConnectionRating(ReducedPiece $piece, Group $group, int $x, int $y, int $rotation, ByWulfSolverContext $context, int &$connectedSides): float
+    private function getConnectionRating(ReducedPiece $piece, Group $group, int $x, int $y, int $rotation, ByWulfSolverContext $context, int &$connectedSides): ?float
     {
-        $rating = 0;
+        $rating = null;
         foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {
             $oppositePlacement = $group->getPlacementByPosition($x + $offset['x'], $y + $offset['y']);
             if ($oppositePlacement === null) {
@@ -139,16 +139,16 @@ class FillBlanksWithSinglePiecesStrategy
             $oppositeDirection = $oppositePlacement->getPiece()->getSide($oppositePlacement->getTopSideIndex() + 2 + $direction)->getDirection();
 
             if ($sideDirection === DirectionClassifier::NOP_STRAIGHT || $oppositeDirection === DirectionClassifier::NOP_STRAIGHT || $sideDirection === $oppositeDirection) {
-                return 0.0;
+                return null;
             }
 
             $sideMatchingProbability = $context->getOriginalMatchingProbability($this->getKey($piece->getIndex(), $rotation + $direction), $this->getKey($oppositePlacement->getPiece()->getIndex(), $oppositePlacement->getTopSideIndex() + 2 + $direction));
-            if ($sideMatchingProbability === 0.0) {
-                return 0.0;
-            }
 
             $rating += $sideMatchingProbability;
-            ++$connectedSides;
+
+            if ($sideMatchingProbability > 0.0) {
+                ++$connectedSides;
+            }
         }
 
         return $rating;
