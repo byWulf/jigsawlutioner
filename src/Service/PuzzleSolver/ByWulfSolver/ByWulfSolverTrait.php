@@ -87,11 +87,17 @@ trait ByWulfSolverTrait
 
     private function shouldSkipStep(ByWulfSolverContext $context): bool
     {
-        return $context->getCurrentSolutionStep() < $context->getStartFromSolutionStep();
+        if ($context->getCurrentSolutionStep() < $context->getStartFromSolutionStep()) {
+            $context->increaseCurrentSolutionStep();
+            return true;
+        }
+
+        return false;
     }
 
     private function reportSolution(ByWulfSolverContext $context): void
     {
-        $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep() + 1, $context->getSolution(), $context->getMatchingMap()));
+        $context->increaseCurrentSolutionStep();
+        $context->getSolutionReporter()(new SolutionReport($context->getCurrentSolutionStep(), $context->getSolution(), $context->getMatchingMap()));
     }
 }
