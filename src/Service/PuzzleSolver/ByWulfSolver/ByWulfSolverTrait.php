@@ -8,7 +8,7 @@ use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
 use Bywulf\Jigsawlutioner\Dto\Group;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Validator\Group\PossibleSideMatching;
-use Bywulf\Jigsawlutioner\Validator\Group\RealisticSide;
+use Bywulf\Jigsawlutioner\Validator\Group\RealisticSize;
 use Bywulf\Jigsawlutioner\Validator\Group\RectangleGroup;
 use Bywulf\Jigsawlutioner\Validator\Group\UniquePlacement;
 use Symfony\Component\Validator\Validation;
@@ -42,9 +42,26 @@ trait ByWulfSolverTrait
         try {
             $this->validator->validate($group, [
                 new UniquePlacement(['maxAllowedDoubles' => $maxAllowedDoubles]),
-                new RealisticSide(['piecesCount' => $piecesCount]),
+                new RealisticSize(['piecesCount' => $piecesCount]),
                 new RectangleGroup(),
                 new PossibleSideMatching(),
+            ]);
+
+            return true;
+        } /** @noinspection PhpRedundantCatchClauseInspection */ catch (GroupInvalidException) {
+            return false;
+        }
+    }
+
+    private function isValidRectangle(Group $group): bool
+    {
+        if ($this->validator === null) {
+            $this->validator = Validation::createValidator();
+        }
+
+        try {
+            $this->validator->validate($group, [
+                new RectangleGroup(),
             ]);
 
             return true;

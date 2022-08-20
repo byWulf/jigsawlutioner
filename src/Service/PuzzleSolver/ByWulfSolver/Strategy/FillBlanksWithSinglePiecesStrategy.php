@@ -98,10 +98,10 @@ class FillBlanksWithSinglePiecesStrategy
 
             $placement = new Placement($x, $y, $piece, $rotation);
             $group->addPlacement($placement);
-            $isValidGroup = $this->isGroupValid($group, 1, $context->getPiecesCount());
+            $isValidRectangle = $this->isValidRectangle($group);
             $checkRating = $checkRating + (mt_rand() / mt_getrandmax()) * $variationFactor;
 
-            if ($checkRating > $bestRating && $isValidGroup) {
+            if ($checkRating > $bestRating && $isValidRectangle) {
                 $bestRating = $checkRating;
                 $bestPlacement = new Placement($x, $y, $piece, $rotation);
             }

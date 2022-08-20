@@ -12,15 +12,15 @@ use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
-class RealisticSideValidator extends ConstraintValidator
+class RealisticSizeValidator extends ConstraintValidator
 {
     /**
      * @throws GroupInvalidException
      */
     public function validate(mixed $value, Constraint $constraint): void
     {
-        if (!$constraint instanceof RealisticSide) {
-            throw new UnexpectedTypeException($constraint, RealisticSide::class);
+        if (!$constraint instanceof RealisticSize) {
+            throw new UnexpectedTypeException($constraint, RealisticSize::class);
         }
 
         if (!$value instanceof Group) {

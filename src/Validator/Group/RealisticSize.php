@@ -6,7 +6,7 @@ namespace Bywulf\Jigsawlutioner\Validator\Group;
 
 use Symfony\Component\Validator\Constraint;
 
-class RealisticSide extends Constraint
+class RealisticSize extends Constraint
 {
     public int $piecesCount;
 }
