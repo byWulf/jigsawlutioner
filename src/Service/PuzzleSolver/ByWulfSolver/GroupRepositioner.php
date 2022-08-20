@@ -41,7 +41,7 @@ class GroupRepositioner
 
         $unmatchingSides = 0;
 
-        //Check that the connecting sides have a matching probability of > 0.5
+        // Check that the connecting sides have a matching probability of > 0.5
         $probabilities = $this->getMatchingProbabilities($group2Copy, $group1, $context, $minProbability, $unmatchingSides);
 
         if (array_sum($probabilities) <= $bestRating) {

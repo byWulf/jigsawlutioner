@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Validator\Group;
 
 use Bywulf\Jigsawlutioner\Dto\Group;
-use Bywulf\Jigsawlutioner\Dto\Side;
+use Bywulf\Jigsawlutioner\Dto\ReducedSide;
 use Bywulf\Jigsawlutioner\Exception\GroupInvalidException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
@@ -49,7 +49,7 @@ class PossibleSideMatchingValidator extends ConstraintValidator
         }
     }
 
-    private function doSideDirectionsMatch(Side $side1, Side $side2): bool
+    private function doSideDirectionsMatch(ReducedSide $side1, ReducedSide $side2): bool
     {
         return
             $side1->getDirection() !== DirectionClassifier::NOP_STRAIGHT &&

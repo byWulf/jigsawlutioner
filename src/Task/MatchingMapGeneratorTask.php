@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Bywulf\Jigsawlutioner\Task;
 
 use Amp\Parallel\Worker\Environment;
@@ -11,7 +13,7 @@ use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 class MatchingMapGeneratorTask implements Task
 {
     /**
-     * @param array<int, Piece> $pieces
+     * @param array<int, Piece>   $pieces
      * @param array<string, Side> $allSides
      */
     public function __construct(

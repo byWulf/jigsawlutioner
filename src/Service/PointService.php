@@ -28,7 +28,7 @@ class PointService
         $t = (($point->getX() - $lineStart->getX()) * ($lineEnd->getX() - $lineStart->getX()) + ($point->getY() - $lineStart->getY()) * ($lineEnd->getY() - $lineStart->getY())) / $lengthSquared;
         $t = max(0, min(1, $t));
 
-        return $this->getDistanceSquared($point, new Point(($lineStart->getX() + $t * ($lineEnd->getX() - $lineStart->getX())), ($lineStart->getY() + $t * ($lineEnd->getY() - $lineStart->getY()))));
+        return $this->getDistanceSquared($point, new Point($lineStart->getX() + $t * ($lineEnd->getX() - $lineStart->getX()), $lineStart->getY() + $t * ($lineEnd->getY() - $lineStart->getY())));
     }
 
     public function getDistanceToLine(Point $point, Point $lineStart, Point $lineEnd): float

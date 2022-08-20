@@ -97,7 +97,7 @@ class Group implements Stringable
         return $this;
     }
 
-    public function getPlacementByPiece(Piece $piece): ?Placement
+    public function getPlacementByPiece(ReducedPiece $piece): ?Placement
     {
         return $this->placementsByPiece[$piece->getIndex()] ?? null;
     }

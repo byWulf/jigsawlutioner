@@ -4,17 +4,10 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Service;
 
-use Amp\Loop;
-use Amp\Parallel\Worker\DefaultPool;
-use Amp\Parallel\Worker\Worker;
 use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Parallel\TaskExecutor;
 use Bywulf\Jigsawlutioner\Service\SideMatcher\SideMatcherInterface;
 use Bywulf\Jigsawlutioner\Task\MatchingMapGeneratorTask;
-use function Amp\call;
-use function Amp\Parallel\Worker\pool;
-use function Amp\Promise\all;
-use function Amp\Promise\wait;
 
 class MatchingMapGenerator
 {

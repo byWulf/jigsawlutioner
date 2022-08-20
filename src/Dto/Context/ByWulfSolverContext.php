@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bywulf\Jigsawlutioner\Dto\Context;
 
-use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Closure;
 use InvalidArgumentException;
@@ -12,7 +12,7 @@ use InvalidArgumentException;
 class ByWulfSolverContext
 {
     /**
-     * @var Piece[]
+     * @var ReducedPiece[]
      */
     private array $pieces = [];
 
@@ -28,7 +28,7 @@ class ByWulfSolverContext
     private bool $removingAllowed = true;
 
     /**
-     * @param Piece[]                             $pieces
+     * @param ReducedPiece[]                      $pieces
      * @param array<string, array<string, float>> $originalMatchingMap
      */
     public function __construct(
@@ -51,14 +51,14 @@ class ByWulfSolverContext
     }
 
     /**
-     * @return Piece[]
+     * @return ReducedPiece[]
      */
     public function getPieces(): array
     {
         return $this->pieces;
     }
 
-    public function getPiece(int $pieceNumber): Piece
+    public function getPiece(int $pieceNumber): ReducedPiece
     {
         if (!isset($this->pieces[$pieceNumber])) {
             throw new InvalidArgumentException('Piece with number ' . $pieceNumber . ' not found.');

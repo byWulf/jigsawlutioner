@@ -11,7 +11,7 @@ class Placement
     public function __construct(
         private int $x,
         private int $y,
-        private Piece $piece,
+        private ReducedPiece $piece,
         private int $topSideIndex,
         private mixed $context = null
     ) {
@@ -41,7 +41,7 @@ class Placement
         return $this;
     }
 
-    public function getPiece(): Piece
+    public function getPiece(): ReducedPiece
     {
         return $this->piece;
     }

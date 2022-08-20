@@ -6,8 +6,8 @@ namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\Strategy;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
 use Bywulf\Jigsawlutioner\Dto\Group;
-use Bywulf\Jigsawlutioner\Dto\Piece;
 use Bywulf\Jigsawlutioner\Dto\Placement;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
 use Bywulf\Jigsawlutioner\SideClassifier\DirectionClassifier;
@@ -53,15 +53,15 @@ class FillBlanksWithSinglePiecesStrategy
     }
 
     /**
-     * @param Piece[] $singlePieces
+     * @param ReducedPiece[] $singlePieces
      */
     private function getBestPlacement(array $singlePieces, Group $group, ByWulfSolverContext $context, float $variationFactor, bool $canPlaceAboveExistingPlacement): ?Placement
     {
         $bestRating = 0;
         $bestPlacement = null;
 
-        for ($x = $group->getMinX() - 1; $x <= $group->getMaxX() + 1; $x++) {
-            for ($y = $group->getMinY() - 1; $y <= $group->getMaxY() + 1; $y++) {
+        for ($x = $group->getMinX() - 1; $x <= $group->getMaxX() + 1; ++$x) {
+            for ($y = $group->getMinY() - 1; $y <= $group->getMaxY() + 1; ++$y) {
                 if (!$group->hasConnectingPlacement($x, $y)) {
                     continue;
                 }
@@ -84,7 +84,7 @@ class FillBlanksWithSinglePiecesStrategy
         return $bestPlacement;
     }
 
-    private function getBestRatedPlacement(Piece $piece, Group $group, int $x, int $y, ByWulfSolverContext $context, float $variationFactor, float &$rating): ?Placement
+    private function getBestRatedPlacement(ReducedPiece $piece, Group $group, int $x, int $y, ByWulfSolverContext $context, float $variationFactor, float &$rating): ?Placement
     {
         $bestRating = 0.0;
         $bestPlacement = null;
@@ -113,7 +113,7 @@ class FillBlanksWithSinglePiecesStrategy
         return $bestPlacement;
     }
 
-    private function getConnectionRating(Piece $piece, Group $group, int $x, int $y, int $rotation, ByWulfSolverContext $context, int &$connectedSides): float
+    private function getConnectionRating(ReducedPiece $piece, Group $group, int $x, int $y, int $rotation, ByWulfSolverContext $context, int &$connectedSides): float
     {
         $rating = 0;
         foreach (ByWulfSolver::DIRECTION_OFFSETS as $direction => $offset) {

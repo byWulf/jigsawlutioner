@@ -6,7 +6,7 @@ namespace Bywulf\Jigsawlutioner\Service\PuzzleSolver;
 
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfSolverContext;
 use Bywulf\Jigsawlutioner\Dto\Group;
-use Bywulf\Jigsawlutioner\Dto\Piece;
+use Bywulf\Jigsawlutioner\Dto\ReducedPiece;
 use Bywulf\Jigsawlutioner\Dto\Solution;
 use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
@@ -59,15 +59,15 @@ class ByWulfSolver implements PuzzleSolverInterface
     }
 
     /**
-     * @param Piece[]                             $pieces
+     * @param ReducedPiece[]                      $reducedPieces
      * @param array<string, array<string, float>> $matchingMap
      *
      * @throws PuzzleSolverException
      */
-    public function findSolution(array $pieces, array $matchingMap): Solution
+    public function findSolution(array $reducedPieces, array $matchingMap): Solution
     {
         $context = new ByWulfSolverContext(
-            $pieces,
+            $reducedPieces,
             $matchingMap,
             $this->stepProgressionCallback
         );

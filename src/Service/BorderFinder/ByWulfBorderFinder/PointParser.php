@@ -81,7 +81,7 @@ class PointParser
         for ($i = $direction + 3; $i < $direction + 7; ++$i) {
             $checkDirection = $i % 4;
 
-            if (($pixelMap->getColor($x + $directionOffsets[$checkDirection]['x'], $y + $directionOffsets[$checkDirection]['y'])) !== $objectColor) {
+            if ($pixelMap->getColor($x + $directionOffsets[$checkDirection]['x'], $y + $directionOffsets[$checkDirection]['y']) !== $objectColor) {
                 continue;
             }
 
