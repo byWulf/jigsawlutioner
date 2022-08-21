@@ -115,10 +115,8 @@ class ByWulfSolver implements PuzzleSolverInterface
 
         $this->repeatedlyAddPossiblePlacements($context, 0.01, 0.01);
 
-        if (count($context->getSolution()->getBiggestGroup()?->getPlacements() ?? []) < $context->getPiecesCount() * 0.8) {
-            $this->removeBadPiecesStrategy->execute($context, 0.5);
-            $this->repeatedlyAddPossiblePlacements($context, 0.01, 0.01);
-        }
+        $this->removeBadPiecesStrategy->execute($context, 0.5);
+        $this->repeatedlyAddPossiblePlacements($context, 0.01, 0.01);
 
         $this->repeatedlyAddPossiblePlacements($context, 0, 0);
 
@@ -218,18 +216,10 @@ class ByWulfSolver implements PuzzleSolverInterface
      */
     private function repeatedlyAddPossiblePlacements(ByWulfSolverContext $context, float $minProbability, float $minDifference): void
     {
-        $lastPieceCount = $context->getSolution()->getPieceCount();
-        $lastGroupCount = count($context->getSolution()->getGroups());
         for ($i = 0; $i < 5; ++$i) {
             $context->resetMatchingMap();
             $this->addBestSinglePieceStrategy->execute($context, $minProbability, $minDifference);
             $this->mergeGroupsStrategy->execute($context, $minProbability);
-
-            if ($context->getSolution()->getPieceCount() === $lastPieceCount && count($context->getSolution()->getGroups()) === $lastGroupCount) {
-                break;
-            }
-            $lastPieceCount = $context->getSolution()->getPieceCount();
-            $lastGroupCount = count($context->getSolution()->getGroups());
         }
     }
 
