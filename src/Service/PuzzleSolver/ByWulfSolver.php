@@ -166,23 +166,23 @@ class ByWulfSolver implements PuzzleSolverInterface
         $this->removeSmallGroupsStrategy->execute($context, $biggestGroup);
 
         // First try to assign all pieces that are still single to the biggest group
-        if ($this->executeSinglePieceAssignment($context, $biggestGroup, null, null, false, 0)) {
+        if ($this->executeSinglePieceAssignment($context, null, null, false, 0)) {
             return;
         }
 
         // Then try to remove all bad connections and do it again
-        if ($this->executeSinglePieceAssignment($context, $biggestGroup, 0.5, 2, false, 0)) {
+        if ($this->executeSinglePieceAssignment($context, 0.5, 2, false, 0)) {
             return;
         }
 
         // Now try to overwrite existing pieces if they fit there better
-        if ($this->executeSinglePieceAssignment($context, $biggestGroup, null, null, true, 0)) {
+        if ($this->executeSinglePieceAssignment($context, null, null, true, 0)) {
             return;
         }
 
         // If there are still pieces missing, do it a few times with a bit of variance
-        for ($i = 0; $i < 5; ++$i) {
-            if ($this->executeSinglePieceAssignment($context, $biggestGroup, 0.5, 2, false, 0.2)) {
+        for ($i = 0; $i < 15; ++$i) {
+            if ($this->executeSinglePieceAssignment($context, 0.5, 2, false, 0.2)) {
                 return;
             }
         }
@@ -191,10 +191,15 @@ class ByWulfSolver implements PuzzleSolverInterface
     /**
      * @
      */
-    private function executeSinglePieceAssignment(ByWulfSolverContext $context, Group $biggestGroup, ?float $removeMaxProbability, ?int $removeMinimumSidesBelow, bool $canPlaceAboveExistingPlacement, float $variationFactor): bool
+    private function executeSinglePieceAssignment(ByWulfSolverContext $context, ?float $removeMaxProbability, ?int $removeMinimumSidesBelow, bool $canPlaceAboveExistingPlacement, float $variationFactor): bool
     {
         if ($removeMaxProbability !== null && $removeMinimumSidesBelow !== null) {
             $this->removeBadPiecesStrategy->execute($context, 0.5, 2);
+        }
+
+        $biggestGroup = $context->getSolution()->getBiggestGroup();
+        if ($biggestGroup === null) {
+            return true;
         }
 
         if ($canPlaceAboveExistingPlacement) {
