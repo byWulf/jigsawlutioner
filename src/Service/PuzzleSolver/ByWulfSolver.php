@@ -75,7 +75,7 @@ class ByWulfSolver implements PuzzleSolverInterface
     }
 
     /**
-     * @param array<int, Piece|ReducedPiece>                      $pieces
+     * @param array<int, Piece|ReducedPiece>      $pieces
      * @param array<string, array<string, float>> $matchingMap
      *
      * @throws PuzzleSolverException

@@ -8,6 +8,7 @@ use Bywulf\Jigsawlutioner\Dto\Context\BorderFinderContextInterface;
 use Bywulf\Jigsawlutioner\Dto\Context\ByWulfBorderFinderContext;
 use Bywulf\Jigsawlutioner\Dto\PixelMap;
 use Bywulf\Jigsawlutioner\Dto\Point;
+use Bywulf\Jigsawlutioner\Exception\BorderParsing\CutOffPieceException;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Exception\PixelMapException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder\PixelManipulator;
@@ -83,7 +84,7 @@ class ByWulfBorderFinder implements BorderFinderInterface
 
         // Check if piece is cut off on an edge
         if ($this->hasBorderPixel($pixelMap, $biggestObjectColor)) {
-            throw new BorderParsingException('Piece is cut off');
+            throw new CutOffPieceException();
         }
 
         // Make given images transparent if wished

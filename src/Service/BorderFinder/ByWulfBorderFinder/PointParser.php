@@ -6,6 +6,7 @@ namespace Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 
 use Bywulf\Jigsawlutioner\Dto\PixelMap;
 use Bywulf\Jigsawlutioner\Dto\Point;
+use Bywulf\Jigsawlutioner\Exception\BorderParsing\NoAreaFoundException;
 use Bywulf\Jigsawlutioner\Exception\BorderParsingException;
 use Bywulf\Jigsawlutioner\Service\BorderFinder\ByWulfBorderFinder;
 
@@ -34,7 +35,7 @@ class PointParser
             }
         }
 
-        throw new BorderParsingException('No area found');
+        throw new NoAreaFoundException();
     }
 
     /**
