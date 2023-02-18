@@ -12,6 +12,7 @@ use Bywulf\Jigsawlutioner\Exception\PuzzleSolverException;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\ByWulfSolverTrait;
 use Bywulf\Jigsawlutioner\Service\PuzzleSolver\ByWulfSolver\GroupRepositioner;
+use Throwable;
 
 class MergeGroupsStrategy
 {
@@ -81,38 +82,42 @@ class MergeGroupsStrategy
         $bestRating = 0;
         $bestKey = null;
         foreach (array_keys($context->getMatchingMap()) as $key) {
-            $matchingKey = array_key_first($context->getMatchingProbabilities($key)) ?? '';
-            if ($context->getMatchingProbability($key, $matchingKey) < $minProbability) {
-                continue;
-            }
+            try {
+                $matchingKey = array_key_first($context->getMatchingProbabilities($key)) ?? '';
+                if ($context->getMatchingProbability($key, $matchingKey) < $minProbability) {
+                    continue;
+                }
 
-            $group1 = $context->getSolution()->getGroupByPiece($context->getPiece($this->getPieceIndexFromKey($key)));
-            if (!$group1) {
-                continue;
-            }
+                $group1 = $context->getSolution()->getGroupByPiece($context->getPiece($this->getPieceIndexFromKey($key)));
+                if (!$group1) {
+                    continue;
+                }
 
-            $group2 = $context->getSolution()->getGroupByPiece($context->getPiece($this->getPieceIndexFromKey($matchingKey)));
-            if (!$group2) {
-                continue;
-            }
+                $group2 = $context->getSolution()->getGroupByPiece($context->getPiece($this->getPieceIndexFromKey($matchingKey)));
+                if (!$group2) {
+                    continue;
+                }
 
-            if ($group1 === $group2) {
-                continue;
-            }
+                if ($group1 === $group2) {
+                    continue;
+                }
 
-            $probabilities = [];
-            $group2Copy = $this->groupRepositioner->getRepositionedGroup($context, $group1, $group2, $key, $matchingKey, $minProbability, $probabilities, $bestRating);
-            if ($group2Copy === null) {
-                continue;
-            }
-            if (min($probabilities) < $minProbability) {
-                continue;
-            }
+                $probabilities = [];
+                $group2Copy = $this->groupRepositioner->getRepositionedGroup($context, $group1, $group2, $key, $matchingKey, $minProbability, $probabilities, $bestRating);
+                if ($group2Copy === null) {
+                    continue;
+                }
+                if (min($probabilities) < $minProbability) {
+                    continue;
+                }
 
-            if (array_sum($probabilities) > $bestRating) {
-                $bestRating = array_sum($probabilities);
-                $bestKey = $key;
-                $adjustedGroup = $group2Copy;
+                if (array_sum($probabilities) > $bestRating) {
+                    $bestRating = array_sum($probabilities);
+                    $bestKey = $key;
+                    $adjustedGroup = $group2Copy;
+                }
+            } catch (Throwable) {
+                continue;
             }
         }
 

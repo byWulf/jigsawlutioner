@@ -80,7 +80,9 @@ class AddBestSinglePieceStrategy
                 continue;
             }
 
-            [$bestProbability, $secondProbability] = array_slice(array_values($context->getMatchingProbabilities($key)), 0, 2);
+            $values = array_values($context->getMatchingProbabilities($key));
+            $bestProbability = $values[0] ?? 0.0;
+            $secondProbability = $values[1] ?? 0.0;
             $rating = ($bestProbability - $secondProbability) * ($bestProbability ** 3);
             if ($bestProbability >= $minProbability && ($bestProbability - $secondProbability) >= $minDifference && $rating > $bestRating) {
                 $bestRating = $rating;

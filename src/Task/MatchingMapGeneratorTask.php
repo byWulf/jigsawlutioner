@@ -28,7 +28,7 @@ class MatchingMapGeneratorTask implements Task
         $matchingMap = [];
         foreach ($this->pieces as $piece) {
             foreach ($piece->getSides() as $sideIndex => $side) {
-                $probabilities = $this->sideMatcher->getMatchingProbabilities($side, $this->allSides);
+                $probabilities = array_filter($this->sideMatcher->getMatchingProbabilities($side, $this->allSides));
                 arsort($probabilities);
                 $matchingMap[$this->getKey($piece->getIndex(), $sideIndex)] = $probabilities;
 

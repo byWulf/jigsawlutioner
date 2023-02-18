@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Bywulf\Jigsawlutioner\Parallel;
 
 use function Amp\call;
-
 use Amp\Loop;
 use Amp\Parallel\Worker\DefaultPool;
 use Amp\Parallel\Worker\Task;
-
 use function Amp\Promise\all;
 
 class TaskExecutor
